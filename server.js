@@ -32,18 +32,15 @@ app.use(session({
 
 // ─── AUTH ROUTES ────────────────────────────────────────────
 app.get('/auth/instagram', (req, res) => {
+  // Escopos válidos para Facebook Login — pega páginas e contas Instagram vinculadas
   const scopes = [
     'public_profile',
+    'email',
     'pages_show_list',
     'pages_read_engagement',
-    'instagram_basic',
-    'instagram_content_publish',
-    'instagram_manage_comments',
-    'instagram_manage_insights',
     'business_management'
   ].join(',');
 
-  // Usando apenas escopos válidos para a API atual do Meta
   const url = `https://www.facebook.com/v21.0/dialog/oauth?` +
     `client_id=${FB_APP_ID}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
