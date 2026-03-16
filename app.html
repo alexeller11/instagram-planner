@@ -453,7 +453,7 @@ async function init() {
 
 function autoFillNiche(a) {
   const nicheEl = document.getElementById('p-niche');
-  if (nicheEl && a.category) nicheEl.value = a.category;
+  if (nicheEl && a.name) nicheEl.placeholder = 'Ex: ' + a.name;
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -621,7 +621,7 @@ async function runIntelligence() {
       body: JSON.stringify({
         igId: selAccount.id,
         competitors: document.getElementById('i-competitors').value,
-        niche: selAccount.category,
+        niche: document.getElementById('p-niche').value || selAccount.name,
         location: document.getElementById('i-location').value,
         goal: igoal
       })
