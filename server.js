@@ -9,15 +9,17 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const FB_APP_ID = process.env.FB_APP_ID;
-const FB_APP_SECRET = process.env.FB_APP_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const LONG_TOKEN = process.env.FB_LONG_TOKEN;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Tokens do Instagram — adicione um por linha separado por vírgula
+// Formato: TOKEN1,TOKEN2,TOKEN3
+const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
-// ─── MIDDLEWARE ─────────────────────────────────────────────
+const groq = new Groq({ apiKey: GROQ_API_KEY });
+
+// ─── MIDDLEWARE ──────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const publicDir = fs.existsSync(path.join(__dirname, 'public'))
@@ -30,72 +32,33 @@ app.use(session({
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// ─── BUSCAR CONTAS IG via token fixo ─────────────────────────
-async function fetchIGAccounts(token) {
-  const igAccounts = [];
-  try {
-    // Buscar todas as páginas
-    let url = `https://graph.facebook.com/v21.0/me/accounts`;
-    let allPages = [];
-    let nextUrl = url;
-
-    while (nextUrl) {
-      const res = await axios.get(nextUrl, {
-        params: nextUrl === url ? {
-          access_token: token,
-          fields: 'id,name,access_token',
-          limit: 100
-        } : {}
-      });
-      allPages = allPages.concat(res.data.data || []);
-      nextUrl = res.data.paging?.next || null;
-    }
-
-    console.log(`[FETCH] Total páginas: ${allPages.length}`);
-
-    for (const page of allPages) {
-      // Usar o token DA PÁGINA (não do usuário) para buscar IG vinculado
-      const pageToken = page.access_token || token;
-      try {
-        const pageRes = await axios.get(`https://graph.facebook.com/v21.0/${page.id}`, {
-          params: {
-            fields: 'instagram_business_account{id,username,name,followers_count,media_count,biography,website}',
-            access_token: pageToken
-          }
-        });
-
-        const igData = pageRes.data.instagram_business_account;
-        console.log(`[PAGE_RAW] ${page.name}: ${JSON.stringify(pageRes.data)}`);
-        if (igData?.id) {
-          console.log(`[IG] Encontrado: @${igData.username} (${page.name})`);
-          igAccounts.push({
-            ...igData,
-            page_name: page.name,
-            page_id: page.id,
-            page_token: pageToken
-          });
+// ─── BUSCAR PERFIS VIA TOKENS IG ────────────────────────────
+async function fetchIGProfiles(tokens) {
+  const accounts = [];
+  for (const token of tokens) {
+    try {
+      const res = await axios.get('https://graph.instagram.com/v21.0/me', {
+        params: {
+          fields: 'id,name,username,followers_count,media_count,biography,website,profile_picture_url',
+          access_token: token
         }
-      } catch (e) {
-        console.log(`[PAGE_ERR] ${page.name}: ${JSON.stringify(e.response?.data || e.message)}`);
-      }
+      });
+      console.log(`[IG] Encontrado: @${res.data.username} (${res.data.followers_count} seguidores)`);
+      accounts.push({ ...res.data, ig_token: token });
+    } catch (e) {
+      console.log(`[IG_ERR] Token inválido ou expirado: ${e.response?.data?.error?.message || e.message}`);
     }
-
-    console.log(`[FETCH] Total IG accounts: ${igAccounts.length}`);
-  } catch (e) {
-    console.error('[FETCH_ERR]', e.response?.data || e.message);
   }
-  return igAccounts;
+  console.log(`[FETCH] Total contas IG: ${accounts.length}`);
+  return accounts;
 }
 
 // ─── ROUTES ──────────────────────────────────────────────────
-
-// Login direto com token fixo
 app.get('/auth/login', async (req, res) => {
-  const token = LONG_TOKEN;
-  if (!token) return res.redirect('/?error=no_token');
+  if (!IG_TOKENS.length) return res.redirect('/?error=no_tokens');
   try {
-    const igAccounts = await fetchIGAccounts(token);
-    req.session.user = { longToken: token, igAccounts };
+    const accounts = await fetchIGProfiles(IG_TOKENS);
+    req.session.user = { accounts };
     res.redirect('/app');
   } catch (e) {
     console.error(e);
@@ -108,29 +71,33 @@ app.get('/auth/logout', (req, res) => {
   res.redirect('/');
 });
 
-// ─── API ──────────────────────────────────────────────────────
+// ─── API ─────────────────────────────────────────────────────
 app.get('/api/me', (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
-  res.json({ logged: true, igAccounts: req.session.user.igAccounts });
+  res.json({ logged: true, igAccounts: req.session.user.accounts });
 });
 
-app.get('/api/refresh', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  try {
-    const igAccounts = await fetchIGAccounts(req.session.user.longToken);
-    req.session.user.igAccounts = igAccounts;
-    res.json({ success: true, count: igAccounts.length, igAccounts });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+app.get('/api/debug', async (req, res) => {
+  const results = [];
+  for (const token of IG_TOKENS.slice(0, 3)) {
+    try {
+      const r = await axios.get('https://graph.instagram.com/v21.0/me', {
+        params: { fields: 'id,username,followers_count', access_token: token }
+      });
+      results.push({ ok: true, data: r.data });
+    } catch (e) {
+      results.push({ ok: false, error: e.response?.data || e.message });
+    }
   }
+  res.json({ tokens_configured: IG_TOKENS.length, results });
 });
 
-// Gerar plano com Groq
+// ─── GERAR PLANO ─────────────────────────────────────────────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
 
   const { igId, posts, goal, tone, extra, objections, audience, niche, location } = req.body;
-  const account = req.session.user.igAccounts.find(a => a.id === igId);
+  const account = req.session.user.accounts.find(a => a.id === igId);
 
   let profileContext = '';
   let topPostsContext = '';
@@ -142,23 +109,24 @@ Dados REAIS do perfil @${account.username}:
 - Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')}
 - Posts publicados: ${account.media_count || 'N/A'}
 - Bio: ${account.biography || 'Não informada'}
-- Website: ${account.website || 'Não informado'}
-- Página Facebook vinculada: ${account.page_name}`;
+- Website: ${account.website || 'Não informado'}`;
 
     try {
-      const mediaRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
+      const mediaRes = await axios.get(`https://graph.instagram.com/v21.0/${igId}/media`, {
         params: {
           fields: 'caption,media_type,like_count,comments_count,timestamp',
           limit: 6,
-          access_token: account.page_token
+          access_token: account.ig_token
         }
       });
       const media = mediaRes.data.data || [];
       if (media.length > 0) {
         topPostsContext = '\n\nÚltimos posts publicados:\n' +
-          media.map((m, i) => `${i+1}. [${m.media_type}] ${m.caption?.substring(0, 120) || 'Sem legenda'}... | ❤️ ${m.like_count || 0} | 💬 ${m.comments_count || 0}`).join('\n');
+          media.map((m, i) => `${i+1}. [${m.media_type}] ${m.caption?.substring(0, 120) || 'Sem legenda'}... | ❤️ ${m.like_count||0} | 💬 ${m.comments_count||0}`).join('\n');
       }
-    } catch (e) {}
+    } catch (e) {
+      console.log('[MEDIA_ERR]', e.response?.data?.error?.message || e.message);
+    }
   }
 
   const now = new Date();
@@ -182,17 +150,17 @@ DADOS DO PLANO:
 - Objeções do cliente: ${objections || 'Não informadas'}
 - Mês: ${month}/${year}
 
-Retorne APENAS JSON válido com esta estrutura exata (sem markdown, sem texto fora do JSON):
+Retorne APENAS JSON válido sem markdown:
 
 {
   "audit": {
-    "summary": "Análise humanizada do perfil usando os dados reais. Use frases como Olhando seus números... Seja específico.",
+    "summary": "Análise humanizada usando os dados reais. Mencione seguidores, posts recentes e oportunidades. Use frases como Olhando seus números...",
     "differentials": ["diferencial 1", "diferencial 2", "diferencial 3"],
     "positioning": "Como se posicionar vs concorrentes locais",
     "engagement_analysis": "Análise do engajamento dos últimos posts"
   },
   "dates": [
-    {"day": 8, "name": "Nome da data", "relevance": "Por que é relevante", "content_idea": "Ideia de post"}
+    {"day": 8, "name": "Nome da data", "relevance": "Por que é relevante para este nicho", "content_idea": "Ideia específica de post"}
   ],
   "posts": [
     {
@@ -201,10 +169,10 @@ Retorne APENAS JSON válido com esta estrutura exata (sem markdown, sem texto fo
       "pillar": "Educação",
       "objective": "Quebra de objeção específica",
       "visual": "Descrição detalhada da cena",
-      "copy": "Legenda completa 6-10 linhas AIDA/PAS com emojis",
+      "copy": "Legenda completa 6-10 linhas AIDA/PAS com emojis estratégicos",
       "cta": "CTA específico e criativo",
       "audio": "Estilo musical sugerido",
-      "script": "Script linha a linha 30-45s (só para Reels)"
+      "script": "Script linha a linha 30-45s (somente para Reels)"
     }
   ],
   "stories": [
@@ -226,15 +194,15 @@ Retorne APENAS JSON válido com esta estrutura exata (sem markdown, sem texto fo
   "post_days": [3,5,7,9,12,14,16,19,21,23,26,28],
   "event_days": [],
   "tips": [
-    {"icon": "🔥", "title": "Dica de Ouro", "text": "Dica personalizada"},
-    {"icon": "📈", "title": "Crescimento", "text": "Estratégia para a cidade"},
-    {"icon": "💰", "title": "Gatilho de Vendas", "text": "Gatilho mais efetivo"},
-    {"icon": "🎯", "title": "Melhores Horários", "text": "Dias e horários ideais"},
+    {"icon": "🔥", "title": "Dica de Ouro", "text": "Dica personalizada e específica"},
+    {"icon": "📈", "title": "Crescimento", "text": "Estratégia para crescer na cidade"},
+    {"icon": "💰", "title": "Gatilho de Vendas", "text": "Gatilho mais efetivo para este público"},
+    {"icon": "🎯", "title": "Melhores Horários", "text": "Dias e horários ideais para este nicho"},
     {"icon": "🤝", "title": "Parcerias", "text": "Parceiros estratégicos locais"}
   ]
 }
 
-REGRAS: Crie EXATAMENTE ${posts} posts. Funil: S1=Atenção, S2=Autoridade, S3=Conexão, S4=Conversão. Mínimo 8 sequências de Stories. Scripts completos para todos os Reels.`;
+REGRAS: Crie EXATAMENTE ${posts} posts. Funil: S1=Atenção, S2=Autoridade, S3=Conexão, S4=Conversão. Mínimo 8 sequências de Stories. Scripts completos para todos os Reels. Legendas com copy REAL de 6-10 linhas.`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -248,10 +216,7 @@ REGRAS: Crie EXATAMENTE ${posts} posts. Funil: S1=Atenção, S2=Autoridade, S3=C
       temperature: 0.7,
       stream: true,
       messages: [
-        {
-          role: 'system',
-          content: 'Você é um estrategista de marketing digital sênior. Responda SEMPRE e APENAS com JSON válido, sem markdown, sem texto fora do JSON.'
-        },
+        { role: 'system', content: 'Responda APENAS com JSON válido, sem markdown, sem texto fora do JSON.' },
         { role: 'user', content: prompt }
       ]
     });
@@ -271,37 +236,6 @@ REGRAS: Crie EXATAMENTE ${posts} posts. Funil: S1=Atenção, S2=Autoridade, S3=C
     console.error('Generate error:', err);
     res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
     res.end();
-  }
-});
-
-// ─── DEBUG ENDPOINT ──────────────────────────────────────────
-app.get('/api/debug', async (req, res) => {
-  const token = LONG_TOKEN;
-  if (!token) return res.json({ error: 'No token configured' });
-  try {
-    // Test first page
-    const pagesRes = await axios.get('https://graph.facebook.com/v21.0/me/accounts', {
-      params: { access_token: token, fields: 'id,name,access_token', limit: 3 }
-    });
-    const pages = pagesRes.data.data || [];
-    const results = [];
-    for (const page of pages.slice(0, 3)) {
-      const pageToken = page.access_token || token;
-      try {
-        const r = await axios.get(`https://graph.facebook.com/v21.0/${page.id}`, {
-          params: {
-            fields: 'id,name,instagram_business_account{id,username}',
-            access_token: pageToken
-          }
-        });
-        results.push({ page: page.name, data: r.data });
-      } catch(e) {
-        results.push({ page: page.name, error: e.response?.data || e.message });
-      }
-    }
-    res.json({ total_pages: pages.length, sample: results });
-  } catch(e) {
-    res.json({ error: e.response?.data || e.message });
   }
 });
 
