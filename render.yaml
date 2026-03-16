@@ -6,13 +6,11 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - key: FB_APP_ID
-        sync: false
-      - key: FB_APP_SECRET
-        sync: false
       - key: SESSION_SECRET
         sync: false
       - key: GROQ_API_KEY
+        sync: false
+      - key: IG_TOKENS
         sync: false
       - key: BASE_URL
         sync: false
