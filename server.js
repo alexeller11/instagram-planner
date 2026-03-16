@@ -25,10 +25,10 @@ async function fetchIGProfiles(tokens) {
   for (const token of tokens) {
     try {
       const res = await axios.get('https://graph.instagram.com/v21.0/me', {
-        params: { fields: 'id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type,category', access_token: token }
+        params: { fields: 'id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type', access_token: token }
       });
       accounts.push({ ...res.data, ig_token: token });
-      console.log(`[IG] @${res.data.username} | ${res.data.followers_count} seguidores | categoria: ${res.data.category}`);
+      console.log(`[IG] @${res.data.username} | ${res.data.followers_count} seguidores `);
     } catch (e) { console.log(`[IG_ERR] ${e.response?.data?.error?.message || e.message}`); }
   }
   return accounts;
@@ -172,7 +172,7 @@ app.post('/api/intelligence', async (req, res) => {
 
 PERFIL REAL:
 - @${account.username} | ${account.name}
-- Categoria: ${account.category || niche}
+- Nicho: ${niche}
 - Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')}
 - Posts totais: ${account.media_count}
 - Bio: ${account.biography || 'Não informada'}
@@ -260,7 +260,7 @@ app.post('/api/generate', async (req, res) => {
 
   let profileContext = '', topPostsContext = '';
   if (account) {
-    profileContext = `Perfil @${account.username}: ${(account.followers_count||0).toLocaleString('pt-BR')} seguidores | ${account.media_count} posts | Categoria: ${account.category || niche} | Bio: ${account.biography || 'N/A'}`;
+    profileContext = `Perfil @${account.username}: ${(account.followers_count||0).toLocaleString('pt-BR')} seguidores | ${account.media_count} posts  | Bio: ${account.biography || 'N/A'}`;
     const media = await fetchMediaInsights(account.id, account.ig_token, 6);
     if (media.length) {
       topPostsContext = '\nÚltimos posts: ' + media.map((m,i) => `${i+1}.[${m.media_type}] ${m.caption?.substring(0,100)||'Sem legenda'} | ❤️${m.like_count||0} 💬${m.comments_count||0}`).join(' | ');
@@ -280,7 +280,7 @@ app.post('/api/generate', async (req, res) => {
 ${profileContext}
 ${topPostsContext}
 
-PLANO: Nicho: ${niche||account?.category||'N/A'} | Local: ${location||'Brasil'} | Público: ${audience||'N/A'} | Objetivo: ${goal} | Tom: ${tone} | Mês: ${month}/${now.getFullYear()}
+PLANO: Nicho: ${niche||'N/A'} | Local: ${location||'Brasil'} | Público: ${audience||'N/A'} | Objetivo: ${goal} | Tom: ${tone} | Mês: ${month}/${now.getFullYear()}
 MIX: ${totalReels} Reels + ${totalCarousels} Carrosséis + ${totalSingle} Fotos = ${totalPosts} posts totais
 Objeções: ${objections||'N/A'} | Contexto: ${extra||'N/A'}
 
@@ -354,6 +354,23 @@ REGRAS: EXATAMENTE ${totalPosts} posts (${totalReels} Reels, ${totalCarousels} C
     res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
     res.end();
   }
+});
+
+
+// ─── DEBUG ───────────────────────────────────────────────────
+app.get('/api/debug', async (req, res) => {
+  const results = [];
+  for (const token of IG_TOKENS.slice(0, 3)) {
+    try {
+      const r = await axios.get('https://graph.instagram.com/v21.0/me', {
+        params: { fields: 'id,username,followers_count,account_type', access_token: token }
+      });
+      results.push({ ok: true, data: r.data });
+    } catch (e) {
+      results.push({ ok: false, error: e.response?.data || e.message });
+    }
+  }
+  res.json({ tokens_configured: IG_TOKENS.length, results });
 });
 
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
