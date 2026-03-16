@@ -85,25 +85,84 @@ app.get('/auth/callback', async (req, res) => {
     });
 
     const pages = pagesRes.data.data || [];
+    console.log(`[AUTH] Páginas encontradas: ${pages.length}`);
+    pages.forEach(p => console.log(`[PAGE] ${p.name} | IG: ${JSON.stringify(p.instagram_business_account)}`));
+
     const igAccounts = [];
 
     for (const page of pages) {
-      if (page.instagram_business_account) {
-        const igId = page.instagram_business_account.id;
-        const igRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}`, {
-          params: {
-            fields: 'id,name,username,profile_picture_url,followers_count,media_count,biography,website',
-            access_token: page.access_token
-          }
-        });
-        igAccounts.push({
-          ...igRes.data,
-          page_name: page.name,
-          page_token: page.access_token
-        });
+      // Tenta instagram_business_account primeiro, depois connected_instagram_account
+      let igId = page.instagram_business_account?.id;
+
+      // Se não tem IG no campo direto, tenta buscar via página
+      if (!igId) {
+        try {
+          const pageDetailRes = await axios.get(`https://graph.facebook.com/v21.0/${page.id}`, {
+            params: {
+              fields: 'instagram_business_account,connected_instagram_account',
+              access_token: page.access_token
+            }
+          });
+          igId = pageDetailRes.data.instagram_business_account?.id || 
+                 pageDetailRes.data.connected_instagram_account?.id;
+          console.log(`[PAGE_DETAIL] ${page.name} => igId: ${igId}`);
+        } catch(e) {
+          console.log(`[PAGE_DETAIL_ERR] ${page.name}: ${e.message}`);
+        }
+      }
+
+      if (igId) {
+        try {
+          const igRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}`, {
+            params: {
+              fields: 'id,name,username,profile_picture_url,followers_count,media_count,biography,website',
+              access_token: page.access_token
+            }
+          });
+          console.log(`[IG] Encontrado: @${igRes.data.username}`);
+          igAccounts.push({
+            ...igRes.data,
+            page_name: page.name,
+            page_token: page.access_token
+          });
+        } catch(e) {
+          console.log(`[IG_ERR] ${igId}: ${e.response?.data || e.message}`);
+        }
       }
     }
 
+    // Se ainda não achou nada, tenta via /me com token longo
+    if (igAccounts.length === 0) {
+      console.log('[AUTH] Nenhum IG via páginas. Tentando via businesses...');
+      try {
+        const bizRes = await axios.get('https://graph.facebook.com/v21.0/me/businesses', {
+          params: { access_token: longToken, fields: 'id,name,instagram_business_accounts' }
+        });
+        const bizzes = bizRes.data.data || [];
+        console.log(`[BIZ] Businesses: ${bizzes.length}`);
+        for (const biz of bizzes) {
+          const igList = biz.instagram_business_accounts?.data || [];
+          for (const ig of igList) {
+            try {
+              const igRes = await axios.get(`https://graph.facebook.com/v21.0/${ig.id}`, {
+                params: {
+                  fields: 'id,name,username,profile_picture_url,followers_count,media_count,biography,website',
+                  access_token: longToken
+                }
+              });
+              console.log(`[IG_BIZ] Encontrado: @${igRes.data.username}`);
+              igAccounts.push({ ...igRes.data, page_name: biz.name, page_token: longToken });
+            } catch(e) {
+              console.log(`[IG_BIZ_ERR] ${e.message}`);
+            }
+          }
+        }
+      } catch(e) {
+        console.log(`[BIZ_ERR] ${e.response?.data || e.message}`);
+      }
+    }
+
+    console.log(`[AUTH] Total IG accounts: ${igAccounts.length}`);
     req.session.user = { longToken, pages, igAccounts };
     res.redirect('/app');
   } catch (err) {
