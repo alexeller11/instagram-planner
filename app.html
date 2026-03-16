@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Instagram Planner — Painel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#ff6b35;--brand2:#ffd166;
+  --bg:#0c0a1a;--surface:#13112a;--card:#1c1a35;--border:rgba(255,255,255,.08);
+  --text:#fff;--muted:rgba(255,255,255,.55);--subtle:rgba(255,255,255,.25);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:0.5px solid var(--border);padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;background:linear-gradient(90deg,#ff6b35,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap}
+.user-info{display:flex;align-items:center;gap:.75rem}
+.ig-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--brand)}
+.ig-name{font-size:13px;font-weight:500;color:var(--text)}
+.ig-followers{font-size:11px;color:var(--muted)}
+.btn-logout{font-size:12px;color:var(--muted);background:rgba(255,255,255,.05);border:0.5px solid var(--border);padding:5px 12px;border-radius:20px;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-logout:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
+
+/* ACCOUNT SELECTOR */
+.account-bar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;gap:.75rem;overflow-x:auto}
+.account-bar-label{font-size:11px;color:var(--muted);white-space:nowrap;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0}
+.acc-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:20px;padding:6px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.acc-btn:hover{border-color:rgba(255,107,53,.4)}
+.acc-btn.active{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.5)}
+.acc-btn img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+.acc-btn .acc-name{font-size:12px;font-weight:500;color:var(--text)}
+.acc-btn .acc-followers{font-size:10px;color:var(--muted)}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 100px)}
+@media(max-width:768px){.layout{grid-template-columns:1fr}}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);padding:1.25rem;overflow-y:auto;max-height:calc(100vh - 100px);position:sticky;top:100px}
+@media(max-width:768px){.sidebar{position:static;max-height:none;border-right:none;border-bottom:0.5px solid var(--border)}}
+
+/* FORM ELEMENTS */
+.flabel{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;display:block}
+.fgroup{margin-bottom:.9rem}
+input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:0.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,107,53,.12)}
+input::placeholder,textarea::placeholder{color:var(--subtle)}
+select option{background:#1c1a35;color:#fff}
+textarea{resize:vertical;min-height:60px}
+
+.pill-row{display:flex;flex-wrap:wrap;gap:5px}
+.s-pill{background:rgba(255,255,255,.05);border:0.5px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s}
+.s-pill:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
+.s-pill.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
+
+.cnt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.75rem}
+.c-btn{background:rgba(255,255,255,.04);border:0.5px solid var(--border);color:var(--muted);padding:9px 4px;border-radius:10px;cursor:pointer;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;text-align:center;transition:all .2s}
+.c-btn small{display:block;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:400;opacity:.65;margin-top:1px}
+.c-btn:hover{border-color:rgba(255,107,53,.4)}
+.c-btn.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
+
+/* FUNNEL */
+.funnel-viz{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:.75rem 0}
+.fv{border-radius:10px;padding:.55rem .35rem;text-align:center}
+.fv .fn{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text)}
+.fv .fl{font-size:9px;color:var(--muted);margin-top:1px}
+.fv .fp{font-size:10px;font-weight:500;margin-top:2px}
+.fv1{background:rgba(55,138,221,.1);border:0.5px solid rgba(55,138,221,.25)}
+.fv2{background:rgba(212,83,126,.1);border:0.5px solid rgba(212,83,126,.25)}
+.fv3{background:rgba(99,153,34,.1);border:0.5px solid rgba(99,153,34,.25)}
+.fv4{background:rgba(255,107,53,.12);border:0.5px solid rgba(255,107,53,.3)}
+
+/* PROFILE INSIGHTS */
+.insights-box{background:rgba(255,107,53,.06);border:0.5px solid rgba(255,107,53,.2);border-radius:12px;padding:.9rem;margin-bottom:1rem;display:none}
+.ins-title{font-size:11px;font-weight:500;color:rgba(255,107,53,.8);letter-spacing:.04em;text-transform:uppercase;margin-bottom:.6rem}
+.ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ins-item{background:rgba(255,255,255,.04);border-radius:8px;padding:.5rem .6rem;text-align:center}
+.ins-item .iv{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+.ins-item .il{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* GEN BTN */
+.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;letter-spacing:.03em;transition:opacity .2s,transform .1s;margin-top:.5rem}
+.gen-btn:hover{opacity:.9}
+.gen-btn:active{transform:scale(.99)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* MAIN CONTENT */
+.main-content{padding:1.5rem;overflow-y:auto}
+
+/* LOADING */
+.loading{display:none;text-align:center;padding:3rem 1rem}
+.ld-ring{width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,107,53,.15);border-top-color:var(--brand);animation:spin 1s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-msg{font-size:14px;color:var(--muted);font-style:italic;margin-bottom:.75rem}
+.ld-steps{display:flex;justify-content:center;gap:5px;flex-wrap:wrap}
+.ld-s{font-size:11px;color:var(--subtle);padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);transition:all .3s}
+.ld-s.active{color:var(--brand);background:rgba(255,107,53,.08);border-color:rgba(255,107,53,.3)}
+.ld-s.done{color:#639922;background:rgba(99,153,34,.08);border-color:rgba(99,153,34,.3)}
+
+/* RESULT */
+.result-wrap{display:none}
+.r-header{background:linear-gradient(135deg,#13112a,#1c1a35);border:0.5px solid rgba(255,107,53,.25);border-radius:16px;padding:1.25rem;margin-bottom:1rem}
+.r-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.r-tags{display:flex;gap:6px;flex-wrap:wrap}
+.r-tag{background:rgba(255,255,255,.07);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--muted)}
+.r-tag.hot{background:rgba(255,107,53,.15);color:#ffb38a}
+
+/* RESULT TABS */
+.rtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem}
+.rtab{padding:7px 14px;font-size:12px;font-weight:500;border-radius:20px;border:0.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
+.rtab:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
+.rtab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
+
+/* RESULT SECTIONS */
+.rs{display:none}.rs.on{display:block}
+
+.rbox{background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:1.25rem;font-size:13px;color:var(--text);line-height:1.7;margin-bottom:1rem}
+.rbox h3{font-family:'Syne',sans-serif;font-size:.9rem;color:var(--brand);margin:1rem 0 .4rem}
+.rbox h3:first-child{margin-top:0}
+.rbox table{width:100%;border-collapse:collapse;font-size:11.5px;margin:.75rem 0}
+.rbox th{background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;padding:7px 8px;text-align:left;font-weight:500;font-size:11px;letter-spacing:.03em}
+.rbox td{padding:8px;border-bottom:0.5px solid rgba(255,255,255,.05);vertical-align:top;line-height:1.5;color:rgba(255,255,255,.85)}
+.rbox tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.rbox hr{border:none;border-top:0.5px solid rgba(255,255,255,.06);margin:.75rem 0}
+.rbox p{margin-bottom:.6rem}
+.rbox ul{padding-left:1.1rem}
+.rbox ul li{margin-bottom:.35rem;color:rgba(255,255,255,.75)}
+
+/* STORY CARDS */
+.story-card{background:rgba(255,255,255,.03);border:0.5px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.75rem}
+.sc-head{display:flex;align-items:center;gap:8px;margin-bottom:.75rem}
+.sc-num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ff6b35,#ffd166);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0}
+.sc-title{font-size:13px;font-weight:500}
+.sc-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sc-slides{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px}
+.slide{flex-shrink:0;width:95px;min-height:130px;border-radius:12px;background:linear-gradient(160deg,#302b63,#1a1a2e);border:0.5px solid rgba(255,255,255,.1);padding:.6rem .5rem;display:flex;flex-direction:column;justify-content:space-between}
+.slide-n{font-size:9px;color:rgba(255,255,255,.35);font-weight:500}
+.slide-t{font-size:10px;color:rgba(255,255,255,.88);line-height:1.45;flex:1;display:flex;align-items:center;text-align:center;padding:.25rem 0}
+.slide-a{font-size:9px;color:#ffb38a;text-align:center;border-top:0.5px solid rgba(255,255,255,.1);padding-top:.3rem}
+.slide-tip{font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;text-align:center}
+
+/* HASHTAGS */
+.htag-cloud{display:flex;flex-wrap:wrap;gap:6px}
+.htag{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;border:0.5px solid}
+.htag.nic{background:rgba(55,138,221,.1);border-color:rgba(55,138,221,.3);color:#378add}
+.htag.loc{background:rgba(99,153,34,.1);border-color:rgba(99,153,34,.3);color:#639922}
+.htag.brd{background:rgba(186,117,23,.1);border-color:rgba(186,117,23,.3);color:#ba7517}
+.htag.ok{background:rgba(99,153,34,.2)!important;border-color:#639922!important;color:#639922!important}
+.htag-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
+.htag-leg{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.hl-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* CALENDAR */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:.5rem}
+.cal-dl{font-size:10px;font-weight:500;color:var(--muted);text-align:center;padding:4px 0;letter-spacing:.03em}
+.cal-day{border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;border:0.5px solid transparent;transition:all .2s;position:relative}
+.cal-day.empty{background:transparent}
+.cal-day .dn{font-size:12px;color:var(--muted)}
+.cal-day .dot-row{display:flex;gap:2px;margin-top:2px}
+.cal-day .dot{width:5px;height:5px;border-radius:50%}
+.cal-day.has-post{background:rgba(255,107,53,.08);border-color:rgba(255,107,53,.25)}
+.cal-day.has-post:hover{border-color:rgba(255,107,53,.5)}
+.cal-day.has-event{background:rgba(186,117,23,.08);border-color:rgba(186,117,23,.2)}
+.cal-day.today{border-color:var(--brand)!important;box-shadow:0 0 0 1px rgba(255,107,53,.2)}
+
+/* TIPS */
+.tip-list{display:flex;flex-direction:column;gap:.75rem}
+.tip{display:flex;gap:10px;align-items:flex-start;padding:.9rem;background:rgba(255,255,255,.03);border:0.5px solid var(--border);border-radius:12px;border-left:3px solid var(--brand)}
+.tip-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px}
+.tip-text{font-size:13px;color:rgba(255,255,255,.8);line-height:1.6}
+.tip-text strong{font-weight:600;color:var(--text);display:block;margin-bottom:.2rem}
+
+/* ACTION BAR */
+.action-bar{display:flex;gap:7px;flex-wrap:wrap;margin-top:1rem}
+.act-btn{flex:1;min-width:100px;padding:9px;border:0.5px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .2s;text-align:center}
+.act-btn:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
+.act-btn.primary{background:linear-gradient(135deg,#ff6b35,#f7931e);border-color:transparent;color:#fff}
+.act-btn.primary:hover{opacity:.9}
+
+/* HISTORY */
+.hist-item{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:1rem;cursor:pointer;transition:all .2s;margin-bottom:.6rem;display:flex;align-items:center;justify-content:space-between}
+.hist-item:hover{border-color:rgba(255,107,53,.4)}
+.hi-name{font-size:13px;font-weight:500}
+.hi-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.hi-tags{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.hi-t{background:rgba(255,255,255,.06);border:0.5px solid var(--border);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--muted)}
+.hi-arrow{color:var(--subtle);font-size:1.3rem;flex-shrink:0;margin-left:8px}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--subtle);font-size:13px;line-height:1.8}
+.empty-icon{font-size:2.5rem;margin-bottom:.75rem}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#13112a;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;transition:transform .3s;z-index:9999;border:0.5px solid rgba(255,107,53,.3);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* EMPTY screen */
+.welcome{text-align:center;padding:4rem 1rem;color:var(--muted)}
+.welcome-icon{font-size:3rem;margin-bottom:1rem}
+.welcome h2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
+.welcome p{font-size:13px;line-height:1.7;max-width:360px;margin:0 auto}
+
+/* FORMAT BADGE */
+.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
+.fmt-reels{background:rgba(255,107,53,.15);color:#ff6b35}
+.fmt-carrossel{background:rgba(55,138,221,.15);color:#378add}
+.fmt-foto{background:rgba(99,153,34,.15);color:#639922}
+.fmt-stories{background:rgba(212,83,126,.15);color:#d4537e}
+
+/* SCRIPT BOX */
+.script-box{background:rgba(255,107,53,.05);border:0.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.65rem;margin-top:.5rem}
+.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:3px;letter-spacing:.03em;text-transform:uppercase}
+.script-text{font-size:10px;color:rgba(255,255,255,.65);line-height:1.6}
+
+.divider{height:.5px;background:rgba(255,255,255,.06);margin:1rem 0}
+
+/* Progress bar */
+.pbar{height:3px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:4px}
+.pfill{height:100%;border-radius:3px;transition:width .4s}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✦ Instagram Planner IA</div>
+  <div class="user-info">
+    <div id="h-profile" style="display:none;align-items:center;gap:.6rem;display:flex">
+      <div>
+        <div class="ig-name" id="h-name">—</div>
+        <div class="ig-followers" id="h-followers">—</div>
+      </div>
+    </div>
+    <a href="/auth/logout" class="btn-logout">Sair</a>
+  </div>
+</header>
+
+<div class="account-bar" id="account-bar" style="display:none">
+  <span class="account-bar-label">Perfil:</span>
+  <div id="acc-list" style="display:flex;gap:.6rem;flex-wrap:wrap"></div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR: FORM -->
+  <div class="sidebar">
+
+    <!-- Profile Insights -->
+    <div class="insights-box" id="insights-box">
+      <div class="ins-title">📊 Dados Reais do Perfil</div>
+      <div class="ins-grid" id="ins-grid"></div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:5px;margin-bottom:1rem">
+      <button class="s-pill on" onclick="sideTab('form',this)" style="flex:1;text-align:center">Novo Plano</button>
+      <button class="s-pill" onclick="sideTab('hist',this)" style="flex:1;text-align:center">Histórico</button>
+    </div>
+
+    <!-- FORM -->
+    <div id="side-form">
+      <div class="fgroup">
+        <span class="flabel">Nicho / Segmento</span>
+        <input id="f-niche" type="text" placeholder="Ex: Nutricionista, Moda Feminina..."/>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Cidade / Bairro</span>
+        <input id="f-loc" type="text" placeholder="Ex: Fortaleza CE"/>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Público-alvo</span>
+        <input id="f-audience" type="text" placeholder="Ex: Mulheres 28-45, classe B"/>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Quantidade de Posts</span>
+        <div class="cnt-row">
+          <button class="c-btn" data-v="12" onclick="pickCnt(this)">12<small>básico</small></button>
+          <button class="c-btn" data-v="18" onclick="pickCnt(this)">18<small>regular</small></button>
+          <button class="c-btn on" data-v="24" onclick="pickCnt(this)">24<small>completo</small></button>
+          <button class="c-btn" data-v="30" onclick="pickCnt(this)">30<small>intenso</small></button>
+        </div>
+        <div class="funnel-viz" id="funnel-viz"></div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Objetivo do Mês</span>
+        <div class="pill-row" id="goals-row">
+          <button class="s-pill on" onclick="pickGoal(this)">Vender mais</button>
+          <button class="s-pill" onclick="pickGoal(this)">Ganhar seguidores</button>
+          <button class="s-pill" onclick="pickGoal(this)">Lançar serviço</button>
+          <button class="s-pill" onclick="pickGoal(this)">Engajamento</button>
+          <button class="s-pill" onclick="pickGoal(this)">Autoridade</button>
+          <button class="s-pill" onclick="pickGoal(this)">Rebranding</button>
+        </div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Tom de Voz</span>
+        <div class="pill-row" id="tone-row">
+          <button class="s-pill on" onclick="pickTone(this)">Próximo e amigável</button>
+          <button class="s-pill" onclick="pickTone(this)">Profissional</button>
+          <button class="s-pill" onclick="pickTone(this)">Humor</button>
+          <button class="s-pill" onclick="pickTone(this)">Inspirador</button>
+          <button class="s-pill" onclick="pickTone(this)">Luxo</button>
+        </div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Contexto / Diferenciais</span>
+        <textarea id="f-extra" placeholder="Promoções, lançamentos, seu diferencial..."></textarea>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Objeções dos Clientes</span>
+        <textarea id="f-obj" placeholder="O que impede seu cliente de comprar?" style="min-height:50px"></textarea>
+      </div>
+      <button class="gen-btn" id="gen-btn" onclick="generate()">✦ Gerar Plano com IA</button>
+    </div>
+
+    <!-- HISTORY SIDEBAR -->
+    <div id="side-hist" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <span style="font-size:13px;color:var(--muted)">Planos salvos: <strong id="h-count" style="color:var(--text)">0</strong></span>
+        <button onclick="clearHist()" style="font-size:11px;color:var(--muted);background:none;border:0.5px solid var(--border);padding:4px 9px;border-radius:8px;cursor:pointer">Limpar</button>
+      </div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- WELCOME -->
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">📊</div>
+      <h2>Pronto para começar!</h2>
+      <p>Selecione o perfil, preencha os dados ao lado e clique em <strong>Gerar Plano com IA</strong>. A estratégia usará os dados reais do seu Instagram.</p>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading" id="loading">
+      <div class="ld-ring"></div>
+      <p class="ld-msg" id="ld-msg">Analisando o perfil real...</p>
+      <div class="ld-steps">
+        <span class="ld-s" id="ls1">Auditoria do perfil</span>
+        <span class="ld-s" id="ls2">Datas do mês</span>
+        <span class="ld-s" id="ls3">Cronograma feed</span>
+        <span class="ld-s" id="ls4">Scripts de Reels</span>
+        <span class="ld-s" id="ls5">Stories do mês</span>
+        <span class="ld-s" id="ls6">Hashtags + dicas</span>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-wrap" id="result-wrap">
+      <div class="r-header">
+        <div class="r-title" id="r-title">Plano Estratégico</div>
+        <div class="r-tags" id="r-tags"></div>
+      </div>
+      <div class="rtabs">
+        <button class="rtab on" onclick="switchRtab('overview',this)">📊 Visão Geral</button>
+        <button class="rtab" onclick="switchRtab('feed',this)">📅 Feed</button>
+        <button class="rtab" onclick="switchRtab('stories',this)">📱 Stories</button>
+        <button class="rtab" onclick="switchRtab('hashtags',this)">🔍 Hashtags</button>
+        <button class="rtab" onclick="switchRtab('calendar',this)">🗓️ Calendário</button>
+        <button class="rtab" onclick="switchRtab('tips',this)">💡 Dicas</button>
+      </div>
+
+      <div class="rs on" id="rs-overview"><div class="rbox" id="rb-overview"></div></div>
+      <div class="rs" id="rs-feed"><div class="rbox" id="rb-feed"></div></div>
+      <div class="rs" id="rs-stories"><div id="rb-stories"></div></div>
+      <div class="rs" id="rs-hashtags">
+        <div class="rbox">
+          <div class="htag-legend">
+            <span class="htag-leg"><span class="hl-dot" style="background:#378add"></span>Nicho específico</span>
+            <span class="htag-leg"><span class="hl-dot" style="background:#639922"></span>Localização</span>
+            <span class="htag-leg"><span class="hl-dot" style="background:#ba7517"></span>Alcance amplo</span>
+          </div>
+          <div class="htag-cloud" id="htag-cloud"></div>
+          <div class="divider"></div>
+          <div id="rb-htag-tip"></div>
+        </div>
+      </div>
+      <div class="rs" id="rs-calendar"><div class="rbox"><div id="cal-container"></div></div></div>
+      <div class="rs" id="rs-tips"><div class="rbox"><div class="tip-list" id="rb-tips"></div></div></div>
+
+      <div class="action-bar">
+        <button class="act-btn" onclick="copyAll()">📋 Copiar tudo</button>
+        <button class="act-btn primary" onclick="saveHist2()">💾 Salvar</button>
+        <button class="act-btn" onclick="newPlan()">+ Novo plano</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK = 'igpro_v3_hist';
+let posts = 24, goal = 'Vender mais', tone = 'Próximo e amigável';
+let selectedIgId = null, selectedAccount = null;
+let rawResult = {}, currentData = {};
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (!data.logged) { window.location.href = '/'; return; }
+
+    const accounts = data.igAccounts || [];
+    if (!accounts.length) {
+      document.querySelector('.welcome').innerHTML = '<div class="welcome-icon">⚠️</div><h2>Nenhum perfil encontrado</h2><p>Seu app Meta precisa ter uma conta de negócio do Instagram vinculada a uma Página do Facebook.</p><a href="/auth/logout" style="color:#ff6b35;font-size:13px;margin-top:1rem;display:inline-block">Tentar novamente</a>';
+      return;
+    }
+
+    // ACCOUNT BAR
+    const bar = document.getElementById('acc-list');
+    document.getElementById('account-bar').style.display = 'flex';
+    accounts.forEach((a, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'acc-btn' + (i === 0 ? ' active' : '');
+      btn.innerHTML = `<div><div class="acc-name">@${a.username || a.name}</div><div class="acc-followers">${(a.followers_count||0).toLocaleString('pt-BR')} seguidores</div></div>`;
+      btn.onclick = () => selectAccount(a, btn);
+      bar.appendChild(btn);
+    });
+
+    selectAccount(accounts[0], bar.querySelector('.acc-btn'));
+    updateFunnel();
+    renderHist();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function selectAccount(account, btn) {
+  document.querySelectorAll('.acc-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedIgId = account.id;
+  selectedAccount = account;
+  document.getElementById('h-name').textContent = '@' + (account.username || account.name);
+  document.getElementById('h-followers').textContent = (account.followers_count||0).toLocaleString('pt-BR') + ' seguidores';
+  document.getElementById('h-profile').style.display = 'flex';
+
+  // Show insights
+  const box = document.getElementById('insights-box');
+  const grid = document.getElementById('ins-grid');
+  box.style.display = 'block';
+  grid.innerHTML = `
+    <div class="ins-item"><div class="iv">${(account.followers_count||0).toLocaleString('pt-BR')}</div><div class="il">Seguidores</div></div>
+    <div class="ins-item"><div class="iv">${(account.media_count||0)}</div><div class="il">Posts</div></div>`;
+
+  if (account.biography) {
+    document.getElementById('f-niche').placeholder = 'Ex: ' + account.biography.substring(0,40) + '...';
+  }
+}
+
+// ── PICKS ─────────────────────────────────────────────────────
+function pickCnt(btn) {
+  document.querySelectorAll('.c-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); posts = parseInt(btn.dataset.v); updateFunnel();
+}
+function pickGoal(btn) {
+  document.querySelectorAll('#goals-row .s-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); goal = btn.textContent;
+}
+function pickTone(btn) {
+  document.querySelectorAll('#tone-row .s-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); tone = btn.textContent;
+}
+function sideTab(t, btn) {
+  document.querySelectorAll('.sidebar .s-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('side-form').style.display = t==='form'?'block':'none';
+  document.getElementById('side-hist').style.display = t==='hist'?'block':'none';
+}
+
+function updateFunnel() {
+  const a=Math.round(posts*.25),c=Math.round(posts*.25),e=Math.round(posts*.25),s=posts-Math.round(posts*.25)*3;
+  document.getElementById('funnel-viz').innerHTML = `
+    <div class="fv fv1"><div class="fn">${a}</div><div class="fl">posts</div><div class="fp" style="color:#378add">Autoridade</div><div class="pbar"><div class="pfill" style="width:${Math.round(a/posts*100)}%;background:#378add"></div></div></div>
+    <div class="fv fv2"><div class="fn">${c}</div><div class="fl">posts</div><div class="fp" style="color:#d4537e">Conexão</div><div class="pbar"><div class="pfill" style="width:${Math.round(c/posts*100)}%;background:#d4537e"></div></div></div>
+    <div class="fv fv3"><div class="fn">${e}</div><div class="fl">posts</div><div class="fp" style="color:#639922">Educação</div><div class="pbar"><div class="pfill" style="width:${Math.round(e/posts*100)}%;background:#639922"></div></div></div>
+    <div class="fv fv4"><div class="fn">${s}</div><div class="fl">posts</div><div class="fp" style="color:#ff6b35">Venda</div><div class="pbar"><div class="pfill" style="width:${Math.round(s/posts*100)}%;background:#ff6b35"></div></div></div>`;
+}
+
+// ── GENERATE ──────────────────────────────────────────────────
+async function generate() {
+  if (!selectedIgId) { toast('Selecione um perfil!'); return; }
+  const niche = document.getElementById('f-niche').value.trim();
+  const loc = document.getElementById('f-loc').value.trim();
+  if (!niche) { toast('Informe o nicho!'); return; }
+
+  currentData = {
+    igId: selectedIgId,
+    niche, loc,
+    audience: document.getElementById('f-audience').value.trim(),
+    posts, goal, tone,
+    extra: document.getElementById('f-extra').value.trim(),
+    objections: document.getElementById('f-obj').value.trim(),
+    username: selectedAccount?.username || '',
+    followers: selectedAccount?.followers_count || 0
+  };
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('result-wrap').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+
+  const steps = ['ls1','ls2','ls3','ls4','ls5','ls6'];
+  const msgs = ['Lendo dados reais do perfil...','Mapeando datas de '+getCurMonth()+'...','Montando funil de '+posts+' posts...','Escrevendo scripts de Reels...','Criando sequências de Stories...','Gerando hashtags + dicas finais...'];
+  let si = 0;
+  const timer = setInterval(() => {
+    if(si>0) document.getElementById(steps[si-1]).className='ld-s done';
+    if(si<steps.length){document.getElementById(steps[si]).className='ld-s active';document.getElementById('ld-msg').textContent=msgs[si];si++;}
+  }, 2000);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(currentData)
+    });
+
+    let fullText = '';
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.type === 'delta') fullText += ev.text;
+            if (ev.type === 'done') fullText = ev.fullText;
+          } catch {}
+        }
+      }
+    }
+
+    clearInterval(timer);
+    steps.forEach(s => document.getElementById(s).className = 'ld-s done');
+
+    let parsed;
+    try {
+      parsed = JSON.parse(fullText.replace(/```json|```/g,'').trim());
+    } catch(e) {
+      parsed = {error: fullText};
+    }
+
+    rawResult = parsed;
+    renderResult(parsed);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('result-wrap').style.display = 'block';
+
+  } catch(err) {
+    clearInterval(timer);
+    document.getElementById('loading').style.display = 'none';
+    toast('Erro: ' + err.message);
+    console.error(err);
+  }
+  btn.disabled = false;
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderResult(data) {
+  if (data.error) {
+    document.getElementById('rb-overview').innerHTML = `<p style="color:rgba(255,255,255,.5)">Erro ao processar. Tente novamente.</p><pre style="font-size:10px;opacity:.4;margin-top:.5rem;overflow:auto">${data.error?.substring?.(0,300)}</pre>`;
+    return;
+  }
+
+  const now = new Date();
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const month = months[now.getMonth()];
+
+  document.getElementById('r-title').textContent = `@${currentData.username} — ${currentData.niche}`;
+  document.getElementById('r-tags').innerHTML = [
+    `<span class="r-tag hot">${currentData.posts} posts</span>`,
+    `<span class="r-tag">${currentData.goal}</span>`,
+    `<span class="r-tag">${currentData.loc||'Brasil'}</span>`,
+    `<span class="r-tag">${month}</span>`
+  ].join('');
+
+  // OVERVIEW
+  let ov = '';
+  if (data.audit) {
+    ov += `<h3>📊 Análise do Perfil</h3><p>${data.audit.summary||''}</p>`;
+    if (data.audit.engagement_analysis) ov += `<p>${data.audit.engagement_analysis}</p>`;
+    if (data.audit.differentials?.length) {
+      ov += `<h3>✨ Diferenciais Identificados</h3><ul>${data.audit.differentials.map(d=>`<li>${d}</li>`).join('')}</ul>`;
+    }
+    if (data.audit.positioning) ov += `<h3>🎯 Posicionamento Recomendado</h3><p>${data.audit.positioning}</p>`;
+  }
+  if (data.dates?.length) {
+    ov += `<h3>📅 Datas Estratégicas de ${month}</h3>`;
+    data.dates.forEach(d => {
+      ov += `<div style="background:rgba(186,117,23,.07);border:0.5px solid rgba(186,117,23,.2);border-radius:10px;padding:.75rem;margin-bottom:.5rem">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:.25rem"><strong style="color:#ba7517;font-family:Syne,sans-serif;font-size:1rem">Dia ${d.day}</strong><span style="font-size:12px;font-weight:500">${d.name}</span></div>
+        <p style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:.25rem">${d.relevance}</p>
+        <p style="font-size:12px;font-style:italic">💡 ${d.content_idea}</p>
+      </div>`;
+    });
+  }
+  document.getElementById('rb-overview').innerHTML = ov;
+
+  // FEED
+  if (data.posts?.length) {
+    let tbl = `<div style="overflow-x:auto"><table><tr><th>#</th><th>Sem</th><th>Dia</th><th>Formato</th><th>Pilar</th><th>Objetivo</th><th>Visual</th><th>Copy / Legenda</th><th>CTA</th><th>Áudio</th></tr>`;
+    data.posts.forEach(p => {
+      const fmt = p.format||'Post';
+      const fmtCls = fmt==='Reels'?'fmt-reels':fmt==='Carrossel'?'fmt-carrossel':fmt.toLowerCase().includes('stor')?'fmt-stories':'fmt-foto';
+      const copyHtml = (p.copy||'-').replace(/\n/g,'<br>');
+      const scriptHtml = p.script ? `<div class="script-box"><div class="script-label">▶ Script Reels</div><div class="script-text">${p.script.replace(/\n/g,'<br>')}</div></div>` : '';
+      tbl += `<tr>
+        <td style="font-weight:600;font-family:Syne,sans-serif">${p.n}</td>
+        <td style="text-align:center;color:rgba(255,255,255,.5);font-size:11px">S${p.week||1}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.5)">${p.day_suggestion||'—'}</td>
+        <td><span class="fmt ${fmtCls}">${fmt}</span></td>
+        <td style="font-size:11px">${p.pillar||'—'}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.55);max-width:110px">${p.objective||'—'}</td>
+        <td style="font-size:11px;max-width:120px;color:rgba(255,255,255,.65)">${p.visual||'—'}</td>
+        <td style="max-width:220px">${copyHtml}${scriptHtml}</td>
+        <td style="font-size:11px;font-style:italic;color:rgba(255,255,255,.5);max-width:90px">${p.cta||'—'}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.4);max-width:80px">${p.audio||'—'}</td>
+      </tr>`;
+    });
+    tbl += '</table></div>';
+    document.getElementById('rb-feed').innerHTML = tbl;
+  }
+
+  // STORIES
+  const sg = document.getElementById('rb-stories');
+  sg.innerHTML = '';
+  if (data.stories?.length) {
+    data.stories.forEach((s, i) => {
+      const slidesHtml = (s.slides||[]).map((sl,si) => `
+        <div class="slide">
+          <div class="slide-n">Slide ${sl.n||si+1}</div>
+          <div class="slide-t">${sl.text||''}</div>
+          <div class="slide-a">${sl.action||''}</div>
+          ${sl.tip?`<div class="slide-tip">${sl.tip}</div>`:''}
+        </div>`).join('');
+      sg.innerHTML += `<div class="story-card">
+        <div class="sc-head">
+          <div class="sc-num">${i+1}</div>
+          <div>
+            <div class="sc-title">${s.day||''} — ${s.theme||''}</div>
+            <div class="sc-sub">${s.objective||''}</div>
+          </div>
+        </div>
+        <div class="sc-slides">${slidesHtml}</div>
+      </div>`;
+    });
+  } else {
+    sg.innerHTML = '<div class="empty-state">Nenhum story gerado.</div>';
+  }
+
+  // HASHTAGS
+  const cloud = document.getElementById('htag-cloud');
+  cloud.innerHTML = '';
+  if (data.hashtags) {
+    (data.hashtags.niche||[]).forEach(h => {
+      const el = document.createElement('button');
+      el.className='htag nic'; el.textContent=h;
+      el.onclick = () => copyTag(el,h);
+      cloud.appendChild(el);
+    });
+    (data.hashtags.local||[]).forEach(h => {
+      const el = document.createElement('button');
+      el.className='htag loc'; el.textContent=h;
+      el.onclick = () => copyTag(el,h);
+      cloud.appendChild(el);
+    });
+    (data.hashtags.broad||[]).forEach(h => {
+      const el = document.createElement('button');
+      el.className='htag brd'; el.textContent=h;
+      el.onclick = () => copyTag(el,h);
+      cloud.appendChild(el);
+    });
+    document.getElementById('rb-htag-tip').innerHTML = `<h3>📌 Estratégia de Uso</h3><p>${data.hashtags.strategy||''}</p>`;
+  }
+
+  // CALENDAR
+  buildCal(data.post_days||[], data.dates||[]);
+
+  // TIPS
+  const tl = document.getElementById('rb-tips');
+  tl.innerHTML = '';
+  (data.tips||[]).forEach(t => {
+    tl.innerHTML += `<div class="tip"><div class="tip-icon">${t.icon||'💡'}</div><div class="tip-text"><strong>${t.title||''}</strong>${t.text||''}</div></div>`;
+  });
+}
+
+function buildCal(postDays, dates) {
+  const now = new Date();
+  const mIdx = now.getMonth();
+  const year = now.getFullYear();
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const firstDay = new Date(year, mIdx, 1).getDay();
+  const daysInMonth = new Date(year, mIdx+1, 0).getDate();
+  const today = now.getDate();
+  const eventDays = dates.map(d=>d.day);
+
+  let html = `<div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.5);margin-bottom:.5rem;text-align:center">${months[mIdx]} ${year}</div>`;
+  html += '<div class="cal">';
+  ['D','S','T','Q','Q','S','S'].forEach(d=>{ html+=`<div class="cal-dl">${d}</div>`; });
+  for(let i=0;i<firstDay;i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const isPost=postDays.includes(d), isEvt=eventDays.includes(d), isToday=d===today;
+    let cls='cal-day';
+    if(isPost) cls+=' has-post';
+    if(isEvt) cls+=' has-event';
+    if(isToday) cls+=' today';
+    let dots='';
+    if(isPost) dots+=`<div class="dot" style="background:#ff6b35"></div>`;
+    if(isEvt) dots+=`<div class="dot" style="background:#ba7517"></div>`;
+    html+=`<div class="${cls}"><span class="dn">${d}</span>${dots?`<div class="dot-row">${dots}</div>`:''}</div>`;
+  }
+  html+='</div>';
+  html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.75rem">
+    <span style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,107,53,.15);border:0.5px solid rgba(255,107,53,.4);display:inline-block"></span>Post agendado</span>
+    <span style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(186,117,23,.12);border:0.5px solid rgba(186,117,23,.3);display:inline-block"></span>Data comemorativa</span>
+  </div>`;
+  document.getElementById('cal-container').innerHTML = html;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function switchRtab(t, btn) {
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.rs').forEach(s=>s.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('rs-'+t).classList.add('on');
+}
+
+function copyTag(el, h) {
+  navigator.clipboard.writeText(h).catch(()=>{});
+  el.classList.add('ok');
+  setTimeout(()=>el.classList.remove('ok'),1200);
+  toast('Copiado: '+h);
+}
+
+function copyAll() {
+  const ids = ['rb-overview','rb-feed','rb-htag-tip','rb-tips'];
+  const text = ids.map(id=>document.getElementById(id)?.innerText||'').join('\n\n---\n\n');
+  navigator.clipboard.writeText(text).then(()=>toast('Copiado!')).catch(()=>toast('Selecione manualmente.'));
+}
+
+function newPlan() {
+  document.getElementById('result-wrap').style.display='none';
+  document.getElementById('welcome').style.display='block';
+}
+
+function getCurMonth(){
+  const m=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return m[new Date().getMonth()];
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+function loadHist(){try{return JSON.parse(localStorage.getItem(SK)||'[]')}catch{return[]}}
+function saveHistData(h){try{localStorage.setItem(SK,JSON.stringify(h))}catch{}}
+
+function saveHist2(){
+  if(!rawResult||!currentData.igId) return;
+  const h=loadHist();
+  h.push({
+    username:currentData.username,niche:currentData.niche,loc:currentData.loc,
+    posts:currentData.posts,goal:currentData.goal,
+    date:new Date().toLocaleDateString('pt-BR'),
+    data:rawResult,formData:currentData
+  });
+  if(h.length>30) h.shift();
+  saveHistData(h);
+  renderHist();
+  toast('Plano salvo!');
+}
+
+function renderHist(){
+  const h=loadHist();
+  document.getElementById('h-count').textContent=h.length;
+  const list=document.getElementById('hist-list');
+  if(!h.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div>Nenhum plano salvo ainda.</div>';return;}
+  list.innerHTML=h.slice().reverse().map((item,i)=>`
+    <div class="hist-item" onclick="loadHistItem(${h.length-1-i})">
+      <div>
+        <div class="hi-name">@${item.username} — ${item.niche}</div>
+        <div class="hi-meta">${item.date} · ${item.loc||'Brasil'}</div>
+        <div class="hi-tags">
+          <span class="hi-t">${item.posts} posts</span>
+          <span class="hi-t">${item.goal}</span>
+        </div>
+      </div>
+      <span class="hi-arrow">›</span>
+    </div>`).join('');
+}
+
+function loadHistItem(i){
+  const h=loadHist(); const item=h[i]; if(!item) return;
+  rawResult=item.data; currentData=item.formData;
+  renderResult(item.data);
+  document.getElementById('welcome').style.display='none';
+  document.getElementById('result-wrap').style.display='block';
+  sideTab('form',document.querySelector('.sidebar .s-pill'));
+}
+
+function clearHist(){
+  if(!confirm('Limpar histórico?')) return;
+  saveHistData([]); renderHist(); toast('Histórico limpo.');
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+init();
+updateFunnel();
+</script>
+</body>
+</html>
