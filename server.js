@@ -43,9 +43,9 @@ async function fetchIGAccounts(token) {
       const res = await axios.get(nextUrl, {
         params: nextUrl === url ? {
           access_token: token,
-          fields: 'id,name,access_token,instagram_business_account',
+          fields: 'id,name,access_token',
           limit: 100
-        } : { access_token: token }
+        } : {}
       });
       allPages = allPages.concat(res.data.data || []);
       nextUrl = res.data.paging?.next || null;
@@ -54,33 +54,28 @@ async function fetchIGAccounts(token) {
     console.log(`[FETCH] Total páginas: ${allPages.length}`);
 
     for (const page of allPages) {
-      // Buscar IG via página com token da página
+      // Usar o token DA PÁGINA (não do usuário) para buscar IG vinculado
+      const pageToken = page.access_token || token;
       try {
         const pageRes = await axios.get(`https://graph.facebook.com/v21.0/${page.id}`, {
           params: {
-            fields: 'instagram_business_account',
-            access_token: page.access_token || token
+            fields: 'instagram_business_account{id,username,name,followers_count,media_count,biography,website}',
+            access_token: pageToken
           }
         });
 
-        const igId = pageRes.data.instagram_business_account?.id;
-        if (igId) {
-          const igRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}`, {
-            params: {
-              fields: 'id,name,username,followers_count,media_count,biography,website',
-              access_token: page.access_token || token
-            }
-          });
-          console.log(`[IG] Encontrado: @${igRes.data.username} (${page.name})`);
+        const igData = pageRes.data.instagram_business_account;
+        if (igData?.id) {
+          console.log(`[IG] Encontrado: @${igData.username} (${page.name})`);
           igAccounts.push({
-            ...igRes.data,
+            ...igData,
             page_name: page.name,
             page_id: page.id,
-            page_token: page.access_token || token
+            page_token: pageToken
           });
         }
       } catch (e) {
-        // silencioso
+        console.log(`[PAGE_ERR] ${page.name}: ${e.response?.data?.error?.message || e.message}`);
       }
     }
 
