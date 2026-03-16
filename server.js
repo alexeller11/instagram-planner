@@ -65,6 +65,7 @@ async function fetchIGAccounts(token) {
         });
 
         const igData = pageRes.data.instagram_business_account;
+        console.log(`[PAGE_RAW] ${page.name}: ${JSON.stringify(pageRes.data)}`);
         if (igData?.id) {
           console.log(`[IG] Encontrado: @${igData.username} (${page.name})`);
           igAccounts.push({
@@ -75,7 +76,7 @@ async function fetchIGAccounts(token) {
           });
         }
       } catch (e) {
-        console.log(`[PAGE_ERR] ${page.name}: ${e.response?.data?.error?.message || e.message}`);
+        console.log(`[PAGE_ERR] ${page.name}: ${JSON.stringify(e.response?.data || e.message)}`);
       }
     }
 
@@ -270,6 +271,37 @@ REGRAS: Crie EXATAMENTE ${posts} posts. Funil: S1=Atenção, S2=Autoridade, S3=C
     console.error('Generate error:', err);
     res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
     res.end();
+  }
+});
+
+// ─── DEBUG ENDPOINT ──────────────────────────────────────────
+app.get('/api/debug', async (req, res) => {
+  const token = LONG_TOKEN;
+  if (!token) return res.json({ error: 'No token configured' });
+  try {
+    // Test first page
+    const pagesRes = await axios.get('https://graph.facebook.com/v21.0/me/accounts', {
+      params: { access_token: token, fields: 'id,name,access_token', limit: 3 }
+    });
+    const pages = pagesRes.data.data || [];
+    const results = [];
+    for (const page of pages.slice(0, 3)) {
+      const pageToken = page.access_token || token;
+      try {
+        const r = await axios.get(`https://graph.facebook.com/v21.0/${page.id}`, {
+          params: {
+            fields: 'id,name,instagram_business_account{id,username}',
+            access_token: pageToken
+          }
+        });
+        results.push({ page: page.name, data: r.data });
+      } catch(e) {
+        results.push({ page: page.name, error: e.response?.data || e.message });
+      }
+    }
+    res.json({ total_pages: pages.length, sample: results });
+  } catch(e) {
+    res.json({ error: e.response?.data || e.message });
   }
 });
 
