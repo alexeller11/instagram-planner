@@ -33,14 +33,18 @@ app.use(session({
 // ─── AUTH ROUTES ────────────────────────────────────────────
 app.get('/auth/instagram', (req, res) => {
   const scopes = [
-    'instagram_basic',
-    'instagram_manage_insights',
+    'public_profile',
     'pages_show_list',
     'pages_read_engagement',
+    'instagram_basic',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_insights',
     'business_management'
   ].join(',');
 
-  const url = `https://www.facebook.com/v19.0/dialog/oauth?` +
+  // Usando apenas escopos válidos para a API atual do Meta
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?` +
     `client_id=${FB_APP_ID}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&scope=${encodeURIComponent(scopes)}` +
@@ -57,7 +61,7 @@ app.get('/auth/callback', async (req, res) => {
 
   try {
     // Trocar code por access_token
-    const tokenRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
+    const tokenRes = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
       params: {
         client_id: FB_APP_ID,
         client_secret: FB_APP_SECRET,
@@ -68,7 +72,7 @@ app.get('/auth/callback', async (req, res) => {
     const shortToken = tokenRes.data.access_token;
 
     // Trocar por long-lived token
-    const longRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
+    const longRes = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
       params: {
         grant_type: 'fb_exchange_token',
         client_id: FB_APP_ID,
@@ -79,7 +83,7 @@ app.get('/auth/callback', async (req, res) => {
     const longToken = longRes.data.access_token;
 
     // Buscar páginas do Facebook vinculadas
-    const pagesRes = await axios.get('https://graph.facebook.com/v19.0/me/accounts', {
+    const pagesRes = await axios.get('https://graph.facebook.com/v21.0/me/accounts', {
       params: { access_token: longToken, fields: 'id,name,access_token,instagram_business_account' }
     });
 
@@ -89,7 +93,7 @@ app.get('/auth/callback', async (req, res) => {
     for (const page of pages) {
       if (page.instagram_business_account) {
         const igId = page.instagram_business_account.id;
-        const igRes = await axios.get(`https://graph.facebook.com/v19.0/${igId}`, {
+        const igRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}`, {
           params: {
             fields: 'id,name,username,profile_picture_url,followers_count,media_count,biography,website',
             access_token: page.access_token
@@ -133,7 +137,7 @@ app.get('/api/insights/:igId', async (req, res) => {
   try {
     // Buscar métricas do perfil
     const [profileRes, mediaRes] = await Promise.all([
-      axios.get(`https://graph.facebook.com/v19.0/${igId}/insights`, {
+      axios.get(`https://graph.facebook.com/v21.0/${igId}/insights`, {
         params: {
           metric: 'follower_count,impressions,reach,profile_views',
           period: 'day',
@@ -143,7 +147,7 @@ app.get('/api/insights/:igId', async (req, res) => {
         }
       }).catch(() => ({ data: { data: [] } })),
 
-      axios.get(`https://graph.facebook.com/v19.0/${igId}/media`, {
+      axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
         params: {
           fields: 'id,caption,media_type,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,video_views)',
           limit: 12,
@@ -184,7 +188,7 @@ Dados REAIS do perfil @${account.username}:
 
     // Buscar posts recentes para análise
     try {
-      const mediaRes = await axios.get(`https://graph.facebook.com/v19.0/${igId}/media`, {
+      const mediaRes = await axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
         params: {
           fields: 'caption,media_type,like_count,comments_count,timestamp',
           limit: 6,
