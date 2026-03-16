@@ -20,7 +20,9 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // ─── MIDDLEWARE ─────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+const fs = require('fs');
+const publicDir = fs.existsSync(path.join(__dirname, 'public')) ? path.join(__dirname, 'public') : __dirname;
+app.use(express.static(publicDir));
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -317,10 +319,10 @@ REGRAS CRÍTICAS:
 });
 
 // ─── PAGE ROUTES ─────────────────────────────────────────────
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 app.get('/app', (req, res) => {
   if (!req.session.user) return res.redirect('/');
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
+  res.sendFile(path.join(publicDir, 'app.html'));
 });
 
 // ─── START ───────────────────────────────────────────────────
