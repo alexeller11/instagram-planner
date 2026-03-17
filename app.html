@@ -662,16 +662,22 @@ function renderIntelligence(data) {
   // BIO OPTIONS
   let bioHtml = '';
   if (Array.isArray(data.bio_optimized) && data.bio_optimized.length) {
-    bioHtml = `<div class="rbox"><h3>✍️ 3 Opções de Bio Otimizada</h3><p style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Clique para selecionar e copiar. Máximo 150 caracteres cada.</p><div class="bio-options">` +
-      data.bio_optimized.map((b,i) => `
-        <div class="bio-option" onclick="selectBio(this,'${(b.bio||'').replace(/'/g,''').replace(/\n/g,'\\n')}')">
-          <div class="bo-version">Versão ${b.version||i+1}</div>
-          <div class="bo-text">${(b.bio||'').replace(/\\n/g,'<br>')}</div>
-          <div class="bo-meta">${b.strategy||''} · ${b.char_count||b.bio?.length||0} caracteres</div>
-        </div>`).join('') +
-      `</div></div>`;
+    let bioCards = '';
+    data.bio_optimized.forEach(function(b, i) {
+      const bioClean = (b.bio || '').replace(/\n/g, '\n');
+      const bioDisplay = (b.bio || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      const stratDisplay = (b.strategy || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const chars = b.char_count || (b.bio || '').length || 0;
+      bioCards += '<div class="bio-option" data-bio="' + encodeURIComponent(bioClean) + '" onclick="selectBio(this)">';
+      bioCards += '<div class="bo-version">Vers\u00e3o ' + (b.version || (i+1)) + '</div>';
+      bioCards += '<div class="bo-text">' + bioDisplay + '</div>';
+      bioCards += '<div class="bo-meta">' + stratDisplay + ' &middot; ' + chars + ' caracteres</div>';
+      bioCards += '</div>';
+    });
+    bioHtml = '<div class="rbox"><h3>\u270d\ufe0f 3 Op\u00e7\u00f5es de Bio Otimizada</h3>';
+    bioHtml += '<p style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Clique para selecionar e copiar. M\u00e1ximo 150 caracteres cada.</p>';
+    bioHtml += '<div class="bio-options">' + bioCards + '</div></div>';
   }
-
   el.innerHTML = bioHtml + `
     <div class="rbox">
       <h3>📊 Score Estratégico + Diagnóstico</h3>
@@ -738,11 +744,12 @@ function renderIntelligence(data) {
     </div>`;
 }
 
-function selectBio(el, bioText) {
+function selectBio(el) {
   document.querySelectorAll('.bio-option').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
-  navigator.clipboard.writeText(bioText.replace(/\\n/g,'\n')).catch(()=>{});
-  toast('Bio copiada!');
+  const bioText = decodeURIComponent(el.dataset.bio || '');
+  navigator.clipboard.writeText(bioText).catch(()=>{});
+  toast('Bio copiada! (' + bioText.length + ' chars)');
 }
 
 // ── MIX ───────────────────────────────────────────────────────
