@@ -430,24 +430,55 @@ let suggestions = null, chartInstances = {};
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init() {
-  const res = await fetch('/api/me').then(r=>r.json()).catch(()=>({logged:false}));
-  if (!res.logged) { window.location.href='/'; return; }
-  const accs = res.igAccounts || [];
-  const sel = document.getElementById('acc-sel');
-  accs.forEach((a,i) => {
-    const chip = document.createElement('div');
-    chip.className = 'acc-chip' + (i===0?' on':'');
-    chip.innerHTML = `@${a.username} <span style="opacity:.5;font-size:10px">${(a.followers_count||0).toLocaleString('pt-BR')}</span>`;
-    chip.onclick = () => {
-      document.querySelectorAll('.acc-chip').forEach(c=>c.classList.remove('on'));
-      chip.classList.add('on'); selAccount = a;
-      loadDash(curPeriod, document.querySelector('.ptab.on'));
-      loadSuggestions(a);
-    };
-    sel.appendChild(chip);
-    if (i===0) { selAccount = a; loadSuggestions(a); }
-  });
-  if (selAccount) loadDash('7d', document.querySelector('.ptab.on'));
+  try {
+    const res = await fetch('/api/me').then(r=>r.json()).catch(()=>({logged:false}));
+    console.log('[INIT] api/me response:', JSON.stringify(res));
+
+    if (!res.logged) {
+      console.log('[INIT] Not logged, redirecting...');
+      window.location.href='/';
+      return;
+    }
+
+    const accs = res.igAccounts || [];
+    console.log('[INIT] Accounts found:', accs.length);
+
+    if (!accs.length) {
+      document.getElementById('dash-content').innerHTML = '<div class="empty-state">Nenhuma conta encontrada.<br>Verifique a variável IG_TOKENS no Render.<br><a href="/auth/login" style="color:var(--brand)">Tentar novamente</a></div>';
+      renderHist();
+      return;
+    }
+
+    const sel = document.getElementById('acc-sel');
+    sel.innerHTML = '';
+
+    accs.forEach((a,i) => {
+      const chip = document.createElement('div');
+      chip.className = 'acc-chip' + (i===0?' on':'');
+      chip.innerHTML = '@' + a.username + ' <span style="opacity:.5;font-size:10px">' + (a.followers_count||0).toLocaleString('pt-BR') + '</span>';
+      chip.onclick = () => {
+        document.querySelectorAll('.acc-chip').forEach(c=>c.classList.remove('on'));
+        chip.classList.add('on');
+        selAccount = a;
+        loadDash(curPeriod, document.querySelector('.ptab.on'));
+        loadSuggestions(a);
+      };
+      sel.appendChild(chip);
+      if (i===0) {
+        selAccount = a;
+        console.log('[INIT] Selected account:', a.username);
+        loadSuggestions(a);
+      }
+    });
+
+    if (selAccount) {
+      console.log('[INIT] Loading dashboard for:', selAccount.username);
+      loadDash('7d', document.querySelector('.ptab.on'));
+    }
+  } catch(e) {
+    console.error('[INIT ERROR]', e);
+    document.getElementById('dash-content').innerHTML = '<div class="empty-state">Erro ao carregar: ' + e.message + '<br><a href="/auth/login" style="color:var(--brand)">Tentar novamente</a></div>';
+  }
   renderHist();
 }
 
