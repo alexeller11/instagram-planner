@@ -17,7 +17,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const publicDir = fs.existsSync(path.join(__dirname, 'public')) ? path.join(__dirname, 'public') : __dirname;
 app.use(express.static(publicDir));
-app.use(session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false, cookie: { secure: false, maxAge: 24*60*60*1000 } }));
+const isProduction = process.env.NODE_ENV === 'production';
+app.set('trust proxy', 1);
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProduction,
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
 
 // ─── FETCH IG PROFILES ───────────────────────────────────────
 async function fetchIGProfiles(tokens) {
