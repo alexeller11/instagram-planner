@@ -293,7 +293,7 @@ app.post('/api/suggestions', async (req, res) => {
   if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
   const { igId } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });  if (!budgetCheck.canProceed) return res.status(429).json({ error: 'Orçamento de tokens esgotado', budget: budgetCheck });
+  if (!account) return res.status(404).json({ error: 'Not found' });
 
   const media = await fetchMedia(account.id, account.ig_token, 10);
   const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
@@ -438,12 +438,7 @@ app.post('/api/intelligence', async (req, res) => {
   }
   const { igId, competitors, niche, location, goal } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });  if (!budgetCheck.canProceed) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
-    res.end();
-    return;
-  }
+  if (!account) return res.status(404).json({ error: 'Not found' });
 
   const media = await fetchMedia(account.id, account.ig_token, 20);
   const topCaptions = media.slice(0, 8).map(m => m.caption?.substring(0, 200)||'').filter(Boolean);
@@ -488,7 +483,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
 
 `);
-    recordTokenUsage(message.usage?.input_tokens || 0, message.usage?.output_tokens || 0);;
+
 
     // Envia o texto limpo para o frontend processar
     let cleanedText = fullText;
@@ -523,12 +518,7 @@ app.post('/api/generate', async (req, res) => {
     return;
   }
   const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);  if (!budgetCheck.canProceed) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
-    res.end();
-    return;
-  }
+  const account = req.session.user.accounts.find(a => a.id === igId);
 
   let profileContext = '', topPostsContext = '';
   if (account) {
@@ -625,7 +615,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
 
 `);
-    recordTokenUsage(message.usage?.input_tokens || 0, message.usage?.output_tokens || 0);;
+
 
     // Pré-processa e valida o JSON antes de enviar ao frontend
     let finalText = fullText;
@@ -717,10 +707,10 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Groq (Llama 3) + Token Control rodando em http://0.0.0.0:${PORT}`);
-  console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
-  console.log(`[SERVER] Orçamento mensal: $${MAX_MONTHLY_COST}`);
-  console.log(`[SERVER] Diretório público: ${publicDir}`);
-  console.log(`[SERVER] GROQ_API_KEY: ${process.env.GEMINI_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
+  console.log(`🚀 Instagram Marketing Planner com Groq (Llama 3) rodando em http://0.0.0.0:${PORT}`);
+  console.log(`[SERVER] Base URL: ${BASE_URL}`);
+
+
+  console.log(`[SERVER] GROQ_API_KEY: ${process.env.GROQ_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
   console.log(`[SERVER] IG_TOKENS: ${IG_TOKENS.length} token(s) configurado(s)`);
 });
