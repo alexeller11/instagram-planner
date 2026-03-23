@@ -1,8 +1,7 @@
-require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
-const Groq = require('groq-sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 const fs = require('fs');
 
@@ -11,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -127,14 +126,9 @@ Retorne APENAS JSON:
 }`;
 
   try {
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', max_tokens: 1000, temperature: 0.7,
-      messages: [
-        { role: 'system', content: 'Responda APENAS com JSON válido, sem markdown.' },
-        { role: 'user', content: prompt }
-      ]
-    });
-    const text = completion.choices[0]?.message?.content || '{}';
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
     try { res.json(JSON.parse(text.replace(/```json|```/g,'').trim())); }
     catch { res.json({ error: text }); }
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -336,15 +330,10 @@ Retorne APENAS JSON válido:
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const stream = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', max_tokens: 5000, temperature: 0.75, stream: true,
-      messages: [
-        { role: 'system', content: 'Você é um consultor de marketing digital sênior brasileiro. Responda APENAS com JSON válido, sem markdown, sem texto fora do JSON. Seja específico, humanizado e direto.' },
-        { role: 'user', content: prompt }
-      ]
-    });
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content || '';
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const stream = await model.generateContentStream(prompt);
+    for await (const chunk of stream.stream) {
+      const delta = chunk.text || '';
       if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
     }
     res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
@@ -355,7 +344,7 @@ Retorne APENAS JSON válido:
   }
 });
 
-// ─── GENERATE PLAN ────────────────────────────────────────────
+// ─── GENERATE PLAN (SUPER PROMPT COM FUNIL E HOOKS) ──────────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
   const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
@@ -402,26 +391,28 @@ BRIEFING DO PLANO:
 - Principais objeções: ${objections || 'Não informadas'}
 
 DIRETRIZES DE QUALIDADE (OBRIGATÓRIO):
-1. Tom humanizado: escreva as legendas como se fossem escritas pelo próprio dono do perfil, não por uma IA. Use a primeira pessoa, seja natural, mostre personalidade.
-2. Cada post deve ter uma RAZÃO ESTRATÉGICA clara para existir no funil de vendas.
-3. As legendas devem ter GANCHOS poderosos na primeira linha — algo que pare o scroll.
-4. Os CTAs devem ser específicos e variados — nunca genéricos como "me chama no DM".
-5. Os scripts de Reels devem ser FALADOS, não escritos — use linguagem oral, pausas, entonações.
-6. Os slides de carrossel devem ter progressão lógica — o leitor deve sentir que precisa ver o próximo.
-7. Distribua em 4 semanas respeitando a jornada: S1=Atenção/Curiosidade, S2=Autoridade/Educação, S3=Conexão/Prova Social, S4=Urgência/Conversão.
+1. FUNIL DE 4 SEMANAS: S1=Atração (Reels virais, curiosidade), S2=Autoridade (Educação, prova social), S3=Conexão (Stories, humanização), S4=Conversão (Urgência, CTA claro)
+2. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social) para criar consistência
+3. GANCHOS MAGNÉTICOS: Cada post começa com uma frase que PARA o scroll — use curiosidade, medo, desejo ou surpresa
+4. SCRIPTS FALADOS: Reels devem ser roteiros para GRAVAR, não textos — use linguagem oral, pausas, entonações
+5. SLIDES COM PROGRESSÃO: Carrosséis devem ter lógica visual — o leitor sente que precisa ver o próximo
+6. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM" — use "Comenta QUERO aqui embaixo que te mando o link"
+7. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
 
 Retorne APENAS JSON válido:
 {
   "audit": {
-    "summary": "análise de 4-5 linhas falando DIRETAMENTE com o dono do perfil — use 'você', mencione dados reais dos posts, seja específico. Ex: Olhando seus números, vejo que seus posts de [tipo] estão performando X% acima da média...",
+    "summary": "análise de 4-5 linhas falando DIRETAMENTE com o dono do perfil — use 'você', mencione dados reais dos posts, seja específico",
     "differentials": ["diferencial específico detectado nos posts", "diferencial 2", "diferencial 3"],
-    "positioning": "posicionamento detalhado: como se destacar dos concorrentes locais em ${location||'sua cidade'} com ações práticas",
-    "engagement_analysis": "análise humanizada do engajamento real — o que está funcionando e por quê, com base nos dados",
-    "month_strategy": "estratégia específica para ${month} — por que este mês é importante para este nicho e como aproveitar"
+    "positioning": "posicionamento detalhado: como se destacar dos concorrentes locais",
+    "engagement_analysis": "análise humanizada do engajamento real — o que está funcionando e por quê",
+    "month_strategy": "estratégia específica para ${month} — por que este mês é importante e como aproveitar",
+    "editorial_pillars": [
+      {"pillar": "Pilar 1", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"},
+      {"pillar": "Pilar 2", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"},
+      {"pillar": "Pilar 3", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"}
+    ]
   },
-  "dates": [
-    {"day": 8, "name": "nome da data", "relevance": "por que é relevante para este nicho específico", "content_idea": "ideia criativa e específica de post"}
-  ],
   "posts": [
     {
       "n": 1,
@@ -429,12 +420,18 @@ Retorne APENAS JSON válido:
       "day_suggestion": "Terça",
       "format": "Reels",
       "pillar": "Educação",
-      "title": "título chamativo para o conteúdo (máx 60 chars) — como seria o título de um YouTube",
+      "title": "título chamativo para o conteúdo (máx 60 chars)",
       "objective": "objetivo estratégico específico no funil",
-      "visual": "descrição cinematográfica da cena — ambiente, iluminação, roupa, expressão, movimentos. Detalhe o suficiente para alguém gravar sem dúvida",
-      "copy": "legenda COMPLETA pronta para publicar, 8-12 linhas. Primeiro linha = GANCHO que para o scroll. Use emojis estrategicamente (não excessivamente). Tom natural, como o dono do perfil falaria. Termine com pergunta ou reflexão antes do CTA.",
-      "cta": "CTA específico e criativo — não use 'me chama no DM' genérico. Ex: 'Comenta QUERO aqui embaixo que te mando o link'",
-      "audio": "descrição do sentimento/energia da música — ritmo, instrumento, mood. Ex: 'Lo-fi animado, algo como um café estiloso numa manhã produtiva'",
+      "funnel_stage": "Atração/Autoridade/Conexão/Conversão",
+      "hooks": [
+        "Gancho opção 1 — frase que para o scroll",
+        "Gancho opção 2 — ângulo diferente",
+        "Gancho opção 3 — mais direto"
+      ],
+      "visual": "descrição cinematográfica da cena — ambiente, iluminação, roupa, expressão, movimentos",
+      "copy": "legenda COMPLETA pronta para publicar, 8-12 linhas. Primeiro linha = GANCHO. Use emojis estrategicamente. Termine com pergunta ou reflexão antes do CTA.",
+      "cta": "CTA específico e criativo — não genérico",
+      "audio": "descrição do sentimento/energia da música — ritmo, instrumento, mood",
       "script": "script FALADO completo para o Reels (30-45s). Formato: [0-3s GANCHO]: frase que prende. [3-15s DESENVOLVIMENTO]: conteúdo. [15-25s VIRADA]: surpresa ou dado. [25-35s CTA]: chamada clara. Use // para indicar pausa. Use CAPS para ênfase.",
       "carousel_slides": ["Slide 1: título impactante (máx 8 palavras)", "Slide 2: ponto principal", "Slide 3: desenvolvimento", "Slide 4: prova ou exemplo", "Slide 5: continuação", "Slide 6: conclusão", "Slide 7: CTA direto"]
     }
@@ -461,7 +458,7 @@ Retorne APENAS JSON válido:
     "niche": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8"],
     "local": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
     "broad": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7"],
-    "strategy": "estratégia detalhada — quantas usar, como combinar, quando variar. Seja específico para o nicho e cidade."
+    "strategy": "estratégia detalhada — quantas usar, como combinar, quando variar"
   },
   "post_days": [3,5,7,9,12,14,16,19,21,23,26,28],
   "event_days": [],
@@ -478,26 +475,21 @@ Retorne APENAS JSON válido:
 
 REGRAS CRÍTICAS:
 - EXATAMENTE ${totalPosts} posts: ${totalReels} Reels, ${totalCarousels} Carrosséis, ${totalSingle} Fotos
-- EXATAMENTE 30 sequências de Stories (uma para cada dia do mês, distribuídas estrategicamente)
+- EXATAMENTE 30 sequências de Stories (uma para cada dia do mês)
 - Scripts FALADOS para TODOS os Reels — linguagem oral, não escrita
 - Slides para TODOS os Carrosséis (mínimo 7 slides cada)
-- Legendas prontas para publicar — copy REAL, não descrição do que escrever
-- NUNCA use frases genéricas como "me conta nos comentários" sem contexto específico`;
+- Legendas prontas para publicar — copy REAL, não descrição
+- NUNCA use frases genéricas sem contexto específico`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const stream = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', max_tokens: 8000, temperature: 0.8, stream: true,
-      messages: [
-        { role: 'system', content: 'Você é um dos melhores estrategistas de conteúdo e copywriters do Brasil. Cria planos de marketing que realmente funcionam. Responda APENAS com JSON válido, sem markdown. Seja humanizado, específico e estratégico em tudo.' },
-        { role: 'user', content: prompt }
-      ]
-    });
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content || '';
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const stream = await model.generateContentStream(prompt);
+    for await (const chunk of stream.stream) {
+      const delta = chunk.text || '';
       if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
     }
     res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
@@ -523,7 +515,7 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Social Planner v4 rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Instagram Marketing Planner com Gemini 2.0 Flash rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);
 });
