@@ -508,6 +508,18 @@ REGRAS CRÍTICAS:
   }
 });
 
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/privacy.html', (req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 app.get('/app', (req, res) => { if (!req.session.user) return res.redirect('/'); res.sendFile(path.join(publicDir, 'app.html')); });
-app.listen(PORT, () => console.log(`🚀 Social Planner v4 rodando em ${BASE_URL}`));
+
+// Fallback para qualquer outra rota (ajuda a evitar 404 do Railway se o app estiver rodando)
+app.use((req, res) => {
+  console.log(`[404] Rota não encontrada: ${req.url}`);
+  res.status(404).sendFile(path.join(publicDir, 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Social Planner v4 rodando em http://0.0.0.0:${PORT}`);
+  console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
+});
