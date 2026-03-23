@@ -10,11 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
-const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
+
+// Tratamento robusto da variável IG_TOKENS
+const rawTokens = process.env.IG_TOKENS || '';
+const IG_TOKENS = rawTokens.split(',').map(t => t.trim()).filter(Boolean);
 
 console.log(`[INIT] Servidor iniciando...`);
 console.log(`[INIT] BASE_URL: ${BASE_URL}`);
-console.log(`[INIT] IG_TOKENS configurados: ${IG_TOKENS.length}`);
+console.log(`[INIT] IG_TOKENS bruta (tamanho): ${rawTokens.length} caracteres`);
+console.log(`[INIT] IG_TOKENS processados (quantidade): ${IG_TOKENS.length}`);
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -86,7 +90,7 @@ app.get('/app', (req, res) => {
   res.sendFile(path.join(publicDir, 'app.html'));
 });
 
-// ROTA DE LOGIN RÁPIDO (Apenas cria a sessão e redireciona)
+// ROTA DE LOGIN RÁPIDO
 app.post('/api/auth', (req, res) => {
   console.log(`[AUTH] Tentativa de login rápido via /api/auth`);
   if (IG_TOKENS.length === 0) {
@@ -96,30 +100,37 @@ app.post('/api/auth', (req, res) => {
   req.session.user = { accounts: [] };
   req.session.save((err) => {
     if (err) return res.status(500).json({ success: false, error: 'Erro ao criar sessão.' });
+    console.log(`[AUTH] Sessão criada com sucesso para ${req.sessionID}`);
     res.json({ success: true });
   });
 });
 
 app.get('/api/me', async (req, res) => {
-  if (!req.session.user) return res.json({ logged: false });
+  if (!req.session.user) {
+    console.log(`[AUTH] /api/me chamado sem sessão ativa`);
+    return res.json({ logged: false });
+  }
   
-  console.log(`[AUTH] /api/me buscando contas para ${req.sessionID}`);
+  console.log(`[AUTH] /api/me validando ${IG_TOKENS.length} tokens...`);
   const accounts = [];
-  for (const token of IG_TOKENS) {
+  for (let i = 0; i < IG_TOKENS.length; i++) {
+    const token = IG_TOKENS[i];
     try {
+      // Testar token na API da Meta
       const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
       accounts.push({ ...me.data, ig_token: token });
-      console.log(`[AUTH] Conta encontrada: @${me.data.username}`);
+      console.log(`[AUTH] Token #${i+1} OK: @${me.data.username}`);
     } catch (e) { 
-      console.error(`[AUTH] Erro ao validar token legado:`, e.response?.data || e.message); 
+      console.error(`[AUTH] Token #${i+1} FALHOU:`, e.response?.data || e.message); 
     }
   }
   
+  console.log(`[AUTH] Total de contas encontradas: ${accounts.length}`);
   req.session.user.accounts = accounts;
   res.json({ logged: true, accounts: accounts });
 });
 
-// Outras rotas permanecem iguais...
+// Outras rotas (suggestions, intelligence, generate) permanecem iguais...
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
