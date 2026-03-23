@@ -14,11 +14,11 @@ const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') 
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
 // Validação da chave Groq
-if (!process.env.GROQ_API_KEY) {
+if (!(process.env.GROQ_API_KEY || '').trim()) {
   console.error('[FATAL] GROQ_API_KEY não está configurada! A IA não funcionará.');
   console.error('[FATAL] Configure a variável de ambiente GROQ_API_KEY com sua chave do Groq Console.');
 }
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' });
+const groq = new Groq({ apiKey: (process.env.GROQ_API_KEY || '').trim() });
 
 // ─── TOKEN TRACKING & COST CONTROL ────────────────────────
 const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GROQ_COST || '5');
@@ -428,7 +428,7 @@ app.get('/api/dashboard/:igId', async (req, res) => {
 //// ─── INTELLIGENCE ─────────────────────────────────────────────────────────
 app.post('/api/intelligence', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GROQ_API_KEY) {
+  if (!(process.env.GROQ_API_KEY || '').trim()) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
 
@@ -504,7 +504,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
 /// ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GROQ_API_KEY) {
+  if (!(process.env.GROQ_API_KEY || '').trim()) {
     res.setHeader('Content-Type', 'text/event-stream');
       res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
 
