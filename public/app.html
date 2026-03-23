@@ -472,7 +472,7 @@ async function init() {
     console.log('[INIT] Accounts found:', accs.length, 'Response:', JSON.stringify(res));
 
     if (!accs.length) {
-      document.getElementById('dash-content').innerHTML = '<div class="empty-state">Nenhuma conta encontrada.<br>Verifique a variável IG_TOKENS no Render.<br><a href="/auth/login" style="color:var(--brand)">Tentar novamente</a></div>';
+      document.getElementById('dash-content').innerHTML = '<div class="empty-state">Nenhuma conta encontrada.<br>Verifique a variável IG_TOKENS no Railway.<br><a href="/" style="color:var(--brand)">Voltar</a></div>';
       renderHist();
       return;
     }
@@ -501,7 +501,7 @@ async function init() {
     });
   } catch(e) {
     console.error('[INIT ERROR]', e);
-    document.getElementById('dash-content').innerHTML = '<div class="empty-state">Erro ao carregar: ' + e.message + '<br><a href="/auth/login" style="color:var(--brand)">Tentar novamente</a></div>';
+    document.getElementById('dash-content').innerHTML = '<div class="empty-state">Erro ao carregar: ' + e.message + '<br><a href="/" style="color:var(--brand)">Voltar</a></div>';
   }
   renderHist();
 }
@@ -1218,6 +1218,16 @@ function exportPDF() {
     btn.disabled = false;
     btn.textContent = '📕 Exportar PDF';
   });
+}
+function loginWithInstagram(e) {
+  e.preventDefault();
+  fetch('/api/auth', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) window.location.href = '/app';
+      else console.error('Auth failed:', d.error);
+    })
+    .catch(err => console.error('Auth error:', err));
 }
 init();
 </script>
