@@ -11,14 +11,13 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Função de limpeza ABSOLUTA de tokens
+// Função de limpeza CORRETA de tokens
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
-  // 1. Divide por vírgula
-  // 2. Remove ABSOLUTAMENTE tudo que não for alfanumérico (letras e números)
-  // Isso remove \n, \r, espaços, aspas, caracteres invisíveis, etc.
+  // Divide por vírgula e remove apenas caracteres de controle (espaços, quebras de linha)
+  // Mantém caracteres especiais legítimos como _ (underscore) e - (hífen) que existem em tokens da Meta
   return raw.split(',')
-    .map(t => t.replace(/[^a-zA-Z0-9]/g, '').trim())
+    .map(t => t.replace(/[\r\n\t\s]/g, '').trim())
     .filter(t => t.length > 20); 
 }
 
