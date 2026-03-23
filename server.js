@@ -82,19 +82,19 @@ function cleanAndParseJSON(rawText) {
 // 1. Redirecionar para o Facebook
 app.get('/api/auth/facebook', (req, res) => {
   if (!FB_APP_ID) return res.status(500).send('FB_APP_ID não configurado');
-  const redirectUri = `${BASE_URL}/api/auth/callback`;
+  const redirectUri = `${BASE_URL}/auth/callback`;
   const scope = 'instagram_basic,instagram_manage_insights,pages_read_engagement,pages_show_list';
   const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
   res.redirect(authUrl);
 });
 
-// 2. Callback do Facebook
-app.get('/api/auth/callback', async (req, res) => {
+// 2. Callback do Facebook (Ajustado para /auth/callback)
+app.get('/auth/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.redirect('/?error=no_code');
 
   try {
-    const redirectUri = `${BASE_URL}/api/auth/callback`;
+    const redirectUri = `${BASE_URL}/auth/callback`;
     // Trocar código por token de acesso
     const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
       params: {
@@ -114,7 +114,7 @@ app.get('/api/auth/callback', async (req, res) => {
       .filter(p => p.instagram_business_account)
       .map(p => ({
         ...p.instagram_business_account,
-        ig_token: accessToken // Simplificado: usa o token de página/usuário
+        ig_token: accessToken
       }));
 
     if (accounts.length === 0 && IG_TOKENS.length === 0) {
@@ -142,8 +142,6 @@ app.get('/app', (req, res) => {
 app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
-  // Se já tivermos as contas na sessão, retornamos. 
-  // Caso contrário, tentamos carregar dos tokens legados.
   if (req.session.user.accounts && req.session.user.accounts.length > 0) {
     return res.json({ logged: true, accounts: req.session.user.accounts });
   }
@@ -160,7 +158,6 @@ app.get('/api/me', async (req, res) => {
   res.json({ logged: true, accounts: accounts });
 });
 
-// Outras rotas (suggestions, intelligence, generate) permanecem iguais...
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
