@@ -11,17 +11,21 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Limpeza profunda da variável IG_TOKENS
-// Remove quebras de linha, espaços extras e caracteres de controle invisíveis
-const rawTokens = (process.env.IG_TOKENS || '').replace(/[\r\n\t]/g, ' ');
-const IG_TOKENS = rawTokens.split(',')
-  .map(t => t.trim().replace(/[^\x20-\x7E]/g, '')) // Remove caracteres não-ASCII invisíveis
-  .filter(Boolean);
+// Função para obter tokens limpos de forma robusta
+function getCleanTokens() {
+  const raw = process.env.IG_TOKENS || '';
+  // 1. Remove quebras de linha e retornos de carro
+  // 2. Divide por vírgula
+  // 3. Remove qualquer caractere que não seja alfanumérico básico de cada token (limpeza radical)
+  return raw.split(',')
+    .map(t => t.replace(/[\r\n\t\s]/g, '').trim()) 
+    .filter(t => t.length > 10); // Apenas tokens que pareçam válidos
+}
+
+const IG_TOKENS = getCleanTokens();
 
 console.log(`[INIT] Servidor iniciando...`);
-console.log(`[INIT] BASE_URL: ${BASE_URL}`);
-console.log(`[INIT] IG_TOKENS bruta (tamanho): ${rawTokens.length} caracteres`);
-console.log(`[INIT] IG_TOKENS processados (quantidade): ${IG_TOKENS.length}`);
+console.log(`[INIT] IG_TOKENS carregados: ${IG_TOKENS.length}`);
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -88,10 +92,11 @@ app.get('/app', (req, res) => {
 });
 
 app.post('/api/auth', (req, res) => {
-  if (IG_TOKENS.length === 0) return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
+  const currentTokens = getCleanTokens();
+  if (currentTokens.length === 0) return res.status(500).json({ success: false, error: 'Nenhum token configurado.' });
   req.session.user = { accounts: [] };
   req.session.save((err) => {
-    if (err) return res.status(500).json({ success: false, error: 'Erro ao criar sessão.' });
+    if (err) return res.status(500).json({ success: false, error: 'Erro de sessão.' });
     res.json({ success: true });
   });
 });
@@ -99,18 +104,19 @@ app.post('/api/auth', (req, res) => {
 app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
-  console.log(`[AUTH] Validando ${IG_TOKENS.length} tokens...`);
+  const currentTokens = getCleanTokens();
+  console.log(`[AUTH] Validando ${currentTokens.length} tokens...`);
   const accounts = [];
-  for (let i = 0; i < IG_TOKENS.length; i++) {
-    const token = IG_TOKENS[i];
+  
+  for (let i = 0; i < currentTokens.length; i++) {
+    const token = currentTokens[i];
     try {
       const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
       accounts.push({ ...me.data, ig_token: token });
       console.log(`[AUTH] Token #${i+1} OK: @${me.data.username}`);
     } catch (e) { 
-      // Log resumido do erro para não poluir
       const errMsg = e.response?.data?.error?.message || e.message;
-      console.error(`[AUTH] Token #${i+1} FALHOU (${token.substring(0, 10)}...): ${errMsg}`); 
+      console.error(`[AUTH] Token #${i+1} FALHOU: ${errMsg}`); 
     }
   }
   
@@ -118,7 +124,7 @@ app.get('/api/me', async (req, res) => {
   res.json({ logged: true, accounts: accounts });
 });
 
-// Outras rotas permanecem iguais...
+// Outras rotas (suggestions, intelligence, generate)
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
