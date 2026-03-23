@@ -11,17 +11,15 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Função de limpeza RADICAL de tokens
+// Função de limpeza ABSOLUTA de tokens
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
-  // Divide por vírgula e limpa cada token individualmente
+  // 1. Divide por vírgula
+  // 2. Remove ABSOLUTAMENTE tudo que não for alfanumérico (letras e números)
+  // Isso remove \n, \r, espaços, aspas, caracteres invisíveis, etc.
   return raw.split(',')
-    .map(t => {
-      // Remove ABSOLUTAMENTE tudo que não for alfanumérico (letras e números)
-      // Tokens do IG/FB são alfanuméricos. Isso remove espaços, \n, \r, aspas, etc.
-      return t.replace(/[^a-zA-Z0-9]/g, '').trim();
-    })
-    .filter(t => t.length > 20); // Filtra apenas o que parece ser um token real
+    .map(t => t.replace(/[^a-zA-Z0-9]/g, '').trim())
+    .filter(t => t.length > 20); 
 }
 
 const IG_TOKENS = getCleanTokens();
@@ -29,7 +27,7 @@ const IG_TOKENS = getCleanTokens();
 console.log(`[INIT] Servidor iniciando...`);
 console.log(`[INIT] IG_TOKENS encontrados: ${IG_TOKENS.length}`);
 
-// LOG DE INSPEÇÃO (Apenas os primeiros 5 caracteres para segurança)
+// LOG DE INSPEÇÃO para o usuário
 IG_TOKENS.forEach((t, i) => {
   console.log(`[DEBUG] Token #${i+1}: Tamanho=${t.length} | Início=${t.substring(0, 10)}... | Fim=...${t.substring(t.length - 5)}`);
 });
