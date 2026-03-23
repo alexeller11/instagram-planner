@@ -448,29 +448,53 @@ app.post('/api/intelligence', async (req, res) => {
   const topCaptions = media.slice(0, 8).map(m => m.caption?.substring(0, 200)||'').filter(Boolean);
   const engStats = media.length ? { avgLikes: Math.round(media.reduce((s,m)=>s+(m.like_count||0),0)/media.length), avgComments: Math.round(media.reduce((s,m)=>s+(m.comments_count||0),0)/media.length) } : {};
 
-  const prompt = `Você é um dos melhores estrategistas de marketing digital do Brasil, com profundo conhecimento em Instagram, comportamento do consumidor brasileiro e neuromarketing.
+  // Simular análise de concorrentes se não fornecidos
+  let competitorAnalysis = '';
+  if (competitors && competitors.trim()) {
+    competitorAnalysis = `\nANÁLISE DE CONCORRENTES FORNECIDOS:\nPesquise e analise: ${competitors}\nIdentifique:
+- Tom de voz e estilo de cada um
+- Tipos de conteúdo que mais engajam
+- Gaps de mercado que nenhum deles explora
+- Oportunidades de diferençação`;
+  } else {
+    competitorAnalysis = `\nANÁLISE AUTOMÁTICA DE CONCORRENTES:\nBaseado no nicho "${niche}" e localização "${location || 'Brasil'}", identifique automaticamente os 5 maiores concorrentes diretos e analise:
+- Estilo de conteúdo (educativo, lifestyle, humor, etc)
+- Frequência de publicação e melhor horário
+- Tipos de Reels/carroséis que mais engajam
+- Tom de voz e persona
+- Gaps que nenhum deles explora (OPORTUNIDADE PARA @${account.username})`;
+  }
+
+  const prompt = `Você é um dos melhores estratégistas de marketing digital do Brasil, com profundo conhecimento em Instagram, comportamento do consumidor brasileiro, neuromarketing e análise competitiva. Você fala como um amigo que entende do assunto, não como um robô.
 
 ANÁLISE DO PERFIL REAL @${account.username}:
 - Nome: ${account.name}
-- Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')}
+- Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')} (crescimento: ${Math.round(account.followers_count/30)}/dia)
 - Posts: ${account.media_count} | Média curtidas: ${engStats.avgLikes||0} | Média comentários: ${engStats.avgComments||0}
+- Taxa de engajamento: ${engStats.avgLikes ? ((engStats.avgLikes/(account.followers_count||1))*100).toFixed(2) : '0'}%
 - Bio: ${account.biography || 'Não informada'}
-- Nicho identificado: ${niche}
+- Nicho: ${niche}
 - Localização: ${location || 'Brasil'}
 - Objetivo: ${goal}
-- Concorrentes mencionados: ${competitors || 'buscar automaticamente'}
-- Exemplos reais de legendas: ${topCaptions.join(' /// ')}
+- Exemplos reais de legendas: ${topCaptions.slice(0, 3).join(' | ')}
+${competitorAnalysis}
 
-IMPORTANTE: Fale diretamente com o dono do perfil. Use "você", "seu perfil", "seus seguidores". Seja específico, use os dados reais. Evite generalidades. Pense como um consultor de R$500/hora que conhece profundamente o nicho.
+DIRETRIZES DE RESPOSTA:
+1. Fale diretamente com o dono do perfil. Use "você", "seu perfil", "seus seguidores"
+2. Seja MUITO específico. Use os dados reais fornecidos
+3. Evite generalidades e clichés de IA
+4. Pense como um consultor de R$500/hora que conhece profundamente o nicho
+5. Seja honesto: se o perfil está fraco, diga. Se está forte, mostre por quê
+6. Recomendações devem ser AÇÕES PRÁTICAS, não teoria
 
 Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estratégica completa incluindo:
-- market_intelligence: { seasonality: [{month, level, opportunity}], trends: [{trend, how_to_use}] }
-- audience_intelligence: { ideal_profile, pain_map: [{pain, how_to_address}], desire_map: [{desire, content_angle}], journey_stage }
-- competitive_intelligence: { likely_competitors: [], content_gaps: [{gap, opportunity}] }
-- financial_intelligence: { follower_value_estimate, monthly_revenue_potential, monetization_opportunities: [], investment_priority }
-- operational_intelligence: { content_repurposing: [{original, repurpose_to, tip}], production_calendar: {weekly_hours, batch_suggestion, best_production_day, tools_suggestion} }
-- bio_optimized: [{version, bio, strategy, char_count}]
-- strategic_score: { content_quality, posting_consistency, audience_alignment, growth_potential, overall, diagnosis, recommendations: [{priority, action, expected_result}] }`;
+- market_intelligence: { seasonality: [{month, level, opportunity}], trends: [{trend, how_to_use, urgency}] }
+- audience_intelligence: { ideal_profile: "descrição detalhada", pain_map: [{pain, how_to_address, content_example}], desire_map: [{desire, content_angle, emotional_trigger}], journey_stage: "qual estágio seu público está" }
+- competitive_intelligence: { likely_competitors: [{name, strength, weakness, opportunity_for_you}], content_gaps: [{gap, why_important, how_to_exploit}] }
+- financial_intelligence: { follower_value_estimate: "R$/seguidor", monthly_revenue_potential: "R$", monetization_opportunities: [{type, effort, potential_revenue}], investment_priority: "o que fazer primeiro" }
+- operational_intelligence: { content_repurposing: [{original, repurpose_to, tip}], production_calendar: {weekly_hours: "X horas", batch_suggestion: "como fazer", best_production_day: "dia", tools_suggestion: "ferramentas gratis"} }
+- bio_optimized: [{version: 1, bio: "texto", strategy: "por que funciona", char_count: 150}]
+- strategic_score: { content_quality: 0-10, posting_consistency: 0-10, audience_alignment: 0-10, growth_potential: 0-10, overall: 0-10, diagnosis: "resumo honesto", recommendations: [{priority: "URGENTE/IMPORTANTE/LEGAL", action: "ação específica", expected_result: "resultado em X dias/semanas"}] }`;
 
    try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -548,25 +572,26 @@ app.post('/api/generate', async (req, res) => {
 ${profileContext}
 ${topPostsContext}
 
-BRIEFING DO PLANO:
+BRIEFING DO PLANO (SIGA RIGOROSAMENTE):
 - Nicho: ${niche}
 - Localização: ${location || 'Brasil'}
 - Público-alvo: ${audience}
-- Objetivo principal do mês: ${goal}
-- Tom de voz: ${tone}
+- Objetivo principal do mês: ${goal} (ISSO É A PRIORIDADE #1)
+- Tom de voz: ${tone} (USE EXATAMENTE ASSIM EM TODOS OS POSTS)
 - Mix de conteúdo: ${totalReels} Reels + ${totalCarousels} Carrosséis + ${totalSingle} Fotos = ${totalPosts} posts
 - Mês: ${month} de ${year}
 - Contexto/diferenciais: ${extra || 'Não informado'}
-- Principais objeções: ${objections || 'Não informadas'}
+- Principais objeções do público: ${objections || 'Não informadas'} (RESPONDA A ESSAS OBJEÇÕES NO CONTEÚDO)
 
-DIRETRIZES DE QUALIDADE (OBRIGATÓRIO):
-1. FUNIL DE 4 SEMANAS: S1=Atração (Reels virais, curiosidade), S2=Autoridade (Educação, prova social), S3=Conexão (Stories, humanização), S4=Conversão (Urgência, CTA claro)
-2. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social)
-3. GANCHOS MAGNÉTICOS: Cada post começa com uma frase que PARA o scroll — use curiosidade, medo, desejo ou surpresa
-4. SCRIPTS FALADOS: Reels devem ser roteiros para GRAVAR, não textos — use linguagem oral, pausas, entonações
-5. SLIDES COM PROGRESSÃO: Carrosséis devem ter lógica visual
-6. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM"
-7. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
+DIRETRIZES DE QUALIDADE (OBRIGATÓRIO - NÃO NEGOCIE):
+1. FIDELIDADE ÀS SOLICITAÇÕES: O tom de voz, objetivo e objeções são SAGRADOS. Cada post deve refletir isso
+2. FUNIL DE 4 SEMANAS: S1=Atração (Reels virais, curiosidade), S2=Autoridade (Educação, prova social), S3=Conexão (Stories, humanização), S4=Conversão (Urgência, CTA claro)
+3. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social)
+4. GANCHOS MAGNÉTICOS: Cada post começa com uma frase que PARA o scroll — use curiosidade, medo, desejo ou surpresa
+5. SCRIPTS FALADOS: Reels devem ser roteiros para GRAVAR, não textos — use linguagem oral, pausas, entonações
+6. HUMANIZAÇÃO EXTREMA: Evite clichés de IA. Use exemplos reais, histórias, emojis com propósito
+7. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM". Seja criativo e alinhado ao objetivo
+8. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
 
 FORMATO DE SAÍDA (OBRIGATÓRIO):
 Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem texto antes ou depois. Estrutura exata:
