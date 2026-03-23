@@ -423,6 +423,33 @@ select option{background:#1c1a35}
 <div class="toast" id="toast"></div>
 <script>
 const SK = 'spp_v4_hist';
+
+// ── PARSE JSON ROBUSTO ────────────────────────────────────────
+function robustParseJSON(text) {
+  if (!text || typeof text !== 'string') throw new Error('Texto vazio');
+  let t = text.trim();
+  // Remove blocos markdown
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  // Encontra o início do JSON
+  const fb = t.indexOf('{'), fbr = t.indexOf('[');
+  let si = -1;
+  if (fb !== -1 && fbr !== -1) si = Math.min(fb, fbr);
+  else if (fb !== -1) si = fb;
+  else if (fbr !== -1) si = fbr;
+  if (si > 0) t = t.substring(si);
+  // Encontra o fim do JSON
+  const lb = t.lastIndexOf('}'), lbr = t.lastIndexOf(']');
+  const ei = Math.max(lb, lbr);
+  if (ei !== -1 && ei < t.length - 1) t = t.substring(0, ei + 1);
+  // Tenta parse direto
+  try { return JSON.parse(t); } catch(e1) {
+    // Tenta corrigir vírgulas extras
+    const fixed = t.replace(/,\s*([}\]])/g, '$1');
+    try { return JSON.parse(fixed); } catch(e2) {
+      throw new Error('JSON inválido: ' + e2.message);
+    }
+  }
+}
 let selAccount = null, dashData = null, curPeriod = '7d';
 let rawPlan = {}, planData = {};
 let mix = { reels: 10, carousels: 8 }, totalPosts = 24;
@@ -649,7 +676,7 @@ async function runIntelligence() {
       }
     }
     clearInterval(mt); ld.style.display = 'none';
-    let parsed; try{parsed=JSON.parse(fullText.replace(/```json|```/g,'').trim());}catch{parsed={error:fullText};}
+    let parsed; try{parsed=robustParseJSON(fullText);}catch{parsed={error:fullText};}
     renderIntelligence(parsed); result.style.display = 'block';
   } catch(e) { clearInterval(mt); ld.style.display='none'; toast('Erro: '+e.message); }
 }
@@ -805,7 +832,7 @@ async function generatePlan() {
     const reader=res.body.getReader(),decoder=new TextDecoder();
     while(true){const{done,value}=await reader.read();if(done)break;for(const line of decoder.decode(value).split('\n')){if(line.startsWith('data: ')){try{const ev=JSON.parse(line.slice(6));if(ev.type==='delta')fullText+=ev.text;if(ev.type==='done')fullText=ev.fullText;}catch{}}}}
     clearInterval(timer);steps.forEach(s=>document.getElementById(s).className='lds done');
-    try{rawPlan=JSON.parse(fullText.replace(/```json|```/g,'').trim());}catch{rawPlan={error:fullText};}
+    try{rawPlan=robustParseJSON(fullText);}catch(pe){console.error('[PARSE_ERROR]',pe.message,fullText.substring(0,300));rawPlan={error:'Erro ao processar resposta da IA. Tente novamente.'};}
     renderPlan(rawPlan);
     document.getElementById('ld-plan').style.display='none';
     document.getElementById('plan-result').style.display='block';

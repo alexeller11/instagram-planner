@@ -55,6 +55,141 @@ function recordTokenUsage(inputTokens, outputTokens) {
   console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Cost: $${cost.toFixed(4)} | Total: $${monthlyTokensUsed.cost.toFixed(4)}/${MAX_MONTHLY_COST}`);
 }
 
+// ─── LIMPEZA DE JSON ROBUSTA ───────────────────────────────
+function cleanAndParseJSON(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    throw new Error('Resposta vazia ou inválida do Gemini');
+  }
+
+  let text = rawText.trim();
+
+  // Remove blocos de código markdown: ```json ... ``` ou ``` ... ```
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+
+  // Remove qualquer texto antes do primeiro { ou [
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    startIdx = firstBrace;
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+  }
+  if (startIdx > 0) {
+    text = text.substring(startIdx);
+  }
+
+  // Remove qualquer texto após o último } ou ]
+  const lastBrace = text.lastIndexOf('}');
+  const lastBracket = text.lastIndexOf(']');
+  const endIdx = Math.max(lastBrace, lastBracket);
+  if (endIdx !== -1 && endIdx < text.length - 1) {
+    text = text.substring(0, endIdx + 1);
+  }
+
+  // Tenta parse direto
+  try {
+    return JSON.parse(text);
+  } catch (e1) {
+    // Tenta corrigir vírgulas extras antes de } ou ]
+    const fixed = text
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/([{,]\s*)(\w+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`)
+      .replace(/:\s*'([^']*)'/g, ': "$1"');
+    try {
+      return JSON.parse(fixed);
+    } catch (e2) {
+      console.error('[JSON_PARSE_ERROR] Texto original (primeiros 500 chars):', rawText.substring(0, 500));
+      throw new Error(`JSON inválido após limpeza: ${e2.message}`);
+    }
+  }
+}
+
+// ─── VALIDAÇÃO DE CAMPOS DO PLANO ─────────────────────────
+function validateAndNormalizePlan(data) {
+  if (!data || typeof data !== 'object') return data;
+
+  // Garante arrays obrigatórios
+  if (!Array.isArray(data.posts)) data.posts = [];
+  if (!Array.isArray(data.stories)) data.stories = [];
+  if (!Array.isArray(data.tips)) data.tips = [];
+  if (!Array.isArray(data.post_days)) data.post_days = [];
+  if (!data.hashtags) data.hashtags = { niche: [], local: [], broad: [], strategy: '' };
+  if (!data.audit) data.audit = {};
+  if (!Array.isArray(data.editorial_pillars)) data.editorial_pillars = [];
+
+  // Normaliza posts
+  data.posts = data.posts.map((p, i) => ({
+    n: p.n || p.number || p.num || (i + 1),
+    week: p.week || p.semana || 1,
+    day_suggestion: p.day_suggestion || p.day || p.dia || '',
+    format: p.format || p.formato || p.type || 'Post',
+    pillar: p.pillar || p.pilar || '',
+    title: p.title || p.titulo || p.tema || '',
+    objective: p.objective || p.objetivo || '',
+    visual: p.visual || p.visual_suggestion || '',
+    copy: p.copy || p.legenda || p.caption || p.texto || '',
+    cta: p.cta || '',
+    audio: p.audio || p.musica || '',
+    hook: p.hook || p.gancho || '',
+    script: p.script || p.roteiro || '',
+    carousel_slides: Array.isArray(p.carousel_slides) ? p.carousel_slides :
+                     Array.isArray(p.slides) ? p.slides : []
+  }));
+
+  // Normaliza stories
+  data.stories = data.stories.map((s, i) => ({
+    day: s.day || s.dia || `Dia ${i + 1}`,
+    theme: s.theme || s.tema || '',
+    objective: s.objective || s.objetivo || '',
+    funnel_stage: s.funnel_stage || s.etapa_funil || '',
+    slides: Array.isArray(s.slides) ? s.slides.map(sl => ({
+      n: sl.n || sl.numero || '',
+      text: sl.text || sl.texto || '',
+      action: sl.action || sl.acao || '',
+      copy_detail: sl.copy_detail || sl.detalhe || ''
+    })) : []
+  }));
+
+  // Normaliza hashtags
+  if (Array.isArray(data.hashtags)) {
+    data.hashtags = { niche: data.hashtags, local: [], broad: [], strategy: '' };
+  } else {
+    if (!Array.isArray(data.hashtags.niche)) data.hashtags.niche = [];
+    if (!Array.isArray(data.hashtags.local)) data.hashtags.local = [];
+    if (!Array.isArray(data.hashtags.broad)) data.hashtags.broad = [];
+    if (!data.hashtags.strategy) data.hashtags.strategy = '';
+  }
+
+  // Normaliza datas (pode vir como event_days ou dates)
+  if (!Array.isArray(data.dates) && Array.isArray(data.event_days)) {
+    data.dates = data.event_days;
+  } else if (!Array.isArray(data.dates)) {
+    data.dates = [];
+  }
+
+  return data;
+}
+
+// ─── VALIDAÇÃO DE CAMPOS DE SUGESTÕES ─────────────────────
+function validateSuggestions(data) {
+  if (!data || typeof data !== 'object') return {};
+  return {
+    niche: data.niche || data.nicho || '',
+    niche_confidence: data.niche_confidence || data.confianca_nicho || 'médio',
+    location: data.location || data.localizacao || data.cidade || 'Brasil',
+    audience: data.audience || data.publico || data.publico_alvo || '',
+    goal: data.goal || data.objetivo || '',
+    tone: data.tone || data.tom || data.tom_de_voz || '',
+    extra: data.extra || data.contexto || '',
+    competitors_search: Array.isArray(data.competitors_search) ? data.competitors_search : [],
+    bio_suggestions: Array.isArray(data.bio_suggestions) ? data.bio_suggestions : [],
+    insights: data.insights || ''
+  };
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const publicDir = path.join(__dirname, 'public');
@@ -166,7 +301,7 @@ PERFIL REAL:
 - Tipos de posts: ${JSON.stringify(mediaTypes)}
 - Exemplos de legendas: ${captions || 'Sem dados'}
 
-Retorne APENAS JSON:
+IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, sem explicações. Apenas o JSON puro:
 {
   "niche": "nicho detectado com base nos posts e bio (ex: Nutricionista Funcional, Moda Feminina Plus Size)",
   "niche_confidence": "alto/médio/baixo",
@@ -199,9 +334,18 @@ Retorne APENAS JSON:
     const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
     const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
     recordTokenUsage(inputTokens, outputTokens);
-    try { res.json(JSON.parse(text.replace(/```json|```/g,'').trim())); }
-    catch { res.json({ error: text }); }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    console.log(`[SUGGESTIONS] Resposta bruta (primeiros 200 chars): ${text.substring(0, 200)}`);
+    try {
+      const parsed = cleanAndParseJSON(text);
+      res.json(validateSuggestions(parsed));
+    } catch (parseErr) {
+      console.error('[SUGGESTIONS] Erro de parse:', parseErr.message);
+      res.status(500).json({ error: 'Erro ao processar resposta da IA: ' + parseErr.message, raw: text.substring(0, 300) });
+    }
+  } catch (e) {
+    console.error('[SUGGESTIONS] Erro Gemini:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── DASHBOARD ────────────────────────────────────────────────
@@ -310,7 +454,14 @@ ANÁLISE DO PERFIL REAL @${account.username}:
 
 IMPORTANTE: Fale diretamente com o dono do perfil. Use "você", "seu perfil", "seus seguidores". Seja específico, use os dados reais. Evite generalidades. Pense como um consultor de R$500/hora que conhece profundamente o nicho.
 
-Retorne APENAS JSON válido com análise estratégica completa incluindo market intelligence, audience intelligence, competitive intelligence, financial intelligence, operational intelligence, bio otimizada e strategic score.`;
+Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estratégica completa incluindo:
+- market_intelligence: { seasonality: [{month, level, opportunity}], trends: [{trend, how_to_use}] }
+- audience_intelligence: { ideal_profile, pain_map: [{pain, how_to_address}], desire_map: [{desire, content_angle}], journey_stage }
+- competitive_intelligence: { likely_competitors: [], content_gaps: [{gap, opportunity}] }
+- financial_intelligence: { follower_value_estimate, monthly_revenue_potential, monetization_opportunities: [], investment_priority }
+- operational_intelligence: { content_repurposing: [{original, repurpose_to, tip}], production_calendar: {weekly_hours, batch_suggestion, best_production_day, tools_suggestion} }
+- bio_optimized: [{version, bio, strategy, char_count}]
+- strategic_score: { content_quality, posting_consistency, audience_alignment, growth_potential, overall, diagnosis, recommendations: [{priority, action, expected_result}] }`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -333,9 +484,21 @@ Retorne APENAS JSON válido com análise estratégica completa incluindo market 
     }
     const usageMetadata = stream.response.usageMetadata;
     recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
-    res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
+
+    // Envia o texto limpo para o frontend processar
+    let cleanedText = fullText;
+    try {
+      const parsed = cleanAndParseJSON(fullText);
+      cleanedText = JSON.stringify(parsed);
+    } catch (e) {
+      console.warn('[INTELLIGENCE] Não foi possível pré-parsear JSON, enviando texto bruto limpo');
+      cleanedText = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    }
+
+    res.write(`data: ${JSON.stringify({ type: 'done', fullText: cleanedText })}\n\n`);
     res.end();
   } catch (e) {
+    console.error('[INTELLIGENCE] Erro:', e.message);
     res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
     res.end();
   }
@@ -404,7 +567,36 @@ DIRETRIZES DE QUALIDADE (OBRIGATÓRIO):
 6. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM"
 7. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
 
-Retorne APENAS JSON válido com: audit, editorial_pillars, posts (com hooks, scripts, carousel_slides), stories, hashtags, post_days, event_days, tips.`;
+FORMATO DE SAÍDA (OBRIGATÓRIO):
+Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem texto antes ou depois. Estrutura exata:
+{
+  "audit": { "summary": "...", "month_strategy": "...", "engagement_analysis": "...", "differentials": ["..."], "positioning": "..." },
+  "editorial_pillars": [{ "name": "...", "description": "...", "frequency": "..." }],
+  "posts": [
+    {
+      "n": 1, "week": 1, "day_suggestion": "Segunda", "format": "Reels",
+      "pillar": "Educativo", "title": "...", "objective": "...",
+      "visual": "...", "hook": "...", "copy": "...", "cta": "...", "audio": "...",
+      "script": "roteiro falado para gravar (apenas para Reels)",
+      "carousel_slides": ["Slide 1: ...", "Slide 2: ..."]
+    }
+  ],
+  "stories": [
+    {
+      "day": "Dia 1", "theme": "...", "objective": "...", "funnel_stage": "topo/meio/fundo",
+      "slides": [{ "n": 1, "text": "...", "action": "...", "copy_detail": "..." }]
+    }
+  ],
+  "hashtags": {
+    "niche": ["#hashtag1", "#hashtag2"],
+    "local": ["#cidade", "#estado"],
+    "broad": ["#hashtag_ampla"],
+    "strategy": "explicação da estratégia de hashtags"
+  },
+  "post_days": [1, 3, 5, 8, 10],
+  "dates": [{ "day": 15, "name": "...", "relevance": "...", "content_idea": "..." }],
+  "tips": [{ "icon": "💡", "title": "...", "text": "..." }]
+}`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -427,9 +619,24 @@ Retorne APENAS JSON válido com: audit, editorial_pillars, posts (com hooks, scr
     }
     const usageMetadata = stream.response.usageMetadata;
     recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
-    res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
+
+    // Pré-processa e valida o JSON antes de enviar ao frontend
+    let finalText = fullText;
+    try {
+      const parsed = cleanAndParseJSON(fullText);
+      const normalized = validateAndNormalizePlan(parsed);
+      finalText = JSON.stringify(normalized);
+      console.log(`[GENERATE] Plano gerado com sucesso: ${normalized.posts?.length || 0} posts, ${normalized.stories?.length || 0} stories`);
+    } catch (parseErr) {
+      console.error('[GENERATE] Erro de parse, enviando texto bruto:', parseErr.message);
+      // Tenta pelo menos remover o markdown
+      finalText = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    }
+
+    res.write(`data: ${JSON.stringify({ type: 'done', fullText: finalText })}\n\n`);
     res.end();
   } catch (e) {
+    console.error('[GENERATE] Erro:', e.message);
     res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
     res.end();
   }
@@ -438,9 +645,9 @@ Retorne APENAS JSON válido com: audit, editorial_pillars, posts (com hooks, scr
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/privacy.html', (req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
-app.get('/app', (req, res) => { 
-  if (!req.session.user) return res.redirect('/'); 
-  res.sendFile(path.join(publicDir, 'app.html')); 
+app.get('/app', (req, res) => {
+  if (!req.session.user) return res.redirect('/');
+  res.sendFile(path.join(publicDir, 'app.html'));
 });
 
 app.use((req, res) => {
