@@ -1,6 +1,6 @@
 # Instagram Marketing Planner — Deploy no Railway
 
-Este projeto é um planejador de marketing para Instagram que utiliza a API da Meta para obter dados reais do perfil e o **Google Gemini 2.0 Flash** para gerar estratégias personalizadas e humanizadas, com controle de orçamento de tokens integrado.
+Este projeto é um planejador de marketing para Instagram que utiliza a API da Meta para obter dados reais do perfil e o **Google Gemini 2.5 Flash** para gerar estratégias personalizadas e humanizadas, com controle de orçamento de tokens integrado.
 
 ## 🚀 Como fazer o Deploy no Railway
 
@@ -58,7 +58,7 @@ O Railway oferece um plano gratuito com **$5 em créditos por mês**, que expira
 *   **Otimize o Código:** Certifique-se de que o seu aplicativo Node.js seja o mais eficiente possível em termos de uso de CPU e memória. Evite operações que consumam muitos recursos desnecessariamente.
 *   **Gerenciamento de Dependências:** Utilize `npm ci` em vez de `npm install` no `Dockerfile` para garantir instalações consistentes e potencialmente mais rápidas, embora para este projeto `npm install` já seja suficiente.
 *   **Desligamento Automático:** O Railway pode suspender serviços inativos para economizar recursos. Esteja ciente de que pode haver um pequeno atraso na inicialização após um período de inatividade.
-*   **Uso da IA (Gemini):** A API do Gemini 2.0 Flash é rápida e eficiente. O sistema possui controle automático de orçamento via `MAX_GEMINI_COST`. Consulte `/api/token-status` para monitorar o consumo em tempo real.
+*   **Uso da IA (Gemini):** A API do Gemini 2.5 Flash é rápida e eficiente. O sistema possui controle automático de orçamento via `MAX_GEMINI_COST`. Consulte `/api/token-status` para monitorar o consumo em tempo real.
 
 ---
 
@@ -73,7 +73,7 @@ O sistema foi atualizado para fornecer análises muito mais profundas:
 
 ## 🛠️ Tecnologias Utilizadas
 - **Backend:** Node.js + Express
-- **IA:** Google Gemini 2.0 Flash (via @google/generative-ai)
+- **IA:** Google Gemini 2.5 Flash (via @google/generative-ai)
 - **API:** Instagram Graph API (v21.0)
 - **Frontend:** HTML5 + TailwindCSS + JavaScript (Vanilla)
 

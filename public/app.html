@@ -517,6 +517,22 @@ async function loadSuggestions(account) {
       body: JSON.stringify({ igId: account.id })
     });
     suggestions = await res.json();
+    if (suggestions && suggestions.error) {
+      console.warn('[SUGGESTIONS] Erro da IA:', suggestions.error);
+      // Mostra aviso se a chave não está configurada
+      if (suggestions.error.includes('GEMINI_API_KEY')) {
+        const banner = document.getElementById('insights-banner');
+        if (banner) {
+          banner.style.display = 'block';
+          banner.style.background = 'linear-gradient(135deg,rgba(226,75,74,.1),rgba(226,75,74,.05))';
+          banner.style.borderColor = 'rgba(226,75,74,.3)';
+          const title = banner.querySelector('.ib-title');
+          const text = document.getElementById('insights-text');
+          if (title) title.textContent = '⚠️ Configuração necessária';
+          if (text) text.textContent = 'A chave GEMINI_API_KEY não está configurada. Acesse o painel do Railway/Render e adicione a variável de ambiente GEMINI_API_KEY com sua chave do Google AI Studio (aistudio.google.com).';
+        }
+      }
+    }
     if (suggestions && !suggestions.error) {
       // Auto-fill fields
       if (suggestions.niche) document.getElementById('p-niche').value = suggestions.niche;
@@ -667,15 +683,16 @@ async function runIntelligence() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ igId:selAccount.id, competitors:document.getElementById('i-competitors').value, niche:suggestions?.niche||selAccount.name, location:document.getElementById('i-location').value, goal:igoal })
     });
-    let fullText = '';
+    let fullText = '', sseError = null;
     const reader = res.body.getReader(), decoder = new TextDecoder();
     while(true) {
       const {done,value} = await reader.read(); if(done) break;
       for(const line of decoder.decode(value).split('\n')) {
-        if(line.startsWith('data: ')) { try{const ev=JSON.parse(line.slice(6)); if(ev.type==='delta') fullText+=ev.text; if(ev.type==='done') fullText=ev.fullText;}catch{} }
+        if(line.startsWith('data: ')) { try{const ev=JSON.parse(line.slice(6)); if(ev.type==='delta') fullText+=ev.text; if(ev.type==='done') fullText=ev.fullText; if(ev.type==='error') sseError=ev.message;}catch{} }
       }
     }
     clearInterval(mt); ld.style.display = 'none';
+    if (sseError) { renderIntelligence({error: sseError}); result.style.display = 'block'; return; }
     let parsed; try{parsed=robustParseJSON(fullText);}catch{parsed={error:fullText};}
     renderIntelligence(parsed); result.style.display = 'block';
   } catch(e) { clearInterval(mt); ld.style.display='none'; toast('Erro: '+e.message); }
@@ -828,11 +845,11 @@ async function generatePlan() {
 
   try {
     const res = await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(planData)});
-    let fullText='';
+    let fullText='', sseError=null;
     const reader=res.body.getReader(),decoder=new TextDecoder();
-    while(true){const{done,value}=await reader.read();if(done)break;for(const line of decoder.decode(value).split('\n')){if(line.startsWith('data: ')){try{const ev=JSON.parse(line.slice(6));if(ev.type==='delta')fullText+=ev.text;if(ev.type==='done')fullText=ev.fullText;}catch{}}}}
+    while(true){const{done,value}=await reader.read();if(done)break;for(const line of decoder.decode(value).split('\n')){if(line.startsWith('data: ')){try{const ev=JSON.parse(line.slice(6));if(ev.type==='delta')fullText+=ev.text;if(ev.type==='done')fullText=ev.fullText;if(ev.type==='error')sseError=ev.message;}catch{}}}}
     clearInterval(timer);steps.forEach(s=>document.getElementById(s).className='lds done');
-    try{rawPlan=robustParseJSON(fullText);}catch(pe){console.error('[PARSE_ERROR]',pe.message,fullText.substring(0,300));rawPlan={error:'Erro ao processar resposta da IA. Tente novamente.'};}
+    if(sseError){rawPlan={error:sseError};}else{try{rawPlan=robustParseJSON(fullText);}catch(pe){console.error('[PARSE_ERROR]',pe.message,fullText.substring(0,300));rawPlan={error:'Erro ao processar resposta da IA. Tente novamente.'};}}
     renderPlan(rawPlan);
     document.getElementById('ld-plan').style.display='none';
     document.getElementById('plan-result').style.display='block';

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
@@ -10,7 +11,13 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Validação da chave Gemini
+if (!process.env.GEMINI_API_KEY) {
+  console.error('[FATAL] GEMINI_API_KEY não está configurada! A IA não funcionará.');
+  console.error('[FATAL] Configure a variável de ambiente GEMINI_API_KEY com sua chave do Google AI Studio.');
+}
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ─── TOKEN TRACKING & COST CONTROL ────────────────────────
 const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GEMINI_COST || '5');
@@ -257,7 +264,9 @@ app.get('/api/token-status', (req, res) => {
     percentage_used: ((monthlyTokensUsed.cost / MAX_MONTHLY_COST) * 100).toFixed(1),
     remaining_budget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
     total_input_tokens: monthlyTokensUsed.input,
-    total_output_tokens: monthlyTokensUsed.output
+    total_output_tokens: monthlyTokensUsed.output,
+    gemini_configured: !!process.env.GEMINI_API_KEY,
+    ig_tokens_configured: IG_TOKENS.length
   });
 });
 
@@ -278,6 +287,7 @@ app.get('/api/debug', async (req, res) => {
 // ─── PROFILE SUGGESTIONS (IA preenche campos) ────────────────
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
   const { igId } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
   if (!account) return res.status(404).json({ error: 'Not found' });
@@ -320,7 +330,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 }`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -420,9 +430,15 @@ app.get('/api/dashboard/:igId', async (req, res) => {
   res.json({ account, periodStats, formatMix, bestHours, bestDays, topPosts, profileScore, engRate, monthlyEvolution, totalMedia: media.length });
 });
 
-// ─── INTELLIGENCE ─────────────────────────────────────────────
+// ─── INTELLIGENCE ─────────────────────────────────────────────────────────
 app.post('/api/intelligence', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  if (!process.env.GEMINI_API_KEY) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}\n\n`);
+    res.end();
+    return;
+  }
   const { igId, competitors, niche, location, goal } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
   if (!account) return res.status(404).json({ error: 'Not found' });
@@ -468,7 +484,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -507,6 +523,12 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
 // ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  if (!process.env.GEMINI_API_KEY) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}\n\n`);
+    res.end();
+    return;
+  }
   const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
 
@@ -603,7 +625,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -656,8 +678,10 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Gemini 2.0 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Instagram Marketing Planner com Gemini 2.5 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
   console.log(`[SERVER] Orçamento mensal: $${MAX_MONTHLY_COST}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);
+  console.log(`[SERVER] GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
+  console.log(`[SERVER] IG_TOKENS: ${IG_TOKENS.length} token(s) configurado(s)`);
 });
