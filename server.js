@@ -11,18 +11,18 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Função de limpeza de tokens (permite caracteres legítimos)
+// Limpeza de tokens (mantém apenas o que é alfanumérico e caracteres permitidos em tokens da Meta)
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
   return raw.split(',')
     .map(t => t.replace(/[\r\n\t\s]/g, '').trim())
-    .filter(t => t.length > 20); 
+    .filter(t => t.length > 10);
 }
 
 const IG_TOKENS = getCleanTokens();
 
 console.log(`[INIT] Servidor iniciando...`);
-console.log(`[INIT] IG_TOKENS encontrados: ${IG_TOKENS.length}`);
+console.log(`[INIT] IG_TOKENS carregados: ${IG_TOKENS.length}`);
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -62,8 +62,10 @@ app.use((req, res, next) => {
 // ─── AUXILIARES ─────────────────────────────────────────────
 async function fetchMedia(userId, token, limit = 20) {
   try {
-    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`;
-    const response = await axios.get(url);
+    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}`;
+    const response = await axios.get(url, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     return response.data.data || [];
   } catch (e) {
     console.error(`[IG] Erro media ${userId}:`, e.response?.data || e.message);
@@ -102,24 +104,23 @@ app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
   const currentTokens = getCleanTokens();
-  console.log(`[AUTH] Validando ${currentTokens.length} tokens...`);
+  console.log(`[AUTH] Validando ${currentTokens.length} tokens via Bearer Auth...`);
   const accounts = [];
   const errors = [];
   
   for (let i = 0; i < currentTokens.length; i++) {
     const token = currentTokens[i];
     try {
-      // DEBUG: Log da URL exata sendo chamada (escondendo parte do token)
-      const testUrl = `https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`;
-      console.log(`[DEBUG] Chamando: https://graph.facebook.com/v21.0/me?...access_token=${token.substring(0, 10)}...`);
-      
-      const me = await axios.get(testUrl);
-      accounts.push({ ...me.data, ig_token: token });
-      console.log(`[AUTH] Token #${i+1} OK: @${me.data.username}`);
+      // Usando Header de Autorização em vez de query param para evitar erro de parsing na URL
+      const response = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      accounts.push({ ...response.data, ig_token: token });
+      console.log(`[AUTH] Token #${i+1} OK: @${response.data.username}`);
     } catch (e) { 
       const errData = e.response?.data?.error || { message: e.message };
       console.error(`[AUTH] Token #${i+1} FALHOU:`, JSON.stringify(errData));
-      errors.push({ tokenIndex: i+1, error: errData.message });
+      errors.push({ index: i + 1, error: errData.message });
     }
   }
   
@@ -127,7 +128,7 @@ app.get('/api/me', async (req, res) => {
   res.json({ logged: true, accounts: accounts, errors: errors });
 });
 
-// Outras rotas (suggestions, intelligence, generate)
+// Outras rotas permanecem iguais...
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
