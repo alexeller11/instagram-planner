@@ -39,7 +39,7 @@ app.use(express.static(publicDir));
 // ─── AUXILIARES ─────────────────────────────────────────────
 async function fetchMedia(userId, token, limit = 20) {
   try {
-    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&access_token=${token}`;
+    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`;
     const response = await axios.get(url);
     return response.data.data || [];
   } catch (e) {
@@ -65,22 +65,26 @@ app.get('/app', (req, res) => {
 });
 
 app.post('/api/auth', (req, res) => {
-  if (IG_TOKENS.length === 0) return res.status(500).json({ error: 'Nenhum token configurado no servidor.' });
+  if (IG_TOKENS.length === 0) return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
   req.session.user = { accounts: [] };
   res.json({ success: true });
 });
 
 app.get('/api/me', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  if (!req.session.user) return res.json({ logged: false });
+  
   const accounts = [];
   for (const token of IG_TOKENS) {
     try {
       const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
       accounts.push({ ...me.data, ig_token: token });
-    } catch (e) { console.error('[AUTH] Erro token:', e.message); }
+    } catch (e) { 
+      console.error('[AUTH] Erro token:', e.response?.data || e.message); 
+    }
   }
+  
   req.session.user.accounts = accounts;
-  res.json(accounts);
+  res.json({ logged: true, accounts: accounts });
 });
 
 // SUGGESTIONS (ANÁLISE DE PERFIL)
