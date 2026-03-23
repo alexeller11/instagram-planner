@@ -15,7 +15,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const publicDir = path.resolve(__dirname);
+const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 console.log(`[SERVER] Diretório público configurado em: ${publicDir}`);
 const isProduction = process.env.NODE_ENV === 'production';
@@ -511,9 +511,12 @@ REGRAS CRÍTICAS:
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/privacy.html', (req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
-app.get('/app', (req, res) => { if (!req.session.user) return res.redirect('/'); res.sendFile(path.join(publicDir, 'app.html')); });
+app.get('/app', (req, res) => { 
+  if (!req.session.user) return res.redirect('/'); 
+  res.sendFile(path.join(publicDir, 'app.html')); 
+});
 
-// Fallback para qualquer outra rota (ajuda a evitar 404 do Railway se o app estiver rodando)
+// Fallback para qualquer outra rota
 app.use((req, res) => {
   console.log(`[404] Rota não encontrada: ${req.url}`);
   res.status(404).sendFile(path.join(publicDir, 'index.html'));
