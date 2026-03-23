@@ -15,7 +15,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const publicDir = fs.existsSync(path.join(__dirname, 'public')) ? path.join(__dirname, 'public') : __dirname;
+const publicDir = __dirname;
 app.use(express.static(publicDir));
 const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
