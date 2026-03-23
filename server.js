@@ -342,7 +342,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 
   try {
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       generationConfig: { responseMimeType: "application/json" }
     });
     const result = await model.generateContent({
@@ -500,7 +500,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       generationConfig: { responseMimeType: "application/json" }
     });
     const stream = await model.generateContentStream({
@@ -644,7 +644,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       generationConfig: { responseMimeType: "application/json" }
     });
     const stream = await model.generateContentStream({
