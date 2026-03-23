@@ -103,8 +103,8 @@ function cleanAndParseJSON(rawText) {
     // Tenta corrigir vírgulas extras antes de } ou ]
     const fixed = text
       .replace(/,\s*([}\]])/g, '$1')
-      .replace(/([{,]\s*)(\w+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`)
-      .replace(/:\s*'([^']*)'/g, ': "$1"');
+      .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`)
+      .replace(/:\s*'([^']*)'/g, (m, p1) => `: "${p1.replace(/"/g, '\\"')}"`);
     try {
       return JSON.parse(fixed);
     } catch (e2) {

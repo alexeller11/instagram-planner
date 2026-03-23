@@ -8,8 +8,7 @@ O Railway é a plataforma recomendada para este projeto devido à sua facilidade
 
 ### 1. Preparar o Repositório
 1. Faça um fork ou clone este repositório para o seu GitHub.
-2. Certifique-se de que os arquivos `Dockerfile` e `railway.json` estão na raiz.
-
+2. Certifique-se de que o arquivo `Dockerfile` está na raiz. O Railway detectará as configurações automaticamente.
 ### 2. Configurar no Meta for Developers
 1. Acesse [Meta for Developers](https://developers.facebook.com/apps/).
 2. Selecione seu App (ou crie um novo do tipo "Consumidor" ou "Business").
