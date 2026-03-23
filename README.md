@@ -83,3 +83,74 @@ Este projeto está sob a licença MIT.
 [1] [Pricing - Railway](https://railway.com/pricing)
 [2] [Railway Pricing 2026: Plans, Costs & Free Options | AISO Tools](https://aisotools.com/pricing/railway)
 [3] [Understanding Your Bill | Railway Docs](https://docs.railway.com/pricing/understanding-your-bill)
+
+
+## ⚙️ Configuração Essencial para o Funcionamento do App
+
+Para que o seu Instagram Planner funcione corretamente, especialmente o login com o Instagram (via Meta API), é crucial configurar duas coisas:
+
+1.  **Variável `SESSION_SECRET` no Railway:** Essencial para a segurança das sessões de utilizador.
+2.  **App da Meta (Facebook for Developers):** Para permitir o login OAuth e o acesso aos dados do Instagram.
+
+---
+
+### Passo a Passo: Configurar `SESSION_SECRET` no Railway
+
+A variável `SESSION_SECRET` é usada pelo Express para assinar os cookies de sessão, garantindo que as sessões dos utilizadores sejam seguras e não possam ser adulteradas. É fundamental que seja uma string longa, aleatória e secreta.
+
+1.  **Gerar um `SESSION_SECRET` Seguro:**
+    *   Podes gerar uma string aleatória online (ex: [gerador de senhas aleatórias](https://www.random.org/strings/?num=1&len=32&digits=on&upperalpha=on&loweralpha=on&unique=on&format=plain&rnd=new)).
+    *   **Exemplo:** `sua-string-secreta-super-longa-e-aleatoria-aqui-1234567890`
+
+2.  **Adicionar ao Railway:**
+    *   Acede ao painel do teu projeto no [Railway](https://railway.app/).
+    *   Vai à secção **Variables**.
+    *   Clica em **New Variable** (ou **Editor Bruto** para adicionar em massa).
+    *   Cria uma nova variável com o nome `SESSION_SECRET` e cola a string gerada no campo **Value**.
+    *   Certifica-te de que a variável está guardada.
+
+---
+
+### Passo a Passo: Configurar o App da Meta (Facebook for Developers)
+
+Esta configuração permite que o teu aplicativo se comunique com a API do Instagram e do Facebook para autenticar utilizadores e aceder aos seus dados (com permissão).
+
+1.  **Aceder ao Painel de Desenvolvedor:**
+    *   Vai a [Meta for Developers](https://developers.facebook.com/apps/) e faz login.
+    *   Seleciona o teu aplicativo (ou cria um novo se ainda não o fizeste, escolhendo o tipo "Consumidor" ou "Business").
+
+2.  **Configurações Básicas do App:**
+    *   No menu lateral, vai a **Configurações** > **Básico**.
+    *   **Domínios do App:** Adiciona o domínio público do teu aplicativo no Railway. Será algo como `seu-app.up.railway.app`.
+    *   **URL da Política de Privacidade:** É recomendado ter uma (podes usar a `privacy.html` do projeto, hospedada em `seu-app.up.railway.app/privacy.html`).
+    *   **URL dos Termos de Serviço:** Opcional, mas recomendado.
+    *   **URL de Exclusão de Dados do Utilizador:** Opcional, mas recomendado.
+    *   **Categoria:** Escolhe uma categoria relevante para o teu app.
+    *   **Guarda as Alterações.**
+
+3.  **Configurações de Login com Facebook (OAuth):**
+    *   No menu lateral, vai a **Login com Facebook** > **Configurações**.
+    *   **URIs de redirecionamento OAuth válidos:** Este é o passo mais crítico para o login funcionar.
+        *   Adiciona a URL completa de callback do teu aplicativo no Railway, que é `https://seu-app.up.railway.app/auth/callback`.
+        *   **Importante:** Substitui `seu-app.up.railway.app` pelo domínio real do teu aplicativo no Railway.
+    *   **Guarda as Alterações.**
+
+4.  **Adicionar Produtos (se ainda não tiveres):**
+    *   No menu lateral, clica em **Adicionar Produto**.
+    *   Adiciona **Login com Facebook** e **Exibição Básica do Instagram** (Instagram Basic Display).
+
+5.  **Configurar Exibição Básica do Instagram:**
+    *   No menu lateral, vai a **Exibição Básica do Instagram** > **Criação de Aplicativo**.
+    *   Cria um novo aplicativo de exibição básica.
+    *   **URIs de redirecionamento OAuth válidos:** Adiciona `https://seu-app.up.railway.app/auth/callback`.
+    *   **URIs de cancelamento de autorização:** Adiciona `https://seu-app.up.railway.app/`.
+    *   **URL da Política de Privacidade:** Adiciona `https://seu-app.up.railway.app/privacy.html`.
+    *   **Guarda as Alterações.**
+
+6.  **Adicionar Testadores (Modo de Desenvolvimento):**
+    *   Se o teu aplicativo ainda estiver em **Modo de Desenvolvimento** (não publicado), precisas de adicionar contas de teste para poder fazer login.
+    *   No menu lateral, vai a **Funções** > **Funções**.
+    *   Na secção **Testadores**, clica em **Adicionar Testadores**.
+    *   Adiciona o teu utilizador do Facebook (e de outros que queiras testar) e pede para aceitarem o convite através das notificações do Facebook.
+
+Após seguir estes passos e o Railway ter feito o redeploy, o teu Instagram Planner deverá estar a funcionar corretamente com o login do Instagram. Se tiveres alguma dúvida ou encontrares algum problema, avisa-me!
