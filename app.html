@@ -631,7 +631,7 @@ async function runIntelligence() {
   const ld = document.getElementById('ld-intel');
   const result = document.getElementById('intel-result');
   ld.style.display = 'block'; result.style.display = 'none';
-  const msgs = ['Analisando o mercado e sazonalidade...','Identificando concorrentes automaticamente...','Mapeando dores e desejos da audiência...','Calculando inteligência financeira...','Gerando recomendações estratégicas...'];
+  const msgs = ['Analisando o comportamento do seu nicho no Brasil...','Identificando oportunidades que seus concorrentes estão perdendo...','Mapeando as dores e desejos reais da sua audiência...','Calculando o potencial de retorno do seu perfil...','Preparando recomendações estratégicas personalizadas...'];
   let mi = 0;
   const mt = setInterval(() => { document.getElementById('ld-intel-msg').textContent = msgs[mi++%msgs.length]; }, 2500);
   const igoal = document.querySelector('#page-intelligence .spill.on')?.textContent || 'Crescer seguidores';
@@ -786,7 +786,7 @@ async function generatePlan() {
   document.getElementById('plan-result').style.display='none';
 
   const steps = ['ls1','ls2','ls3','ls4','ls5','ls6'];
-  const msgs = ['Lendo dados reais do perfil...','Mapeando datas estratégicas de '+getMonth()+'...','Criando '+totalPosts+' posts personalizados...','Escrevendo scripts falados para Reels...','Criando 30 dias de Stories...','Finalizando hashtags e dicas...'];
+  const msgs = ['Analisando seus posts e engajamento real...','Mapeando datas de '+getMonth()+' que fazem sentido para você...','Criando '+totalPosts+' posts com estratégia de funil...','Escrevendo scripts de Reels feitos para serem falados...','Planejando 30 dias de Stories para reter sua audiência...','Finalizando hashtags estratégicas e dicas de ouro...'];
   let si=0;
   const timer = setInterval(()=>{
     if(si>0) document.getElementById(steps[si-1]).className='lds done';
