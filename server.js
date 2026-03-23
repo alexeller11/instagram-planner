@@ -15,8 +15,9 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const publicDir = __dirname;
+const publicDir = path.resolve(__dirname);
 app.use(express.static(publicDir));
+console.log(`[SERVER] Diretório público configurado em: ${publicDir}`);
 const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 app.use(session({
