@@ -252,7 +252,9 @@ app.get('/auth/login', async (req, res) => {
 app.get('/auth/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
 app.get('/api/me', (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
-  res.json({ logged: true, igAccounts: req.session.user.accounts });
+  const accounts = req.session.user.accounts || [];
+  console.log('[API/ME] Retornando', accounts.length, 'contas');
+  res.json({ logged: true, igAccounts: accounts, accounts: accounts });
 });
 
 // ─── TOKEN STATUS ─────────────────────────────────────────────

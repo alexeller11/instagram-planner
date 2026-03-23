@@ -467,8 +467,8 @@ async function init() {
       return;
     }
 
-    const accs = res.igAccounts || [];
-    console.log('[INIT] Accounts found:', accs.length);
+    const accs = res.igAccounts || res.accounts || [];
+    console.log('[INIT] Accounts found:', accs.length, 'Response:', JSON.stringify(res));
 
     if (!accs.length) {
       document.getElementById('dash-content').innerHTML = '<div class="empty-state">Nenhuma conta encontrada.<br>Verifique a variável IG_TOKENS no Render.<br><a href="/auth/login" style="color:var(--brand)">Tentar novamente</a></div>';
@@ -494,6 +494,7 @@ async function init() {
       if (i===0) {
         selAccount = a;
         console.log('[INIT] Selected account:', a.username);
+        loadDash('7d', document.querySelector('.ptab.on'));
         loadSuggestions(a);
       }
     });
