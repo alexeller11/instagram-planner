@@ -100,16 +100,25 @@ function cleanAndParseJSON(rawText) {
   try {
     return JSON.parse(text);
   } catch (e1) {
-    // Tenta corrigir vírgulas extras antes de } ou ]
-    const fixed = text
-      .replace(/,\s*([}\]])/g, '$1')
-      .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`)
-      .replace(/:\s*'([^']*)'/g, (m, p1) => `: "${p1.replace(/"/g, '\\"')}"`);
+    // Tenta corrigir problemas comuns de JSON vindos de LLMs
+    let fixed = text
+      .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"') // Aspas inteligentes
+      .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'") // Aspas simples inteligentes
+      .replace(/,\s*([}\]])/g, '$1') // Vírgulas extras no final de arrays/objetos
+      .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`) // Chaves sem aspas
+      .replace(/:\s*'([^']*)'/g, (m, p1) => `: "${p1.replace(/"/g, '\\"')}"`); // Valores com aspas simples
+    
     try {
       return JSON.parse(fixed);
     } catch (e2) {
-      console.error('[JSON_PARSE_ERROR] Texto original (primeiros 500 chars):', rawText.substring(0, 500));
-      throw new Error(`JSON inválido após limpeza: ${e2.message}`);
+      // Última tentativa: remover quebras de linha dentro de strings (comum em bios/legendas)
+      try {
+        const superFixed = fixed.replace(/: "([^"]*)"/g, (m, p1) => `: "${p1.replace(/\n/g, '\\n')}"`);
+        return JSON.parse(superFixed);
+      } catch (e3) {
+        console.error('[JSON_PARSE_ERROR] Texto original:', rawText);
+        throw new Error(`JSON inválido após limpeza: ${e2.message}`);
+      }
     }
   }
 }
@@ -346,13 +355,14 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
     const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
     const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
     recordTokenUsage(inputTokens, outputTokens);
-    console.log(`[SUGGESTIONS] Resposta bruta (primeiros 200 chars): ${text.substring(0, 200)}`);
+    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
     try {
       const parsed = cleanAndParseJSON(text);
       res.json(validateSuggestions(parsed));
     } catch (parseErr) {
       console.error('[SUGGESTIONS] Erro de parse:', parseErr.message);
-      res.status(500).json({ error: 'Erro ao processar resposta da IA: ' + parseErr.message, raw: text.substring(0, 300) });
+      console.error('[SUGGESTIONS] Texto que falhou no parse:', text);
+      res.status(500).json({ error: 'Erro ao processar resposta da IA: ' + parseErr.message, raw: text });
     }
   } catch (e) {
     console.error('[SUGGESTIONS] Erro Gemini:', e.message);

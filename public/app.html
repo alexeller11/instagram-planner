@@ -515,7 +515,20 @@ async function loadSuggestions(account) {
     suggestions = await res.json();
     if (suggestions && suggestions.error) {
       console.warn('[SUGGESTIONS] Erro da IA:', suggestions.error);
-      // Mostra aviso se a chave não está configurada
+      if (suggestions.raw) console.log('[SUGGESTIONS] Resposta bruta que falhou:', suggestions.raw);
+      
+      const banner = document.getElementById('insights-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.style.background = 'linear-gradient(135deg,rgba(226,75,74,.1),rgba(226,75,74,.05))';
+        banner.style.borderColor = 'rgba(226,75,74,.3)';
+        const title = banner.querySelector('.ib-title');
+        const text = document.getElementById('insights-text');
+        if (title) title.textContent = '⚠️ Erro na análise da IA';
+        if (text) text.textContent = suggestions.error;
+      }
+
+      // Mostra aviso específico se a chave não está configurada
       if (suggestions.error.includes('GEMINI_API_KEY')) {
         const banner = document.getElementById('insights-banner');
         if (banner) {
