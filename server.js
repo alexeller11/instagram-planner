@@ -28,14 +28,19 @@ if (!(process.env.OPENAI_API_KEY || '').trim()) {
   console.log(`[INIT] OpenAI carregada: ${key.substring(0, 7)}...${key.substring(key.length - 4)}`);
 }
 
+// Configuração para Railway/Proxy
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: SESSION_SECRET,
-  resave: false,
+  resave: true, // Forçar a gravação da sessão
   saveUninitialized: true,
+  name: 'ig_planner_session', // Nome personalizado para o cookie
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 horas
   }
 }));
@@ -45,7 +50,7 @@ app.use(express.static(publicDir));
 
 // Middleware de log de requisições
 app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url} - SessionID: ${req.sessionID} - User: ${!!req.session.user}`);
+  console.log(`[REQ] ${req.method} ${req.url} - SessionID: ${req.sessionID} - UserSession: ${!!req.session.user}`);
   next();
 });
 
@@ -75,10 +80,10 @@ app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 app.get('/app', (req, res) => {
   if (!req.session.user) {
-    console.log(`[AUTH] Acesso negado ao /app - Redirecionando para /`);
+    console.log(`[AUTH] Acesso negado ao /app (Sessão vazia) - Redirecionando para /`);
     return res.redirect('/');
   }
-  console.log(`[AUTH] Acesso permitido ao /app`);
+  console.log(`[AUTH] Acesso permitido ao /app para SessionID: ${req.sessionID}`);
   res.sendFile(path.join(publicDir, 'app.html'));
 });
 
@@ -89,8 +94,16 @@ app.post('/api/auth', (req, res) => {
     return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
   }
   req.session.user = { accounts: [] };
-  console.log(`[AUTH] Sessão criada com sucesso para ${req.sessionID}`);
-  res.json({ success: true });
+  
+  // Forçar o salvamento da sessão antes de responder
+  req.session.save((err) => {
+    if (err) {
+      console.error(`[AUTH] Erro ao salvar sessão:`, err);
+      return res.status(500).json({ success: false, error: 'Erro ao criar sessão.' });
+    }
+    console.log(`[AUTH] Sessão salva com sucesso para ${req.sessionID}`);
+    res.json({ success: true });
+  });
 });
 
 app.get('/api/me', async (req, res) => {
