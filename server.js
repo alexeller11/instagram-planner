@@ -10,16 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
-
-// Credenciais Meta
-const FB_APP_ID = process.env.FB_APP_ID;
-const FB_APP_SECRET = process.env.FB_APP_SECRET;
-
-// Tokens legados (opcional)
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
 console.log(`[INIT] Servidor iniciando...`);
 console.log(`[INIT] BASE_URL: ${BASE_URL}`);
+console.log(`[INIT] IG_TOKENS configurados: ${IG_TOKENS.length}`);
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -28,6 +23,9 @@ const openai = new OpenAI({
 
 if (!(process.env.OPENAI_API_KEY || '').trim()) {
   console.error('[FATAL] OPENAI_API_KEY não está configurada!');
+} else {
+  const key = process.env.OPENAI_API_KEY.trim();
+  console.log(`[INIT] OpenAI carregada: ${key.substring(0, 7)}...${key.substring(key.length - 4)}`);
 }
 
 // Configuração para Railway/Proxy
@@ -52,7 +50,7 @@ app.use(express.static(publicDir));
 
 // Middleware de log
 app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url} - Session: ${!!req.session.user}`);
+  console.log(`[REQ] ${req.method} ${req.url} - SessionID: ${req.sessionID} - UserSession: ${!!req.session.user}`);
   next();
 });
 
@@ -77,87 +75,51 @@ function cleanAndParseJSON(rawText) {
   return JSON.parse(text);
 }
 
-// ─── ROTAS DE AUTENTICAÇÃO REAL (OAUTH) ──────────────────────
-
-// 1. Redirecionar para o Facebook
-app.get('/api/auth/facebook', (req, res) => {
-  if (!FB_APP_ID) return res.status(500).send('FB_APP_ID não configurado');
-  const redirectUri = `${BASE_URL}/auth/callback`;
-  const scope = 'instagram_basic,instagram_manage_insights,pages_read_engagement,pages_show_list';
-  const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
-  res.redirect(authUrl);
-});
-
-// 2. Callback do Facebook (Ajustado para /auth/callback)
-app.get('/auth/callback', async (req, res) => {
-  const { code } = req.query;
-  if (!code) return res.redirect('/?error=no_code');
-
-  try {
-    const redirectUri = `${BASE_URL}/auth/callback`;
-    // Trocar código por token de acesso
-    const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
-      params: {
-        client_id: FB_APP_ID,
-        client_secret: FB_APP_SECRET,
-        redirect_uri: redirectUri,
-        code
-      }
-    });
-
-    const accessToken = tokenRes.data.access_token;
-    
-    // Obter contas do Instagram vinculadas às páginas do usuário
-    const pagesRes = await axios.get(`https://graph.facebook.com/v21.0/me/accounts?fields=instagram_business_account{id,username,name,followers_count,media_count,biography,website}&access_token=${accessToken}`);
-    
-    const accounts = pagesRes.data.data
-      .filter(p => p.instagram_business_account)
-      .map(p => ({
-        ...p.instagram_business_account,
-        ig_token: accessToken
-      }));
-
-    if (accounts.length === 0 && IG_TOKENS.length === 0) {
-      return res.redirect('/?error=no_instagram_account');
-    }
-
-    req.session.user = { accounts: accounts };
-    req.session.save(() => res.redirect('/app'));
-
-  } catch (e) {
-    console.error('[AUTH] Erro no callback:', e.response?.data || e.message);
-    res.redirect('/?error=auth_failed');
-  }
-});
-
-// ─── ROTAS DE API ───────────────────────────────────────────
-
+// ─── ROTAS ──────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 app.get('/app', (req, res) => {
-  if (!req.session.user) return res.redirect('/');
+  if (!req.session.user) {
+    console.log(`[AUTH] Acesso negado ao /app - Redirecionando para /`);
+    return res.redirect('/');
+  }
   res.sendFile(path.join(publicDir, 'app.html'));
+});
+
+// ROTA DE LOGIN RÁPIDO (Apenas cria a sessão e redireciona)
+app.post('/api/auth', (req, res) => {
+  console.log(`[AUTH] Tentativa de login rápido via /api/auth`);
+  if (IG_TOKENS.length === 0) {
+    console.error(`[AUTH] Falha: IG_TOKENS não configurados`);
+    return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
+  }
+  req.session.user = { accounts: [] };
+  req.session.save((err) => {
+    if (err) return res.status(500).json({ success: false, error: 'Erro ao criar sessão.' });
+    res.json({ success: true });
+  });
 });
 
 app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
-  if (req.session.user.accounts && req.session.user.accounts.length > 0) {
-    return res.json({ logged: true, accounts: req.session.user.accounts });
-  }
-
+  console.log(`[AUTH] /api/me buscando contas para ${req.sessionID}`);
   const accounts = [];
   for (const token of IG_TOKENS) {
     try {
       const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
       accounts.push({ ...me.data, ig_token: token });
-    } catch (e) { console.error('[AUTH] Erro token legado:', e.message); }
+      console.log(`[AUTH] Conta encontrada: @${me.data.username}`);
+    } catch (e) { 
+      console.error(`[AUTH] Erro ao validar token legado:`, e.response?.data || e.message); 
+    }
   }
   
   req.session.user.accounts = accounts;
   res.json({ logged: true, accounts: accounts });
 });
 
+// Outras rotas permanecem iguais...
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;

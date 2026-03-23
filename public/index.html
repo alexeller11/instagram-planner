@@ -82,11 +82,11 @@ footer{text-align:center;padding-top:2rem;border-top:0.5px solid rgba(255,255,25
     <p class="hero-sub">Conecte seu Instagram, analise seus dados reais e receba um cronograma completo com funil estratégico, scripts de Reels humanizados, Stories do mês e hashtags segmentadas — tudo personalizado para o seu perfil.</p>
 
     <div class="error-banner" id="err-banner">
-      Erro na autenticação. Verifique se o app Meta está configurado corretamente e tente novamente.
+      Erro na autenticação. Verifique se os tokens estão configurados no servidor.
     </div>
 
     <div class="cta-wrap">
-      <a href="/api/auth/facebook" class="btn-main" id="login-btn">
+      <a href="/app" class="btn-main" id="login-btn">
         <span class="ico">📸</span>
         Conectar com Instagram
       </a>
@@ -123,7 +123,7 @@ footer{text-align:center;padding-top:2rem;border-top:0.5px solid rgba(255,255,25
     <div class="feat">
       <div class="feat-icon">📅</div>
       <div class="feat-title">Calendário Visual</div>
-      <div class="feat-desc">Visualize todo o mês com posts agendados e datas comemorativas relevantes para o seu nicho.</div>
+      <div class="feat-desc">Visualize todo o mês com posts agendados e das comemorativas relevantes para o seu nicho.</div>
     </div>
   </div>
 
@@ -161,17 +161,22 @@ footer{text-align:center;padding-top:2rem;border-top:0.5px solid rgba(255,255,25
 </main>
 
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const error = params.get('error');
-  if(error) {
-    const banner = document.getElementById('err-banner');
-    banner.classList.add('show');
-    if (error === 'no_instagram_account') {
-      banner.textContent = 'Nenhuma conta comercial do Instagram vinculada às suas páginas do Facebook foi encontrada.';
-    } else if (error === 'auth_failed') {
-      banner.textContent = 'A autenticação com o Facebook falhou. Tente novamente.';
-    }
-  }
+  document.getElementById('login-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    fetch('/api/auth', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) window.location.href = '/app';
+        else {
+          const banner = document.getElementById('err-banner');
+          banner.classList.add('show');
+          banner.textContent = 'Erro: ' + (d.error || 'Verifique os tokens no servidor.');
+        }
+      })
+      .catch(err => {
+        alert('Erro ao conectar com o servidor.');
+      });
+  });
 </script>
 </body>
 </html>
