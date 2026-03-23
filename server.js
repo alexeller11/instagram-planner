@@ -519,9 +519,8 @@ app.use((req, res) => {
   res.status(404).sendFile(path.join(publicDir, 'index.html'));
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  const actualPort = server.address().port;
-  console.log(`🚀 Social Planner v4 rodando em http://0.0.0.0:${actualPort}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Social Planner v4 rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);
 });

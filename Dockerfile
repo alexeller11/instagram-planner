@@ -13,5 +13,8 @@ RUN npm install --production
 # Copiar o restante dos arquivos do projeto
 COPY . .
 
+# Expor a porta 3000
+EXPOSE 3000
+
 # Comando para iniciar o servidor
 CMD ["npm", "start"]
