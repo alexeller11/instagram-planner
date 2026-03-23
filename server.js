@@ -5,6 +5,7 @@ const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,8 +22,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ─── TOKEN TRACKING & COST CONTROL ────────────────────────
 const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GEMINI_COST || '5');
-const COST_PER_1M_INPUT = 0.075;
-const COST_PER_1M_OUTPUT = 0.30;
+const COST_PER_1M_INPUT = 0.075; // Gemini 1.5 Flash input
+const COST_PER_1M_OUTPUT = 0.30;  // Gemini 1.5 Flash output
 let monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
 let lastResetDate = new Date().toDateString();
 
@@ -341,7 +342,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 }`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -496,7 +497,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -637,7 +638,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -676,6 +677,60 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
   }
 });
 
+// ─── EXPORT PDF ────────────────────────────────────────────────
+app.post('/api/export-pdf', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  const { plan, username } = req.body;
+  try {
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const filename = `plano_${username}_${Date.now()}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    doc.pipe(res);
+    doc.fontSize(24).font('Helvetica-Bold').text('Plano Estratégico Instagram', { align: 'center' });
+    doc.fontSize(14).font('Helvetica').text(`@${username}`, { align: 'center' });
+    doc.fontSize(10).fillColor('#999').text(new Date().toLocaleDateString('pt-BR'), { align: 'center' });
+    doc.moveDown(1);
+    if (plan.audit) {
+      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('📊 Auditoria');
+      doc.fontSize(11).font('Helvetica');
+      if (plan.audit.summary) doc.text(`Resumo: ${plan.audit.summary}`, { width: 500 });
+      if (plan.audit.month_strategy) doc.text(`Estratégia: ${plan.audit.month_strategy}`, { width: 500 });
+      doc.moveDown(0.5);
+    }
+    if (plan.posts && plan.posts.length) {
+      doc.fontSize(16).font('Helvetica-Bold').text('📅 Plano de Posts');
+      plan.posts.slice(0, 10).forEach((p) => {
+        doc.fontSize(12).fillColor('#ff6b35').font('Helvetica-Bold').text(`Post #${p.n} - ${p.format}`);
+        doc.fontSize(10).fillColor('#000').font('Helvetica');
+        doc.text(`Título: ${p.title || ''}`);
+        doc.text(`Gancho: ${p.hook || ''}`);
+        doc.text(`Legenda: ${(p.copy || '').substring(0, 150)}...`);
+        if (p.cta) doc.text(`CTA: ${p.cta}`);
+        doc.moveDown(0.3);
+      });
+      if (plan.posts.length > 10) doc.fontSize(10).fillColor('#999').text(`... e mais ${plan.posts.length - 10} posts`);
+      doc.moveDown(0.5);
+    }
+    if (plan.hashtags) {
+      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('🔍 Hashtags');
+      doc.fontSize(10).font('Helvetica');
+      if (plan.hashtags.niche && plan.hashtags.niche.length) doc.text(`Nicho: ${plan.hashtags.niche.slice(0, 5).join(', ')}`);
+      if (plan.hashtags.strategy) doc.text(`Estratégia: ${plan.hashtags.strategy.substring(0, 200)}`);
+      doc.moveDown(0.5);
+    }
+    if (plan.tips && plan.tips.length) {
+      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('💡 Dicas');
+      plan.tips.slice(0, 5).forEach(t => doc.fontSize(10).font('Helvetica').text(`${t.icon || '•'} ${t.title}: ${t.text}`, { width: 500 }));
+    }
+    doc.fontSize(9).fillColor('#999').text('Gerado por Instagram Marketing Planner', { align: 'center' });
+    doc.end();
+  } catch (e) {
+    console.error('[PDF_EXPORT] Erro:', e.message);
+    res.status(500).json({ error: 'Erro ao gerar PDF: ' + e.message });
+  }
+});
+
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/privacy.html', (req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
@@ -690,7 +745,7 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Gemini 2.5 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Instagram Marketing Planner com Gemini 1.5 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
   console.log(`[SERVER] Orçamento mensal: $${MAX_MONTHLY_COST}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);

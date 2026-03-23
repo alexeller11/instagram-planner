@@ -399,7 +399,8 @@ select option{background:#1c1a35}
           <div class="rs" id="rs-tips"><div class="rbox"><div class="tip-list" id="rb-tips"></div></div></div>
           <div class="act-bar">
             <button class="act-btn" onclick="copyAll()">📋 Copiar</button>
-            <button class="act-btn" onclick="exportTxt()">📄 Exportar</button>
+            <button class="act-btn" onclick="exportTxt()">📄 Exportar TXT</button>
+            <button class="act-btn" onclick="exportPDF()">📕 Exportar PDF</button>
             <button class="act-btn primary" onclick="savePlan()">💾 Salvar</button>
             <button class="act-btn" onclick="newPlan()">+ Novo</button>
           </div>
@@ -955,7 +956,7 @@ function renderPlan(data) {
           <div class="post-title">POST #${p.n} — ${p.day_suggestion} (Semana ${p.week})</div>
           <div style="font-size:13px;font-weight:700">${p.title}</div>
         </div>
-        <span class="fmt ${p.format==='Reels'?'fmt-r':p.format==='Carrossel'?'fmt-c':'fmt-f'}">${p.format}</span>
+        <div style="display:flex;gap:.5rem;align-items:center"><span class="fmt ${p.format==='Reels'?'fmt-r':p.format==='Carrossel'?'fmt-c':'fmt-f'}">${p.format}</span><button onclick="copyPost(${p.n})" style="font-size:10px;padding:4px 8px;border-radius:6px;border:.5px solid rgba(255,107,53,.3);background:rgba(255,107,53,.1);color:#ffb38a;cursor:pointer;transition:all .2s">📋 Copiar</button></div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">🎯 Objetivo: ${p.objective} | 🏛️ Pilar: ${p.pillar}</div>
       <div style="background:rgba(255,255,255,.03);padding:.75rem;border-radius:8px;margin-bottom:.6rem">
@@ -972,11 +973,11 @@ function renderPlan(data) {
   // Stories
   document.getElementById('rb-stories').innerHTML = (data.stories || []).map(s => `
     <div class="story-card">
-      <div class="sc-head">
+      <div class="sc-head" style="justify-content:space-between">
         <div class="sc-num">${s.day.replace(/\D/g,'')}</div>
         <div>
           <div style="font-size:13px;font-weight:700">${s.theme}</div>
-          <div style="font-size:10px;color:var(--muted)">${s.objective} · <span class="funnel-stage ${s.funnel_stage==='topo'?'fs-top':s.funnel_stage==='meio'?'fs-mid':'fs-bot'}">${s.funnel_stage}</span></div>
+          </div><button onclick="copyStory(${s.day.replace(/\D/g,'')})" style="font-size:10px;padding:4px 8px;border-radius:6px;border:.5px solid rgba(255,107,53,.3);background:rgba(255,107,53,.1);color:#ffb38a;cursor:pointer">📋 Copiar</button></div><div style="font-size:10px;color:var(--muted)">${s.objective} · <span class="funnel-stage ${s.funnel_stage==='topo'?'fs-top':s.funnel_stage==='meio'?'fs-mid':'fs-bot'}">${s.funnel_stage}</span></div>
         </div>
       </div>
       <div class="sc-slides">
@@ -1058,6 +1059,37 @@ function switchRtab(id, btn) {
   document.querySelectorAll('.rs').forEach(r=>r.classList.remove('on'));
   btn.classList.add('on');
   document.getElementById('rs-'+id).classList.add('on');
+}
+
+function copyPost(postNum) {
+
+function copyStory(dayNum) {
+  if (!rawPlan || !rawPlan.stories) return;
+  const story = rawPlan.stories.find(s => parseInt(s.day.replace(/\D/g,"")) === dayNum);
+  if (!story) return;
+  let txt = `STORY - ${story.day}\n`;
+  txt += `Tema: ${story.theme}\n`;
+  txt += `Objetivo: ${story.objective}\n`;
+  txt += `Etapa do Funil: ${story.funnel_stage}\n\n`;
+  (story.slides || []).forEach(sl => {
+    txt += `Slide ${sl.n}: ${sl.text}\n`;
+    txt += `Ação: ${sl.action}\n`;
+    txt += `Detalhe: ${sl.copy_detail}\n\n`;
+  });
+  navigator.clipboard.writeText(txt);
+  toast(`✅ Story ${dayNum} copiado!`);
+}
+  if (!rawPlan || !rawPlan.posts) return;
+  const post = rawPlan.posts.find(p => p.n === postNum);
+  if (!post) return;
+  let txt = `POST #${post.n} - ${post.format}\n`;
+  txt += `Título: ${post.title}\n`;
+  txt += `Gancho: ${post.hook}\n`;
+  txt += `Legenda:\n${post.copy}\n`;
+  txt += `CTA: ${post.cta}\n`;
+  if (post.script) txt += `Roteiro: ${post.script}\n`;
+  navigator.clipboard.writeText(txt);
+  toast(`✅ Post #${postNum} copiado!`);
 }
 
 function copyTag(el) {
@@ -1157,6 +1189,36 @@ function newPlan() {
   }
 }
 
+
+function exportPDF() {
+  if (!rawPlan || !selAccount) { toast('Nenhum plano para exportar'); return; }
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF...';
+  
+  fetch('/api/export-pdf', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ plan: rawPlan, username: selAccount.username })
+  })
+  .then(r => r.blob())
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plano_${selAccount.username}_${new Date().getTime()}.pdf`;
+    a.click();
+    toast('📕 PDF exportado com sucesso!');
+  })
+  .catch(e => {
+    console.error('Erro ao exportar PDF:', e);
+    toast('❌ Erro ao gerar PDF');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = '📕 Exportar PDF';
+  });
+}
 init();
 </script>
 </body>

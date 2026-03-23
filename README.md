@@ -1,6 +1,12 @@
 # Instagram Marketing Planner — Deploy no Railway
 
-Este projeto é um planejador de marketing para Instagram que utiliza a API da Meta para obter dados reais do perfil e o **Google Gemini Pro (v1.0)** para gerar estratégias personalizadas e humanizadas, com controle de orçamento de tokens integrado.
+Este projeto é um planejador de marketing para Instagram que utiliza a API da Meta para obter dados reais do perfil e o **Google Gemini 1.5 Flash** para gerar estratégias personalizadas e humanizadas, com controle de orçamento de tokens integrado.
+
+### ✨ Novidades na v3.0.0
+- **Gemini 1.5 Flash**: Modelo mais rápido e eficiente
+- **Exportação em PDF**: Gere planos em formato PDF profissional
+- **Cópia Individual**: Copie posts e stories individuais com um clique
+- **Interface Melhorada**: Botões de ação mais intuitivos
 
 ## 🚀 Como fazer o Deploy no Railway
 
@@ -33,7 +39,7 @@ No painel do seu projeto no Railway, vá em **Variables** e adicione:
 |----------|-----------|
 | `PORT` | `3000` |
 | `SESSION_SECRET` | Uma string aleatória para segurança da sessão |
-| `GEMINI_API_KEY` | Sua chave do [Google AI Studio](https://aistudio.google.com/) |
+| `GEMINI_API_KEY` | Sua chave do [Google AI Studio](https://aistudio.google.com/) (Gemini 1.5 Flash) |
 | `MAX_GEMINI_COST` | Orçamento máximo mensal em dólares (padrão: `5`) |
 | `IG_TOKENS` | Tokens de acesso do Instagram (opcional, separados por vírgula) |
 | `BASE_URL` | A URL pública gerada pelo Railway (ex: `https://seu-app.up.railway.app`) |
