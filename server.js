@@ -11,11 +11,9 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Função de limpeza CORRETA de tokens
+// Função de limpeza de tokens (permite caracteres legítimos)
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
-  // Divide por vírgula e remove apenas caracteres de controle (espaços, quebras de linha)
-  // Mantém caracteres especiais legítimos como _ (underscore) e - (hífen) que existem em tokens da Meta
   return raw.split(',')
     .map(t => t.replace(/[\r\n\t\s]/g, '').trim())
     .filter(t => t.length > 20); 
@@ -25,11 +23,6 @@ const IG_TOKENS = getCleanTokens();
 
 console.log(`[INIT] Servidor iniciando...`);
 console.log(`[INIT] IG_TOKENS encontrados: ${IG_TOKENS.length}`);
-
-// LOG DE INSPEÇÃO para o usuário
-IG_TOKENS.forEach((t, i) => {
-  console.log(`[DEBUG] Token #${i+1}: Tamanho=${t.length} | Início=${t.substring(0, 10)}... | Fim=...${t.substring(t.length - 5)}`);
-});
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -111,21 +104,27 @@ app.get('/api/me', async (req, res) => {
   const currentTokens = getCleanTokens();
   console.log(`[AUTH] Validando ${currentTokens.length} tokens...`);
   const accounts = [];
+  const errors = [];
   
   for (let i = 0; i < currentTokens.length; i++) {
     const token = currentTokens[i];
     try {
-      const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
+      // DEBUG: Log da URL exata sendo chamada (escondendo parte do token)
+      const testUrl = `https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`;
+      console.log(`[DEBUG] Chamando: https://graph.facebook.com/v21.0/me?...access_token=${token.substring(0, 10)}...`);
+      
+      const me = await axios.get(testUrl);
       accounts.push({ ...me.data, ig_token: token });
       console.log(`[AUTH] Token #${i+1} OK: @${me.data.username}`);
     } catch (e) { 
-      const errMsg = e.response?.data?.error?.message || e.message;
-      console.error(`[AUTH] Token #${i+1} FALHOU (${token.substring(0, 10)}...): ${errMsg}`); 
+      const errData = e.response?.data?.error || { message: e.message };
+      console.error(`[AUTH] Token #${i+1} FALHOU:`, JSON.stringify(errData));
+      errors.push({ tokenIndex: i+1, error: errData.message });
     }
   }
   
   req.session.user.accounts = accounts;
-  res.json({ logged: true, accounts: accounts });
+  res.json({ logged: true, accounts: accounts, errors: errors });
 });
 
 // Outras rotas (suggestions, intelligence, generate)
