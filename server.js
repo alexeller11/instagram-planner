@@ -12,6 +12,10 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
+console.log(`[INIT] Servidor iniciando...`);
+console.log(`[INIT] BASE_URL: ${BASE_URL}`);
+console.log(`[INIT] IG_TOKENS configurados: ${IG_TOKENS.length}`);
+
 // Configuração OpenAI
 const openai = new OpenAI({
   apiKey: (process.env.OPENAI_API_KEY || '').trim()
@@ -30,11 +34,20 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
 }));
 
 const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
+
+// Middleware de log de requisições
+app.use((req, res, next) => {
+  console.log(`[REQ] ${req.method} ${req.url} - SessionID: ${req.sessionID} - User: ${!!req.session.user}`);
+  next();
+});
 
 // ─── AUXILIARES ─────────────────────────────────────────────
 async function fetchMedia(userId, token, limit = 20) {
@@ -43,7 +56,7 @@ async function fetchMedia(userId, token, limit = 20) {
     const response = await axios.get(url);
     return response.data.data || [];
   } catch (e) {
-    console.error(`[IG] Erro ao buscar media para ${userId}:`, e.message);
+    console.error(`[IG] Erro ao buscar media para ${userId}:`, e.response?.data || e.message);
     return [];
   }
 }
@@ -59,27 +72,42 @@ function cleanAndParseJSON(rawText) {
 
 // ─── ROTAS ──────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+
 app.get('/app', (req, res) => {
-  if (!req.session.user) return res.redirect('/');
+  if (!req.session.user) {
+    console.log(`[AUTH] Acesso negado ao /app - Redirecionando para /`);
+    return res.redirect('/');
+  }
+  console.log(`[AUTH] Acesso permitido ao /app`);
   res.sendFile(path.join(publicDir, 'app.html'));
 });
 
 app.post('/api/auth', (req, res) => {
-  if (IG_TOKENS.length === 0) return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
+  console.log(`[AUTH] Tentativa de login via /api/auth`);
+  if (IG_TOKENS.length === 0) {
+    console.error(`[AUTH] Falha: IG_TOKENS não configurados`);
+    return res.status(500).json({ success: false, error: 'Nenhum token configurado no servidor.' });
+  }
   req.session.user = { accounts: [] };
+  console.log(`[AUTH] Sessão criada com sucesso para ${req.sessionID}`);
   res.json({ success: true });
 });
 
 app.get('/api/me', async (req, res) => {
-  if (!req.session.user) return res.json({ logged: false });
+  if (!req.session.user) {
+    console.log(`[AUTH] /api/me chamado sem sessão ativa`);
+    return res.json({ logged: false });
+  }
   
+  console.log(`[AUTH] /api/me buscando contas para ${req.sessionID}`);
   const accounts = [];
   for (const token of IG_TOKENS) {
     try {
       const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
       accounts.push({ ...me.data, ig_token: token });
+      console.log(`[AUTH] Conta encontrada: @${me.data.username}`);
     } catch (e) { 
-      console.error('[AUTH] Erro token:', e.response?.data || e.message); 
+      console.error(`[AUTH] Erro ao validar token:`, e.response?.data || e.message); 
     }
   }
   
