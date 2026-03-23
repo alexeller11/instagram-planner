@@ -86,7 +86,7 @@ footer{text-align:center;padding-top:2rem;border-top:0.5px solid rgba(255,255,25
     </div>
 
     <div class="cta-wrap">
-      <a href="/app" class="btn-main" id="login-btn">
+      <a href="/api/auth/facebook" class="btn-main" id="login-btn">
         <span class="ico">📸</span>
         Conectar com Instagram
       </a>
@@ -162,24 +162,16 @@ footer{text-align:center;padding-top:2rem;border-top:0.5px solid rgba(255,255,25
 
 <script>
   const params = new URLSearchParams(window.location.search);
-  if(params.get('error')) document.getElementById('err-banner').classList.add('show');
-
-  document.getElementById('login-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-    fetch('/api/auth', { method: 'POST' })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) window.location.href = '/app';
-        else {
-          console.error('Auth failed:', d.error);
-          alert('Erro na autenticação: ' + (d.error || 'Verifique os tokens no servidor.'));
-        }
-      })
-      .catch(err => {
-        console.error('Auth error:', err);
-        alert('Erro ao conectar com o servidor.');
-      });
-  });
+  const error = params.get('error');
+  if(error) {
+    const banner = document.getElementById('err-banner');
+    banner.classList.add('show');
+    if (error === 'no_instagram_account') {
+      banner.textContent = 'Nenhuma conta comercial do Instagram vinculada às suas páginas do Facebook foi encontrada.';
+    } else if (error === 'auth_failed') {
+      banner.textContent = 'A autenticação com o Facebook falhou. Tente novamente.';
+    }
+  }
 </script>
 </body>
 </html>
