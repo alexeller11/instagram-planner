@@ -39,7 +39,7 @@ app.use(express.static(publicDir));
 // ─── AUXILIARES ─────────────────────────────────────────────
 async function fetchMedia(userId, token, limit = 20) {
   try {
-    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`;
+    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&access_token=${token}`;
     const response = await axios.get(url);
     return response.data.data || [];
   } catch (e) {
@@ -93,15 +93,7 @@ app.post('/api/suggestions', async (req, res) => {
   const media = await fetchMedia(account.id, account.ig_token, 10);
   const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
 
-  const prompt = `Você é um estrategista de Instagram de alto nível. Analise este perfil e dê sugestões HUMANAS e ESTRATÉGICAS.
-  PERFIL: @${account.username} (${account.name})
-  BIO: ${account.biography}
-  ÚLTIMAS LEGENDAS: ${captions}
-  
-  PROIBIDO: Começar frases com "Você sabia", "Já pensou", "Descubra como".
-  FOCO: Linguagem natural brasileira, direta, como um consultor conversando no WhatsApp. Use neuromarketing.
-  
-  Retorne JSON: { "niche": "...", "audience": "...", "suggestions": ["..."], "bio_options": ["..."], "insights": "..." }`;
+  const prompt = `Você é um estrategista de Instagram de alto nível. Analise este perfil e dê sugestões HUMANAS e ESTRATÉGICAS.\n  PERFIL: @${account.username} (${account.name})\n  BIO: ${account.biography}\n  ÚLTIMAS LEGENDAS: ${captions}\n  \n  PROIBIDO: Começar frases com "Você sabia", "Já pensou", "Descubra como".\n  FOCO: Linguagem natural brasileira, direta, como um consultor conversando no WhatsApp. Use neuromarketing.\n  \n  Retorne JSON: { "niche": "...", "audience": "...", "suggestions": ["..."], "bio_options": ["..."], "insights": "..." }`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -118,12 +110,7 @@ app.post('/api/intelligence', async (req, res) => {
   const { igId, competitors, niche, location, goal } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
   
-  const prompt = `Analise o mercado para @${account.username} no nicho ${niche} em ${location}.
-  CONCORRENTES: ${competitors || 'Analise os 5 principais do setor automaticamente'}.
-  OBJETIVO: ${goal}
-  
-  ESTILO: Humanizado, sem clichês de IA. Analise GAPS de mercado que ninguém está explorando. Seja disruptivo.
-  Retorne JSON com: market_intelligence, audience_intelligence, competitive_intelligence, financial_intelligence, bio_optimized, strategic_score.`;
+  const prompt = `Analise o mercado para @${account.username} no nicho ${niche} em ${location}.\n  CONCORRENTES: ${competitors || 'Analise os 5 principais do setor automaticamente'}.\n  OBJETIVO: ${goal}\n  \n  ESTILO: Humanizado, sem clichês de IA. Analise GAPS de mercado que ninguém está explorando. Seja disruptivo.\n  Retorne JSON com: market_intelligence, audience_intelligence, competitive_intelligence, financial_intelligence, bio_optimized, strategic_score.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -140,16 +127,7 @@ app.post('/api/generate', async (req, res) => {
   const { igId, posts, goal, tone, extra, objections, audience, niche } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
 
-  const prompt = `Crie um plano de 30 dias para @${account.username}.
-  NICHO: ${niche} | OBJETIVO: ${goal} | TOM: ${tone} | OBJEÇÕES: ${objections}
-  
-  REGRAS DE OURO:
-  1. NUNCA comece um post com "Você sabia", "Sabia que", "Ei você". 
-  2. HUMANIZAÇÃO TOTAL: Use histórias reais, ganchos emocionais (medo, desejo, surpresa) e linguagem falada brasileira.
-  3. ANÁLISE DE CONCORRENTES: Diferencie o conteúdo do que todo mundo já faz. Se todos fazem "dicas", você faz "o erro que ninguém te conta".
-  4. OBEDEÇA AO TOM: Se o tom é "${tone}", cada palavra deve refletir isso.
-  
-  Retorne JSON: { "audit": {...}, "posts": [...], "stories": [...], "tips": [...] }`;
+  const prompt = `Crie um plano de 30 dias para @${account.username}.\n  NICHO: ${niche} | OBJETIVO: ${goal} | TOM: ${tone} | OBJEÇÕES: ${objections}\n  \n  REGRAS DE OURO:\n  1. NUNCA comece um post com "Você sabia", "Sabia que", "Ei você". \n  2. HUMANIZAÇÃO TOTAL: Use histórias reais, ganchos emocionais (medo, desejo, surpresa) e linguagem falada brasileira.\n  3. ANÁLISE DE CONCORRENTES: Diferencie o conteúdo do que todo mundo já faz. Se todos fazem "dicas", você faz "o erro que ninguém te conta".\n  4. OBEDEÇA AO TOM: Se o tom é "${tone}", cada palavra deve refletir isso.\n  \n  Retorne JSON: { "audit": {...}, "posts": [...], "stories": [...], "tips": [...] }`;
 
   try {
     const response = await openai.chat.completions.create({
