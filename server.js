@@ -11,21 +11,28 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Função para obter tokens limpos de forma robusta
+// Função de limpeza RADICAL de tokens
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
-  // 1. Remove quebras de linha e retornos de carro
-  // 2. Divide por vírgula
-  // 3. Remove qualquer caractere que não seja alfanumérico básico de cada token (limpeza radical)
+  // Divide por vírgula e limpa cada token individualmente
   return raw.split(',')
-    .map(t => t.replace(/[\r\n\t\s]/g, '').trim()) 
-    .filter(t => t.length > 10); // Apenas tokens que pareçam válidos
+    .map(t => {
+      // Remove ABSOLUTAMENTE tudo que não for alfanumérico (letras e números)
+      // Tokens do IG/FB são alfanuméricos. Isso remove espaços, \n, \r, aspas, etc.
+      return t.replace(/[^a-zA-Z0-9]/g, '').trim();
+    })
+    .filter(t => t.length > 20); // Filtra apenas o que parece ser um token real
 }
 
 const IG_TOKENS = getCleanTokens();
 
 console.log(`[INIT] Servidor iniciando...`);
-console.log(`[INIT] IG_TOKENS carregados: ${IG_TOKENS.length}`);
+console.log(`[INIT] IG_TOKENS encontrados: ${IG_TOKENS.length}`);
+
+// LOG DE INSPEÇÃO (Apenas os primeiros 5 caracteres para segurança)
+IG_TOKENS.forEach((t, i) => {
+  console.log(`[DEBUG] Token #${i+1}: Tamanho=${t.length} | Início=${t.substring(0, 10)}... | Fim=...${t.substring(t.length - 5)}`);
+});
 
 // Configuração OpenAI
 const openai = new OpenAI({
@@ -116,7 +123,7 @@ app.get('/api/me', async (req, res) => {
       console.log(`[AUTH] Token #${i+1} OK: @${me.data.username}`);
     } catch (e) { 
       const errMsg = e.response?.data?.error?.message || e.message;
-      console.error(`[AUTH] Token #${i+1} FALHOU: ${errMsg}`); 
+      console.error(`[AUTH] Token #${i+1} FALHOU (${token.substring(0, 10)}...): ${errMsg}`); 
     }
   }
   
