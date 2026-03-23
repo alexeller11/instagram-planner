@@ -40,7 +40,6 @@ No painel do seu projeto no Railway, vá em **Variables** e adicione:
 | `PORT` | `3000` |
 | `SESSION_SECRET` | Uma string aleatória para segurança da sessão |
 | `GROQ_API_KEY` | Sua chave do [Groq Console](https://console.groq.com/) |
-| `MAX_GROQ_COST` | Orçamento máximo mensal em dólares (padrão: `5`) |
 | `IG_TOKENS` | Tokens de acesso do Instagram (opcional, separados por vírgula) |
 | `BASE_URL` | A URL pública gerada pelo Railway (ex: `https://seu-app.up.railway.app`) |
 | `NODE_ENV` | `production` |

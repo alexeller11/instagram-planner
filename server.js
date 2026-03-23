@@ -42,9 +42,7 @@ function calculateCost(inputTokens, outputTokens) {
   return inputCost + outputCost;
 }
 
-function checkTokenBudget(estimatedOutputTokens) {
-  resetMonthlyIfNeeded();
-  const estimatedCost = calculateCost(0, estimatedOutputTokens);
+function checkTokenBudget(estimatedOutputTokens) {  const estimatedCost = calculateCost(0, estimatedOutputTokens);
   const projectedCost = monthlyTokensUsed.cost + estimatedCost;
   return {
     canProceed: projectedCost <= MAX_MONTHLY_COST,
@@ -55,9 +53,7 @@ function checkTokenBudget(estimatedOutputTokens) {
   };
 }
 
-function recordTokenUsage(inputTokens, outputTokens) {
-  resetMonthlyIfNeeded();
-  const cost = calculateCost(inputTokens, outputTokens);
+function recordTokenUsage(inputTokens, outputTokens) {  const cost = calculateCost(inputTokens, outputTokens);
   monthlyTokensUsed.input += inputTokens;
   monthlyTokensUsed.output += outputTokens;
   monthlyTokensUsed.cost += cost;
@@ -269,17 +265,11 @@ app.get('/api/me', (req, res) => {
 });
 
 // ─── TOKEN STATUS ─────────────────────────────────────────────
-app.get('/api/token-status', (req, res) => {
-  resetMonthlyIfNeeded();
+app.get('/api/status', (req, res) => {
   res.json({
-    current_cost: monthlyTokensUsed.cost.toFixed(4),
-    max_budget: MAX_MONTHLY_COST.toFixed(4),
-    percentage_used: ((monthlyTokensUsed.cost / MAX_MONTHLY_COST) * 100).toFixed(1),
-    remaining_budget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
-    total_input_tokens: monthlyTokensUsed.input,
-    total_output_tokens: monthlyTokensUsed.output,
     groq_configured: !!process.env.GROQ_API_KEY,
-    ig_tokens_configured: IG_TOKENS.length
+    ig_tokens_configured: IG_TOKENS.length,
+    status: 'OK - Groq (Llama 3) com camada gratuita'
   });
 });
 
@@ -303,10 +293,7 @@ app.post('/api/suggestions', async (req, res) => {
   if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
   const { igId } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-
-  const budgetCheck = checkTokenBudget(1000);
-  if (!budgetCheck.canProceed) return res.status(429).json({ error: 'Orçamento de tokens esgotado', budget: budgetCheck });
+  if (!account) return res.status(404).json({ error: 'Not found' });  if (!budgetCheck.canProceed) return res.status(429).json({ error: 'Orçamento de tokens esgotado', budget: budgetCheck });
 
   const media = await fetchMedia(account.id, account.ig_token, 10);
   const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
@@ -351,9 +338,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
     });
     const text = message.content[0].type === 'text' ? message.content[0].text : '';
     const inputTokens = message.usage?.input_tokens || 0;
-    const outputTokens = message.usage?.output_tokens || 0;
-    recordTokenUsage(inputTokens, outputTokens);
-    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
+    const outputTokens = message.usage?.output_tokens || 0;    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
     try {
       const parsed = cleanAndParseJSON(text);
       res.json(validateSuggestions(parsed));
@@ -453,10 +438,7 @@ app.post('/api/intelligence', async (req, res) => {
   }
   const { igId, competitors, niche, location, goal } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-
-  const budgetCheck = checkTokenBudget(5000);
-  if (!budgetCheck.canProceed) {
+  if (!account) return res.status(404).json({ error: 'Not found' });  if (!budgetCheck.canProceed) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
     res.end();
@@ -541,10 +523,7 @@ app.post('/api/generate', async (req, res) => {
     return;
   }
   const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-
-  const budgetCheck = checkTokenBudget(8000);
-  if (!budgetCheck.canProceed) {
+  const account = req.session.user.accounts.find(a => a.id === igId);  if (!budgetCheck.canProceed) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
     res.end();
