@@ -14,11 +14,15 @@ const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') 
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
 // Validação da chave Groq
-if (!(process.env.GROQ_API_KEY || '').trim()) {
+const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
+if (!GROQ_KEY) {
   console.error('[FATAL] GROQ_API_KEY não está configurada! A IA não funcionará.');
   console.error('[FATAL] Configure a variável de ambiente GROQ_API_KEY com sua chave do Groq Console.');
+} else {
+  const keyPreview = GROQ_KEY.substring(0, 10) + '...' + GROQ_KEY.substring(GROQ_KEY.length - 10);
+  console.log(`[INIT] Chave Groq carregada: ${keyPreview}`);
 }
-const groq = new Groq({ apiKey: (process.env.GROQ_API_KEY || '').trim() });
+const groq = new Groq({ apiKey: GROQ_KEY });
 
 // ─── TOKEN TRACKING & COST CONTROL ────────────────────────
 const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GROQ_COST || '5');
@@ -331,7 +335,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 
   try {
     const message = await groq.chat.completions.create({
-      model: 'mixtral-8x7b-32768',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2048
@@ -474,7 +478,7 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
     const message = await groq.chat.completions.create({
-      model: 'mixtral-8x7b-32768',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.75,
       max_tokens: 8192
@@ -600,7 +604,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
       const message = await groq.chat.completions.create({
-      model: 'mixtral-8x7b-32768',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,
       max_tokens: 8192
