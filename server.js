@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
@@ -13,17 +13,18 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
-// Validação da chave Gemini
-if (!process.env.GEMINI_API_KEY) {
-  console.error('[FATAL] GEMINI_API_KEY não está configurada! A IA não funcionará.');
-  console.error('[FATAL] Configure a variável de ambiente GEMINI_API_KEY com sua chave do Google AI Studio.');
+// Validação da chave Groq
+if (!process.env.GROQ_API_KEY) {
+  console.error('[FATAL] GROQ_API_KEY não está configurada! A IA não funcionará.');
+  console.error('[FATAL] Configure a variável de ambiente GROQ_API_KEY com sua chave do Groq Console.');
 }
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' });
 
 // ─── TOKEN TRACKING & COST CONTROL ────────────────────────
-const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GEMINI_COST || '5');
-const COST_PER_1M_INPUT = 0.075; // Gemini 1.5 Flash input
-const COST_PER_1M_OUTPUT = 0.30;  // Gemini 1.5 Flash output
+const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GROQ_COST || '5');
+// Custos do Groq (Llama 3 é muito mais barato)
+const COST_PER_1M_INPUT = 0.05;  // Groq Llama 3 input
+const COST_PER_1M_OUTPUT = 0.15; // Groq Llama 3 output
 let monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
 let lastResetDate = new Date().toDateString();
 
@@ -277,7 +278,7 @@ app.get('/api/token-status', (req, res) => {
     remaining_budget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
     total_input_tokens: monthlyTokensUsed.input,
     total_output_tokens: monthlyTokensUsed.output,
-    gemini_configured: !!process.env.GEMINI_API_KEY,
+    groq_configured: !!process.env.GROQ_API_KEY,
     ig_tokens_configured: IG_TOKENS.length
   });
 });
@@ -299,7 +300,7 @@ app.get('/api/debug', async (req, res) => {
 // ─── PROFILE SUGGESTIONS (IA preenche campos) ────────────────
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
+  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
   const { igId } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
   if (!account) return res.status(404).json({ error: 'Not found' });
@@ -342,19 +343,15 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 }`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 2048
-      }
+    const message = await groq.messages.create({
+      model: 'mixtral-8x7b-32768',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2048
     });
-    const text = result.response.text();
-    const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
-    const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
+    const text = message.content[0].type === 'text' ? message.content[0].text : '';
+    const inputTokens = message.usage?.input_tokens || 0;
+    const outputTokens = message.usage?.output_tokens || 0;
     recordTokenUsage(inputTokens, outputTokens);
     console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
     try {
@@ -366,7 +363,7 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
       res.status(500).json({ error: 'Erro ao processar resposta da IA: ' + parseErr.message, raw: text });
     }
   } catch (e) {
-    console.error('[SUGGESTIONS] Erro Gemini:', e.message);
+    console.error('[SUGGESTIONS] Erro Groq:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -443,12 +440,14 @@ app.get('/api/dashboard/:igId', async (req, res) => {
   res.json({ account, periodStats, formatMix, bestHours, bestDays, topPosts, profileScore, engRate, monthlyEvolution, totalMedia: media.length });
 });
 
-// ─── INTELLIGENCE ─────────────────────────────────────────────────────────
+//// ─── INTELLIGENCE ─────────────────────────────────────────────────────────
 app.post('/api/intelligence', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
+
+`);
     res.end();
     return;
   }
@@ -492,27 +491,22 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
 - bio_optimized: [{version, bio, strategy, char_count}]
 - strategic_score: { content_quality, posting_consistency, audience_alignment, growth_potential, overall, diagnosis, recommendations: [{priority, action, expected_result}] }`;
 
-  try {
+   try {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const stream = await model.generateContentStream({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.75,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192
-      }
+    const message = await groq.messages.create({
+      model: 'mixtral-8x7b-32768',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.75,
+      max_tokens: 8192
     });
-    for await (const chunk of stream.stream) {
-      const delta = chunk.text || '';
-      if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
-    }
-    const usageMetadata = stream.response.usageMetadata;
-    recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
+    fullText = message.content[0].type === 'text' ? message.content[0].text : '';
+    res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
+
+`);
+    recordTokenUsage(message.usage?.input_tokens || 0, message.usage?.output_tokens || 0);;
 
     // Envia o texto limpo para o frontend processar
     let cleanedText = fullText;
@@ -527,18 +521,22 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.write(`data: ${JSON.stringify({ type: 'done', fullText: cleanedText })}\n\n`);
     res.end();
   } catch (e) {
-    console.error('[INTELLIGENCE] Erro:', e.message);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
+    console.error('[INTELLIGENCE] Erro Groq:', e.message);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}
+
+`);
     res.end();
-  }
+   }
 });
 
-// ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
+/// ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GEMINI_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
+
+`);
     res.end();
     return;
   }
@@ -638,22 +636,17 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const stream = await model.generateContentStream({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192
-      }
+     const message = await groq.messages.create({
+      model: 'mixtral-8x7b-32768',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.8,
+      max_tokens: 8192
     });
-    for await (const chunk of stream.stream) {
-      const delta = chunk.text || '';
-      if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
-    }
-    const usageMetadata = stream.response.usageMetadata;
-    recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
+    fullText = message.content[0].type === 'text' ? message.content[0].text : '';
+    res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
+
+`);
+    recordTokenUsage(message.usage?.input_tokens || 0, message.usage?.output_tokens || 0);;
 
     // Pré-processa e valida o JSON antes de enviar ao frontend
     let finalText = fullText;
@@ -671,7 +664,7 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.write(`data: ${JSON.stringify({ type: 'done', fullText: finalText })}\n\n`);
     res.end();
   } catch (e) {
-    console.error('[GENERATE] Erro:', e.message);
+    console.error('[GENERATE] Erro Groq:', e.message);
     res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
     res.end();
   }
@@ -745,10 +738,10 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Gemini 1.5 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Instagram Marketing Planner com Groq (Llama 3) + Token Control rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
   console.log(`[SERVER] Orçamento mensal: $${MAX_MONTHLY_COST}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);
-  console.log(`[SERVER] GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
+  console.log(`[SERVER] GROQ_API_KEY: ${process.env.GEMINI_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
   console.log(`[SERVER] IG_TOKENS: ${IG_TOKENS.length} token(s) configurado(s)`);
 });
