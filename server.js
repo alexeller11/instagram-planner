@@ -330,15 +330,15 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 }`;
 
   try {
-    const message = await groq.messages.create({
+    const message = await groq.chat.completions.create({
       model: 'mixtral-8x7b-32768',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2048
     });
-    const text = message.content[0].type === 'text' ? message.content[0].text : '';
-    const inputTokens = message.usage?.input_tokens || 0;
-    const outputTokens = message.usage?.output_tokens || 0;    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
+    const text = message.choices[0]?.message?.content || '';
+    const inputTokens = message.usage?.prompt_tokens || 0;
+    const outputTokens = message.usage?.completion_tokens || 0;    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
     try {
       const parsed = cleanAndParseJSON(text);
       res.json(validateSuggestions(parsed));
@@ -473,21 +473,16 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const message = await groq.messages.create({
+    const message = await groq.chat.completions.create({
       model: 'mixtral-8x7b-32768',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.75,
       max_tokens: 8192
     });
-    fullText = message.content[0].type === 'text' ? message.content[0].text : '';
+    fullText = message.choices[0]?.message?.content || '';
     res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
 
-`);
-
-
-    // Envia o texto limpo para o frontend processar
-    let cleanedText = fullText;
-    try {
+`);try {
       const parsed = cleanAndParseJSON(fullText);
       cleanedText = JSON.stringify(parsed);
     } catch (e) {
@@ -604,21 +599,16 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    let fullText = '';
-     const message = await groq.messages.create({
+      const message = await groq.chat.completions.create({
       model: 'mixtral-8x7b-32768',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,
       max_tokens: 8192
     });
-    fullText = message.content[0].type === 'text' ? message.content[0].text : '';
+    fullText = message.choices[0]?.message?.content || '';
     res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
 
-`);
-
-
-    // Pré-processa e valida o JSON antes de enviar ao frontend
-    let finalText = fullText;
+`); let finalText = fullText;
     try {
       const parsed = cleanAndParseJSON(fullText);
       const normalized = validateAndNormalizePlan(parsed);
