@@ -341,14 +341,17 @@ IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, se
 }`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      generationConfig: { responseMimeType: "application/json" }
+    });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 1000
+        maxOutputTokens: 2048
       }
     });
     const text = result.response.text();
@@ -496,14 +499,17 @@ Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estrat
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      generationConfig: { responseMimeType: "application/json" }
+    });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.75,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 5000
+        maxOutputTokens: 8192
       }
     });
     for await (const chunk of stream.stream) {
@@ -637,14 +643,17 @@ Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem te
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      generationConfig: { responseMimeType: "application/json" }
+    });
     const stream = await model.generateContentStream({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.8,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 8000
+        maxOutputTokens: 8192
       }
     });
     for await (const chunk of stream.stream) {
