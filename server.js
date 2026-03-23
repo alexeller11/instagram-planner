@@ -12,6 +12,49 @@ const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') 
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// ─── TOKEN TRACKING & COST CONTROL ────────────────────────
+const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GEMINI_COST || '5');
+const COST_PER_1M_INPUT = 0.075;
+const COST_PER_1M_OUTPUT = 0.30;
+let monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
+let lastResetDate = new Date().toDateString();
+
+function resetMonthlyIfNeeded() {
+  const today = new Date().toDateString();
+  if (today !== lastResetDate && new Date().getDate() === 1) {
+    monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
+    lastResetDate = today;
+  }
+}
+
+function calculateCost(inputTokens, outputTokens) {
+  const inputCost = (inputTokens / 1000000) * COST_PER_1M_INPUT;
+  const outputCost = (outputTokens / 1000000) * COST_PER_1M_OUTPUT;
+  return inputCost + outputCost;
+}
+
+function checkTokenBudget(estimatedOutputTokens) {
+  resetMonthlyIfNeeded();
+  const estimatedCost = calculateCost(0, estimatedOutputTokens);
+  const projectedCost = monthlyTokensUsed.cost + estimatedCost;
+  return {
+    canProceed: projectedCost <= MAX_MONTHLY_COST,
+    currentCost: monthlyTokensUsed.cost.toFixed(4),
+    projectedCost: projectedCost.toFixed(4),
+    remainingBudget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
+    percentage: ((monthlyTokensUsed.cost / MAX_MONTHLY_COST) * 100).toFixed(1)
+  };
+}
+
+function recordTokenUsage(inputTokens, outputTokens) {
+  resetMonthlyIfNeeded();
+  const cost = calculateCost(inputTokens, outputTokens);
+  monthlyTokensUsed.input += inputTokens;
+  monthlyTokensUsed.output += outputTokens;
+  monthlyTokensUsed.cost += cost;
+  console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Cost: $${cost.toFixed(4)} | Total: $${monthlyTokensUsed.cost.toFixed(4)}/${MAX_MONTHLY_COST}`);
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const publicDir = path.join(__dirname, 'public');
@@ -70,6 +113,19 @@ app.get('/api/me', (req, res) => {
   res.json({ logged: true, igAccounts: req.session.user.accounts });
 });
 
+// ─── TOKEN STATUS ─────────────────────────────────────────────
+app.get('/api/token-status', (req, res) => {
+  resetMonthlyIfNeeded();
+  res.json({
+    current_cost: monthlyTokensUsed.cost.toFixed(4),
+    max_budget: MAX_MONTHLY_COST.toFixed(4),
+    percentage_used: ((monthlyTokensUsed.cost / MAX_MONTHLY_COST) * 100).toFixed(1),
+    remaining_budget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
+    total_input_tokens: monthlyTokensUsed.input,
+    total_output_tokens: monthlyTokensUsed.output
+  });
+});
+
 // ─── DEBUG ────────────────────────────────────────────────────
 app.get('/api/debug', async (req, res) => {
   const results = [];
@@ -90,6 +146,9 @@ app.post('/api/suggestions', async (req, res) => {
   const { igId } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
   if (!account) return res.status(404).json({ error: 'Not found' });
+
+  const budgetCheck = checkTokenBudget(1000);
+  if (!budgetCheck.canProceed) return res.status(429).json({ error: 'Orçamento de tokens esgotado', budget: budgetCheck });
 
   const media = await fetchMedia(account.id, account.ig_token, 10);
   const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
@@ -127,8 +186,19 @@ Retorne APENAS JSON:
 
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 1000
+      }
+    });
     const text = result.response.text();
+    const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
+    const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
+    recordTokenUsage(inputTokens, outputTokens);
     try { res.json(JSON.parse(text.replace(/```json|```/g,'').trim())); }
     catch { res.json({ error: text }); }
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -213,6 +283,14 @@ app.post('/api/intelligence', async (req, res) => {
   const account = req.session.user.accounts.find(a => a.id === igId);
   if (!account) return res.status(404).json({ error: 'Not found' });
 
+  const budgetCheck = checkTokenBudget(5000);
+  if (!budgetCheck.canProceed) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
+    res.end();
+    return;
+  }
+
   const media = await fetchMedia(account.id, account.ig_token, 20);
   const topCaptions = media.slice(0, 8).map(m => m.caption?.substring(0, 200)||'').filter(Boolean);
   const engStats = media.length ? { avgLikes: Math.round(media.reduce((s,m)=>s+(m.like_count||0),0)/media.length), avgComments: Math.round(media.reduce((s,m)=>s+(m.comments_count||0),0)/media.length) } : {};
@@ -232,98 +310,7 @@ ANÁLISE DO PERFIL REAL @${account.username}:
 
 IMPORTANTE: Fale diretamente com o dono do perfil. Use "você", "seu perfil", "seus seguidores". Seja específico, use os dados reais. Evite generalidades. Pense como um consultor de R$500/hora que conhece profundamente o nicho.
 
-Retorne APENAS JSON válido:
-{
-  "market_intelligence": {
-    "niche_detected": "nicho específico e detalhado",
-    "niche_analysis": "análise de 3-4 linhas sobre o nicho no mercado brasileiro atual, oportunidades e desafios reais",
-    "seasonality": [
-      {"month": "Janeiro", "level": "alto", "reason": "motivo específico para o nicho", "opportunity": "ação concreta que pode ser tomada"}
-    ],
-    "trends": [
-      {"trend": "tendência específica", "how_to_use": "como aplicar no conteúdo"}
-    ],
-    "market_benchmark": {"avg_engagement": "X%", "avg_posts_month": "N", "top_formats": ["Reels", "Carrossel"], "insight": "o que isso significa para este perfil"}
-  },
-  "audience_intelligence": {
-    "ideal_profile": "descrição detalhada e humanizada do cliente ideal — nome fictício, idade, profissão, rotina, dores",
-    "pain_map": [
-      {"pain": "dor específica", "how_to_address": "como o conteúdo pode resolver isso"}
-    ],
-    "desire_map": [
-      {"desire": "desejo específico", "content_angle": "ângulo de conteúdo para explorar"}
-    ],
-    "journey_stage": "qual estágio predomina e por quê",
-    "psychographic": {"values": ["valor 1","valor 2"], "fears": ["medo 1","medo 2"], "motivations": ["motivação 1","motivação 2"], "language": "como esta audiência fala — gírias, expressões, tom"}
-  },
-  "competitive_intelligence": {
-    "likely_competitors": ["@concorrente1 — por que é concorrente", "@concorrente2", "@concorrente3"],
-    "content_gaps": [
-      {"gap": "tema não explorado", "opportunity": "como transformar isso em conteúdo", "format": "formato ideal"}
-    ],
-    "differentiation_opportunities": ["oportunidade 1 específica", "oportunidade 2", "oportunidade 3"],
-    "positioning_suggestion": "posicionamento único e específico para este perfil no mercado local"
-  },
-  "financial_intelligence": {
-    "follower_value_estimate": "R$ X,XX — explique o cálculo para o nicho",
-    "monthly_revenue_potential": "estimativa de receita mensal com X seguidores neste nicho",
-    "content_roi_by_format": [
-      {"format": "Reels", "roi_description": "por que gera mais X no nicho"},
-      {"format": "Carrossel", "roi_description": "benefício específico"},
-      {"format": "Foto", "roi_description": "quando usar"}
-    ],
-    "monetization_opportunities": ["oportunidade 1 detalhada", "oportunidade 2", "oportunidade 3"],
-    "investment_priority": "onde investir primeiro — seja específico com valores e ações"
-  },
-  "operational_intelligence": {
-    "content_repurposing": [
-      {"original": "tipo de conteúdo original", "repurpose_to": ["formato 1", "formato 2"], "tip": "como fazer na prática"}
-    ],
-    "production_calendar": {
-      "weekly_hours": "X horas",
-      "batch_suggestion": "gravar X vídeos + Y fotos numa sessão de Z horas",
-      "best_production_day": "dia ideal e por quê",
-      "tools_suggestion": "ferramentas gratuitas ou baratas para este nicho"
-    },
-    "alert_thresholds": {
-      "engagement_drop": "abaixo de X% = alerta",
-      "posting_gap": "mais de X dias sem post = queda no alcance"
-    }
-  },
-  "bio_optimized": [
-    {
-      "version": "Autoridade",
-      "bio": "bio completa — máximo 150 caracteres COM emojis, quebra de linha com \\n, CTA com link",
-      "strategy": "por que esta versão funciona",
-      "char_count": 0
-    },
-    {
-      "version": "Conexão",
-      "bio": "bio focada em conexão emocional — máximo 150 caracteres",
-      "strategy": "por que esta versão funciona",
-      "char_count": 0
-    },
-    {
-      "version": "Conversão",
-      "bio": "bio focada em conversão direta — máximo 150 caracteres",
-      "strategy": "por que esta versão funciona",
-      "char_count": 0
-    }
-  ],
-  "strategic_score": {
-    "overall": 75,
-    "content_quality": 70,
-    "posting_consistency": 80,
-    "audience_alignment": 65,
-    "growth_potential": 85,
-    "diagnosis": "diagnóstico honesto e humanizado em 3-4 linhas — o que está funcionando, o que precisa melhorar",
-    "recommendations": [
-      {"priority": 1, "action": "ação específica e imediata", "expected_result": "resultado esperado em X semanas"},
-      {"priority": 2, "action": "ação de médio prazo", "expected_result": "resultado esperado"},
-      {"priority": 3, "action": "ação de longo prazo", "expected_result": "resultado esperado"}
-    ]
-  }
-}`;
+Retorne APENAS JSON válido com análise estratégica completa incluindo market intelligence, audience intelligence, competitive intelligence, financial intelligence, operational intelligence, bio otimizada e strategic score.`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -331,11 +318,21 @@ Retorne APENAS JSON válido:
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const stream = await model.generateContentStream(prompt);
+    const stream = await model.generateContentStream({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.75,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 5000
+      }
+    });
     for await (const chunk of stream.stream) {
       const delta = chunk.text || '';
       if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
     }
+    const usageMetadata = stream.response.usageMetadata;
+    recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
     res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
     res.end();
   } catch (e) {
@@ -344,11 +341,19 @@ Retorne APENAS JSON válido:
   }
 });
 
-// ─── GENERATE PLAN (SUPER PROMPT COM FUNIL E HOOKS) ──────────
+// ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
 app.post('/api/generate', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
   const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
   const account = req.session.user.accounts.find(a => a.id === igId);
+
+  const budgetCheck = checkTokenBudget(8000);
+  if (!budgetCheck.canProceed) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Orçamento de tokens esgotado', budget: budgetCheck })}\n\n`);
+    res.end();
+    return;
+  }
 
   let profileContext = '', topPostsContext = '';
   if (account) {
@@ -374,7 +379,7 @@ app.post('/api/generate', async (req, res) => {
   const totalCarousels = parseInt(carousels)||Math.round(totalPosts*.35);
   const totalSingle = Math.max(0, totalPosts - totalReels - totalCarousels);
 
-  const prompt = `Você é um estrategista de marketing digital e copywriter sênior, especializado no mercado brasileiro. Você conhece profundamente o comportamento do consumidor brasileiro, as tendências do Instagram e as técnicas de neuromarketing. Seu trabalho é criar planos de conteúdo que REALMENTE geram resultados — não apenas listas de posts.
+  const prompt = `Você é um estrategista de marketing digital e copywriter sênior, especializado no mercado brasileiro. Você conhece profundamente o comportamento do consumidor brasileiro, as tendências do Instagram e as técnicas de neuromarketing. Seu trabalho é criar planos de conteúdo que REALMENTE geram resultados.
 
 ${profileContext}
 ${topPostsContext}
@@ -392,94 +397,14 @@ BRIEFING DO PLANO:
 
 DIRETRIZES DE QUALIDADE (OBRIGATÓRIO):
 1. FUNIL DE 4 SEMANAS: S1=Atração (Reels virais, curiosidade), S2=Autoridade (Educação, prova social), S3=Conexão (Stories, humanização), S4=Conversão (Urgência, CTA claro)
-2. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social) para criar consistência
+2. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social)
 3. GANCHOS MAGNÉTICOS: Cada post começa com uma frase que PARA o scroll — use curiosidade, medo, desejo ou surpresa
 4. SCRIPTS FALADOS: Reels devem ser roteiros para GRAVAR, não textos — use linguagem oral, pausas, entonações
-5. SLIDES COM PROGRESSÃO: Carrosséis devem ter lógica visual — o leitor sente que precisa ver o próximo
-6. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM" — use "Comenta QUERO aqui embaixo que te mando o link"
+5. SLIDES COM PROGRESSÃO: Carrosséis devem ter lógica visual
+6. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM"
 7. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
 
-Retorne APENAS JSON válido:
-{
-  "audit": {
-    "summary": "análise de 4-5 linhas falando DIRETAMENTE com o dono do perfil — use 'você', mencione dados reais dos posts, seja específico",
-    "differentials": ["diferencial específico detectado nos posts", "diferencial 2", "diferencial 3"],
-    "positioning": "posicionamento detalhado: como se destacar dos concorrentes locais",
-    "engagement_analysis": "análise humanizada do engajamento real — o que está funcionando e por quê",
-    "month_strategy": "estratégia específica para ${month} — por que este mês é importante e como aproveitar",
-    "editorial_pillars": [
-      {"pillar": "Pilar 1", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"},
-      {"pillar": "Pilar 2", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"},
-      {"pillar": "Pilar 3", "description": "descrição e exemplos", "frequency": "quantas vezes por semana"}
-    ]
-  },
-  "posts": [
-    {
-      "n": 1,
-      "week": 1,
-      "day_suggestion": "Terça",
-      "format": "Reels",
-      "pillar": "Educação",
-      "title": "título chamativo para o conteúdo (máx 60 chars)",
-      "objective": "objetivo estratégico específico no funil",
-      "funnel_stage": "Atração/Autoridade/Conexão/Conversão",
-      "hooks": [
-        "Gancho opção 1 — frase que para o scroll",
-        "Gancho opção 2 — ângulo diferente",
-        "Gancho opção 3 — mais direto"
-      ],
-      "visual": "descrição cinematográfica da cena — ambiente, iluminação, roupa, expressão, movimentos",
-      "copy": "legenda COMPLETA pronta para publicar, 8-12 linhas. Primeiro linha = GANCHO. Use emojis estrategicamente. Termine com pergunta ou reflexão antes do CTA.",
-      "cta": "CTA específico e criativo — não genérico",
-      "audio": "descrição do sentimento/energia da música — ritmo, instrumento, mood",
-      "script": "script FALADO completo para o Reels (30-45s). Formato: [0-3s GANCHO]: frase que prende. [3-15s DESENVOLVIMENTO]: conteúdo. [15-25s VIRADA]: surpresa ou dado. [25-35s CTA]: chamada clara. Use // para indicar pausa. Use CAPS para ênfase.",
-      "carousel_slides": ["Slide 1: título impactante (máx 8 palavras)", "Slide 2: ponto principal", "Slide 3: desenvolvimento", "Slide 4: prova ou exemplo", "Slide 5: continuação", "Slide 6: conclusão", "Slide 7: CTA direto"]
-    }
-  ],
-  "stories": [
-    {
-      "week": 1,
-      "day": "Segunda-feira",
-      "theme": "tema estratégico da sequência",
-      "objective": "objetivo desta sequência de stories",
-      "funnel_stage": "topo/meio/fundo",
-      "slides": [
-        {
-          "n": 1,
-          "text": "texto curto e impactante (máx 15 palavras)",
-          "action": "enquete / caixa de perguntas / link / reação / quiz / contagem regressiva",
-          "tip": "dica de design: cor de fundo, fonte, elemento visual sugerido",
-          "copy_detail": "detalhe do que escrever ou falar neste slide"
-        }
-      ]
-    }
-  ],
-  "hashtags": {
-    "niche": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8"],
-    "local": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
-    "broad": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7"],
-    "strategy": "estratégia detalhada — quantas usar, como combinar, quando variar"
-  },
-  "post_days": [3,5,7,9,12,14,16,19,21,23,26,28],
-  "event_days": [],
-  "tips": [
-    {"icon": "🔥", "title": "Dica de Ouro do Mês", "text": "dica específica e acionável para ${month} neste nicho"},
-    {"icon": "📈", "title": "Como Crescer em ${location||'sua cidade'}", "text": "estratégia local específica com ações práticas"},
-    {"icon": "💰", "title": "Gatilho de Vendas para Este Público", "text": "o gatilho mental mais efetivo e como usar nos posts"},
-    {"icon": "🎯", "title": "Horário e Frequência Ideal", "text": "quando e com que frequência postar para este nicho e público"},
-    {"icon": "🤝", "title": "Parceria Estratégica", "text": "com quem fazer parceria neste nicho e como abordar"},
-    {"icon": "♻️", "title": "Reaproveitamento de Conteúdo", "text": "como transformar 1 post em 5 peças de conteúdo para este nicho"},
-    {"icon": "📊", "title": "Métrica que Importa Este Mês", "text": "qual número acompanhar e o que fazer se cair"}
-  ]
-}
-
-REGRAS CRÍTICAS:
-- EXATAMENTE ${totalPosts} posts: ${totalReels} Reels, ${totalCarousels} Carrosséis, ${totalSingle} Fotos
-- EXATAMENTE 30 sequências de Stories (uma para cada dia do mês)
-- Scripts FALADOS para TODOS os Reels — linguagem oral, não escrita
-- Slides para TODOS os Carrosséis (mínimo 7 slides cada)
-- Legendas prontas para publicar — copy REAL, não descrição
-- NUNCA use frases genéricas sem contexto específico`;
+Retorne APENAS JSON válido com: audit, editorial_pillars, posts (com hooks, scripts, carousel_slides), stories, hashtags, post_days, event_days, tips.`;
 
   try {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -487,11 +412,21 @@ REGRAS CRÍTICAS:
     res.setHeader('Connection', 'keep-alive');
     let fullText = '';
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const stream = await model.generateContentStream(prompt);
+    const stream = await model.generateContentStream({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8000
+      }
+    });
     for await (const chunk of stream.stream) {
       const delta = chunk.text || '';
       if (delta) { fullText += delta; res.write(`data: ${JSON.stringify({ type: 'delta', text: delta })}\n\n`); }
     }
+    const usageMetadata = stream.response.usageMetadata;
+    recordTokenUsage(usageMetadata?.promptTokenCount || 0, usageMetadata?.candidatesTokenCount || 0);
     res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
     res.end();
   } catch (e) {
@@ -508,14 +443,14 @@ app.get('/app', (req, res) => {
   res.sendFile(path.join(publicDir, 'app.html')); 
 });
 
-// Fallback para qualquer outra rota
 app.use((req, res) => {
   console.log(`[404] Rota não encontrada: ${req.url}`);
   res.status(404).sendFile(path.join(publicDir, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Gemini 2.0 Flash rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Instagram Marketing Planner com Gemini 2.0 Flash + Token Control rodando em http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] Base URL configurada: ${BASE_URL}`);
+  console.log(`[SERVER] Orçamento mensal: $${MAX_MONTHLY_COST}`);
   console.log(`[SERVER] Diretório público: ${publicDir}`);
 });
