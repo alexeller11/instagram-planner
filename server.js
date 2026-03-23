@@ -1,8 +1,7 @@
-require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
-const Groq = require('groq-sdk');
+const OpenAI = require('openai');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
@@ -13,723 +12,163 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 const IG_TOKENS = (process.env.IG_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean);
 
-// Validação da chave Groq
-const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
-if (!GROQ_KEY) {
-  console.error('[FATAL] GROQ_API_KEY não está configurada! A IA não funcionará.');
-  console.error('[FATAL] Configure a variável de ambiente GROQ_API_KEY com sua chave do Groq Console.');
+// Configuração OpenAI
+const openai = new OpenAI({
+  apiKey: (process.env.OPENAI_API_KEY || '').trim()
+});
+
+if (!(process.env.OPENAI_API_KEY || '').trim()) {
+  console.error('[FATAL] OPENAI_API_KEY não está configurada!');
 } else {
-  const keyPreview = GROQ_KEY.substring(0, 10) + '...' + GROQ_KEY.substring(GROQ_KEY.length - 10);
-  console.log(`[INIT] Chave Groq carregada: ${keyPreview}`);
-}
-const groq = new Groq({ apiKey: GROQ_KEY });
-
-// ─── TOKEN TRACKING & COST CONTROL ────────────────────────
-const MAX_MONTHLY_COST = parseFloat(process.env.MAX_GROQ_COST || '5');
-// Custos do Groq (Llama 3 é muito mais barato)
-const COST_PER_1M_INPUT = 0.05;  // Groq Llama 3 input
-const COST_PER_1M_OUTPUT = 0.15; // Groq Llama 3 output
-let monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
-let lastResetDate = new Date().toDateString();
-
-function resetMonthlyIfNeeded() {
-  const today = new Date().toDateString();
-  if (today !== lastResetDate && new Date().getDate() === 1) {
-    monthlyTokensUsed = { input: 0, output: 0, cost: 0 };
-    lastResetDate = today;
-  }
-}
-
-function calculateCost(inputTokens, outputTokens) {
-  const inputCost = (inputTokens / 1000000) * COST_PER_1M_INPUT;
-  const outputCost = (outputTokens / 1000000) * COST_PER_1M_OUTPUT;
-  return inputCost + outputCost;
-}
-
-function checkTokenBudget(estimatedOutputTokens) {  const estimatedCost = calculateCost(0, estimatedOutputTokens);
-  const projectedCost = monthlyTokensUsed.cost + estimatedCost;
-  return {
-    canProceed: projectedCost <= MAX_MONTHLY_COST,
-    currentCost: monthlyTokensUsed.cost.toFixed(4),
-    projectedCost: projectedCost.toFixed(4),
-    remainingBudget: (MAX_MONTHLY_COST - monthlyTokensUsed.cost).toFixed(4),
-    percentage: ((monthlyTokensUsed.cost / MAX_MONTHLY_COST) * 100).toFixed(1)
-  };
-}
-
-function recordTokenUsage(inputTokens, outputTokens) {  const cost = calculateCost(inputTokens, outputTokens);
-  monthlyTokensUsed.input += inputTokens;
-  monthlyTokensUsed.output += outputTokens;
-  monthlyTokensUsed.cost += cost;
-  console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Cost: $${cost.toFixed(4)} | Total: $${monthlyTokensUsed.cost.toFixed(4)}/${MAX_MONTHLY_COST}`);
-}
-
-// ─── LIMPEZA DE JSON ROBUSTA ───────────────────────────────
-function cleanAndParseJSON(rawText) {
-  if (!rawText || typeof rawText !== 'string') {
-    throw new Error('Resposta vazia ou inválida do Gemini');
-  }
-
-  let text = rawText.trim();
-
-  // Remove blocos de código markdown: ```json ... ``` ou ``` ... ```
-  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-
-  // Remove qualquer texto antes do primeiro { ou [
-  const firstBrace = text.indexOf('{');
-  const firstBracket = text.indexOf('[');
-  let startIdx = -1;
-  if (firstBrace !== -1 && firstBracket !== -1) {
-    startIdx = Math.min(firstBrace, firstBracket);
-  } else if (firstBrace !== -1) {
-    startIdx = firstBrace;
-  } else if (firstBracket !== -1) {
-    startIdx = firstBracket;
-  }
-  if (startIdx > 0) {
-    text = text.substring(startIdx);
-  }
-
-  // Remove qualquer texto após o último } ou ]
-  const lastBrace = text.lastIndexOf('}');
-  const lastBracket = text.lastIndexOf(']');
-  const endIdx = Math.max(lastBrace, lastBracket);
-  if (endIdx !== -1 && endIdx < text.length - 1) {
-    text = text.substring(0, endIdx + 1);
-  }
-
-  // Tenta parse direto
-  try {
-    return JSON.parse(text);
-  } catch (e1) {
-    // Tenta corrigir problemas comuns de JSON vindos de LLMs
-    let fixed = text
-      .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"') // Aspas inteligentes
-      .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'") // Aspas simples inteligentes
-      .replace(/,\s*([}\]])/g, '$1') // Vírgulas extras no final de arrays/objetos
-      .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, (m, p1, p2) => `${p1}"${p2}":`) // Chaves sem aspas
-      .replace(/:\s*'([^']*)'/g, (m, p1) => `: "${p1.replace(/"/g, '\\"')}"`); // Valores com aspas simples
-    
-    try {
-      return JSON.parse(fixed);
-    } catch (e2) {
-      // Última tentativa: remover quebras de linha dentro de strings (comum em bios/legendas)
-      try {
-        const superFixed = fixed.replace(/: "([^"]*)"/g, (m, p1) => `: "${p1.replace(/\n/g, '\\n')}"`);
-        return JSON.parse(superFixed);
-      } catch (e3) {
-        console.error('[JSON_PARSE_ERROR] Texto original:', rawText);
-        throw new Error(`JSON inválido após limpeza: ${e2.message}`);
-      }
-    }
-  }
-}
-
-// ─── VALIDAÇÃO DE CAMPOS DO PLANO ─────────────────────────
-function validateAndNormalizePlan(data) {
-  if (!data || typeof data !== 'object') return data;
-
-  // Garante arrays obrigatórios
-  if (!Array.isArray(data.posts)) data.posts = [];
-  if (!Array.isArray(data.stories)) data.stories = [];
-  if (!Array.isArray(data.tips)) data.tips = [];
-  if (!Array.isArray(data.post_days)) data.post_days = [];
-  if (!data.hashtags) data.hashtags = { niche: [], local: [], broad: [], strategy: '' };
-  if (!data.audit) data.audit = {};
-  if (!Array.isArray(data.editorial_pillars)) data.editorial_pillars = [];
-
-  // Normaliza posts
-  data.posts = data.posts.map((p, i) => ({
-    n: p.n || p.number || p.num || (i + 1),
-    week: p.week || p.semana || 1,
-    day_suggestion: p.day_suggestion || p.day || p.dia || '',
-    format: p.format || p.formato || p.type || 'Post',
-    pillar: p.pillar || p.pilar || '',
-    title: p.title || p.titulo || p.tema || '',
-    objective: p.objective || p.objetivo || '',
-    visual: p.visual || p.visual_suggestion || '',
-    copy: p.copy || p.legenda || p.caption || p.texto || '',
-    cta: p.cta || '',
-    audio: p.audio || p.musica || '',
-    hook: p.hook || p.gancho || '',
-    script: p.script || p.roteiro || '',
-    carousel_slides: Array.isArray(p.carousel_slides) ? p.carousel_slides :
-                     Array.isArray(p.slides) ? p.slides : []
-  }));
-
-  // Normaliza stories
-  data.stories = data.stories.map((s, i) => ({
-    day: s.day || s.dia || `Dia ${i + 1}`,
-    theme: s.theme || s.tema || '',
-    objective: s.objective || s.objetivo || '',
-    funnel_stage: s.funnel_stage || s.etapa_funil || '',
-    slides: Array.isArray(s.slides) ? s.slides.map(sl => ({
-      n: sl.n || sl.numero || '',
-      text: sl.text || sl.texto || '',
-      action: sl.action || sl.acao || '',
-      copy_detail: sl.copy_detail || sl.detalhe || ''
-    })) : []
-  }));
-
-  // Normaliza hashtags
-  if (Array.isArray(data.hashtags)) {
-    data.hashtags = { niche: data.hashtags, local: [], broad: [], strategy: '' };
-  } else {
-    if (!Array.isArray(data.hashtags.niche)) data.hashtags.niche = [];
-    if (!Array.isArray(data.hashtags.local)) data.hashtags.local = [];
-    if (!Array.isArray(data.hashtags.broad)) data.hashtags.broad = [];
-    if (!data.hashtags.strategy) data.hashtags.strategy = '';
-  }
-
-  // Normaliza datas (pode vir como event_days ou dates)
-  if (!Array.isArray(data.dates) && Array.isArray(data.event_days)) {
-    data.dates = data.event_days;
-  } else if (!Array.isArray(data.dates)) {
-    data.dates = [];
-  }
-
-  return data;
-}
-
-// ─── VALIDAÇÃO DE CAMPOS DE SUGESTÕES ─────────────────────
-function validateSuggestions(data) {
-  if (!data || typeof data !== 'object') return {};
-  return {
-    niche: data.niche || data.nicho || '',
-    niche_confidence: data.niche_confidence || data.confianca_nicho || 'médio',
-    location: data.location || data.localizacao || data.cidade || 'Brasil',
-    audience: data.audience || data.publico || data.publico_alvo || '',
-    goal: data.goal || data.objetivo || '',
-    tone: data.tone || data.tom || data.tom_de_voz || '',
-    extra: data.extra || data.contexto || '',
-    competitors_search: Array.isArray(data.competitors_search) ? data.competitors_search : [],
-    bio_suggestions: Array.isArray(data.bio_suggestions) ? data.bio_suggestions : [],
-    insights: data.insights || ''
-  };
+  const key = process.env.OPENAI_API_KEY.trim();
+  console.log(`[INIT] OpenAI carregada: ${key.substring(0, 7)}...${key.substring(key.length - 4)}`);
 }
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const publicDir = path.join(__dirname, 'public');
-app.use(express.static(publicDir));
-console.log(`[SERVER] Diretório público configurado em: ${publicDir}`);
-const isProduction = process.env.NODE_ENV === 'production';
-app.set('trust proxy', 1);
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProduction,
-    httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000
-  }
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
 }));
 
-// ─── FETCH IG PROFILES ───────────────────────────────────────
-async function fetchIGProfiles(tokens) {
-  const accounts = [];
-  for (const token of tokens) {
-    try {
-      const res = await axios.get('https://graph.instagram.com/v21.0/me', {
-        params: { fields: 'id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type', access_token: token }
-      });
-      accounts.push({ ...res.data, ig_token: token });
-      console.log(`[IG] @${res.data.username} | ${res.data.followers_count} seguidores`);
-    } catch (e) { console.log(`[IG_ERR] ${e.response?.data?.error?.message || e.message}`); }
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
+
+// ─── AUXILIARES ─────────────────────────────────────────────
+async function fetchMedia(userId, token, limit = 20) {
+  try {
+    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`;
+    const response = await axios.get(url);
+    return response.data.data || [];
+  } catch (e) {
+    console.error(`[IG] Erro ao buscar media para ${userId}:`, e.message);
+    return [];
   }
-  return accounts;
 }
 
-async function fetchMedia(igId, token, limit = 50) {
-  try {
-    const res = await axios.get(`https://graph.instagram.com/v21.0/${igId}/media`, {
-      params: { fields: 'id,caption,media_type,timestamp,like_count,comments_count', limit, access_token: token }
-    });
-    return res.data.data || [];
-  } catch (e) { return []; }
+function cleanAndParseJSON(rawText) {
+  if (!rawText || typeof rawText !== 'string') throw new Error('Resposta vazia da IA');
+  let text = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter(i => i !== -1));
+  const end = Math.max(...[text.lastIndexOf('}'), text.lastIndexOf(']')].filter(i => i !== -1));
+  if (start !== -1 && end !== -1) text = text.substring(start, end + 1);
+  return JSON.parse(text);
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────
-app.get('/auth/login', async (req, res) => {
-  if (!IG_TOKENS.length) return res.redirect('/?error=no_tokens');
-  try {
-    const accounts = await fetchIGProfiles(IG_TOKENS);
-    req.session.user = { accounts };
-    res.redirect('/app');
-  } catch (e) { res.redirect('/?error=fetch_failed'); }
-});
-app.get('/auth/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
-app.get('/api/me', (req, res) => {
-  if (!req.session.user) return res.json({ logged: false });
-  const accounts = req.session.user.accounts || [];
-  console.log('[API/ME] Retornando', accounts.length, 'contas');
-  res.json({ logged: true, igAccounts: accounts, accounts: accounts });
-});
-
-// ─── TOKEN STATUS ─────────────────────────────────────────────
-app.get('/api/status', (req, res) => {
-  res.json({
-    groq_configured: !!process.env.GROQ_API_KEY,
-    ig_tokens_configured: IG_TOKENS.length,
-    status: 'OK - Groq (Llama 3) com camada gratuita'
-  });
-});
-
-// ─── DEBUG ────────────────────────────────────────────────────
-app.get('/api/debug', async (req, res) => {
-  const results = [];
-  for (const token of IG_TOKENS.slice(0, 3)) {
-    try {
-      const r = await axios.get('https://graph.instagram.com/v21.0/me', {
-        params: { fields: 'id,username,followers_count,account_type', access_token: token }
-      });
-      results.push({ ok: true, data: r.data });
-    } catch (e) { results.push({ ok: false, error: e.response?.data || e.message }); }
-  }
-  res.json({ tokens_configured: IG_TOKENS.length, results });
-});
-
-// ─── PROFILE SUGGESTIONS (IA preenche campos) ────────────────
-app.post('/api/suggestions', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' });
-  const { igId } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-
-  const media = await fetchMedia(account.id, account.ig_token, 10);
-  const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
-  const mediaTypes = media.reduce((acc, m) => { acc[m.media_type] = (acc[m.media_type]||0)+1; return acc; }, {});
-
-  const prompt = `Analise este perfil do Instagram e sugira preenchimentos inteligentes para um formulário de planejamento de marketing.
-
-PERFIL REAL:
-- Username: @${account.username}
-- Nome: ${account.name}
-- Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')}
-- Posts: ${account.media_count}
-- Bio atual: ${account.biography || 'Não informada'}
-- Website: ${account.website || 'Não informado'}
-- Tipos de posts: ${JSON.stringify(mediaTypes)}
-- Exemplos de legendas: ${captions || 'Sem dados'}
-
-IMPORTANTE: Retorne SOMENTE o JSON abaixo, sem texto adicional, sem markdown, sem explicações. Apenas o JSON puro:
-{
-  "niche": "nicho detectado com base nos posts e bio (ex: Nutricionista Funcional, Moda Feminina Plus Size)",
-  "niche_confidence": "alto/médio/baixo",
-  "location": "cidade/estado detectado se possível na bio/legendas, senão Brasil",
-  "audience": "perfil do público ideal baseado no nicho e conteúdo",
-  "goal": "objetivo mais provável: Vender mais / Ganhar seguidores / Lançar serviço / Engajamento / Autoridade",
-  "tone": "tom de voz detectado: Próximo e amigável / Profissional / Humor / Inspirador / Luxo",
-  "extra": "contexto adicional detectado nos posts",
-  "competitors_search": ["termo de busca 1 para encontrar concorrentes", "termo 2", "termo 3"],
-  "bio_suggestions": [
-    "Bio opção 1 — máximo 150 caracteres, com emoji estratégico e CTA claro",
-    "Bio opção 2 — ângulo diferente, máximo 150 caracteres",
-    "Bio opção 3 — mais direta e focada em resultado, máximo 150 caracteres"
-  ],
-  "insights": "observação humanizada sobre o perfil em 2 frases, como um consultor falando diretamente para o dono do perfil"
-}`;
-
-  try {
-    const message = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 2048
-    });
-    const text = message.choices[0]?.message?.content || '';
-    const inputTokens = message.usage?.prompt_tokens || 0;
-    const outputTokens = message.usage?.completion_tokens || 0;    console.log(`[SUGGESTIONS] Resposta bruta completa: ${text}`);
-    try {
-      const parsed = cleanAndParseJSON(text);
-      res.json(validateSuggestions(parsed));
-    } catch (parseErr) {
-      console.error('[SUGGESTIONS] Erro de parse:', parseErr.message);
-      console.error('[SUGGESTIONS] Texto que falhou no parse:', text);
-      res.status(500).json({ error: 'Erro ao processar resposta da IA: ' + parseErr.message, raw: text });
-    }
-  } catch (e) {
-    console.error('[SUGGESTIONS] Erro Groq:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ─── DASHBOARD ────────────────────────────────────────────────
-app.get('/api/dashboard/:igId', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  const account = req.session.user.accounts.find(a => a.id === req.params.igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-
-  const media = await fetchMedia(account.id, account.ig_token, 50);
-  const now = new Date();
-
-  const periods = { '7d': 7, '15d': 15, '30d': 30, '90d': 90 };
-  const periodStats = {};
-  for (const [key, days] of Object.entries(periods)) {
-    const cutoff = new Date(now - days * 24 * 60 * 60 * 1000);
-    const filtered = media.filter(m => new Date(m.timestamp) >= cutoff);
-    const totalLikes = filtered.reduce((s, m) => s + (m.like_count||0), 0);
-    const totalComments = filtered.reduce((s, m) => s + (m.comments_count||0), 0);
-    periodStats[key] = {
-      posts: filtered.length, likes: totalLikes, comments: totalComments,
-      engagement: filtered.length ? ((totalLikes + totalComments) / filtered.length).toFixed(1) : 0,
-      avgLikes: filtered.length ? Math.round(totalLikes / filtered.length) : 0,
-      avgComments: filtered.length ? Math.round(totalComments / filtered.length) : 0
-    };
-  }
-
-  const formatMix = media.reduce((acc, m) => { acc[m.media_type] = (acc[m.media_type]||0)+1; return acc; }, {});
-
-  const hourStats = {};
-  media.forEach(m => {
-    const h = new Date(m.timestamp).getHours();
-    if (!hourStats[h]) hourStats[h] = { posts:0, likes:0, comments:0 };
-    hourStats[h].posts++; hourStats[h].likes += m.like_count||0; hourStats[h].comments += m.comments_count||0;
-  });
-  const bestHours = Object.entries(hourStats)
-    .map(([h,s]) => ({ hour: parseInt(h), avgEngagement: s.posts ? ((s.likes+s.comments)/s.posts).toFixed(1) : 0 }))
-    .sort((a,b) => b.avgEngagement - a.avgEngagement).slice(0, 5);
-
-  const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const dayStats = {};
-  media.forEach(m => {
-    const d = new Date(m.timestamp).getDay();
-    if (!dayStats[d]) dayStats[d] = { posts:0, likes:0, comments:0 };
-    dayStats[d].posts++; dayStats[d].likes += m.like_count||0; dayStats[d].comments += m.comments_count||0;
-  });
-  const bestDays = Object.entries(dayStats)
-    .map(([d,s]) => ({ day: dayNames[parseInt(d)], avgEngagement: s.posts ? ((s.likes+s.comments)/s.posts).toFixed(1) : 0 }))
-    .sort((a,b) => b.avgEngagement - a.avgEngagement);
-
-  const topPosts = [...media].sort((a,b) => ((b.like_count||0)+(b.comments_count||0)) - ((a.like_count||0)+(a.comments_count||0))).slice(0, 5);
-
-  const engRate = account.followers_count && periodStats['30d'].posts ?
-    ((periodStats['30d'].likes + periodStats['30d'].comments) / periodStats['30d'].posts / account.followers_count * 100).toFixed(2) : 0;
-
-  const profileScore = Math.min(100,
-    (account.biography ? 20 : 0) + (account.website ? 10 : 0) +
-    (periodStats['30d'].posts >= 12 ? 30 : periodStats['30d'].posts >= 8 ? 20 : 10) +
-    (engRate >= 3 ? 30 : engRate >= 1 ? 20 : 10) +
-    (Object.keys(formatMix).length >= 3 ? 10 : 5)
-  );
-
-  const monthlyEvolution = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const nextD = new Date(now.getFullYear(), now.getMonth()-i+1, 1);
-    const mm = media.filter(m => { const t = new Date(m.timestamp); return t >= d && t < nextD; });
-    const ml = mm.reduce((s,m) => s+(m.like_count||0), 0);
-    const mc = mm.reduce((s,m) => s+(m.comments_count||0), 0);
-    monthlyEvolution.push({ month: d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}), posts: mm.length, likes: ml, comments: mc, engagement: mm.length ? ((ml+mc)/mm.length).toFixed(1) : 0 });
-  }
-
-  res.json({ account, periodStats, formatMix, bestHours, bestDays, topPosts, profileScore, engRate, monthlyEvolution, totalMedia: media.length });
-});
-
-//// ─── INTELLIGENCE ─────────────────────────────────────────────────────────
-app.post('/api/intelligence', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!(process.env.GROQ_API_KEY || '').trim()) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
-
-`);
-    res.end();
-    return;
-  }
-  const { igId, competitors, niche, location, goal } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-
-  const media = await fetchMedia(account.id, account.ig_token, 20);
-  const topCaptions = media.slice(0, 8).map(m => m.caption?.substring(0, 200)||'').filter(Boolean);
-  const engStats = media.length ? { avgLikes: Math.round(media.reduce((s,m)=>s+(m.like_count||0),0)/media.length), avgComments: Math.round(media.reduce((s,m)=>s+(m.comments_count||0),0)/media.length) } : {};
-
-  // Simular análise de concorrentes se não fornecidos
-  let competitorAnalysis = '';
-  if (competitors && competitors.trim()) {
-    competitorAnalysis = `\nANÁLISE DE CONCORRENTES FORNECIDOS:\nPesquise e analise: ${competitors}\nIdentifique:
-- Tom de voz e estilo de cada um
-- Tipos de conteúdo que mais engajam
-- Gaps de mercado que nenhum deles explora
-- Oportunidades de diferençação`;
-  } else {
-    competitorAnalysis = `\nANÁLISE AUTOMÁTICA DE CONCORRENTES:\nBaseado no nicho "${niche}" e localização "${location || 'Brasil'}", identifique automaticamente os 5 maiores concorrentes diretos e analise:
-- Estilo de conteúdo (educativo, lifestyle, humor, etc)
-- Frequência de publicação e melhor horário
-- Tipos de Reels/carroséis que mais engajam
-- Tom de voz e persona
-- Gaps que nenhum deles explora (OPORTUNIDADE PARA @${account.username})`;
-  }
-
-  const prompt = `Você é um dos melhores estratégistas de marketing digital do Brasil, com profundo conhecimento em Instagram, comportamento do consumidor brasileiro, neuromarketing e análise competitiva. Você fala como um amigo que entende do assunto, não como um robô.
-
-ANÁLISE DO PERFIL REAL @${account.username}:
-- Nome: ${account.name}
-- Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')} (crescimento: ${Math.round(account.followers_count/30)}/dia)
-- Posts: ${account.media_count} | Média curtidas: ${engStats.avgLikes||0} | Média comentários: ${engStats.avgComments||0}
-- Taxa de engajamento: ${engStats.avgLikes ? ((engStats.avgLikes/(account.followers_count||1))*100).toFixed(2) : '0'}%
-- Bio: ${account.biography || 'Não informada'}
-- Nicho: ${niche}
-- Localização: ${location || 'Brasil'}
-- Objetivo: ${goal}
-- Exemplos reais de legendas: ${topCaptions.slice(0, 3).join(' | ')}
-${competitorAnalysis}
-
-DIRETRIZES DE RESPOSTA:
-1. Fale diretamente com o dono do perfil. Use "você", "seu perfil", "seus seguidores"
-2. Seja MUITO específico. Use os dados reais fornecidos
-3. Evite generalidades e clichés de IA
-4. Pense como um consultor de R$500/hora que conhece profundamente o nicho
-5. Seja honesto: se o perfil está fraco, diga. Se está forte, mostre por quê
-6. Recomendações devem ser AÇÕES PRÁTICAS, não teoria
-
-Retorne SOMENTE JSON válido (sem markdown, sem texto extra) com análise estratégica completa incluindo:
-- market_intelligence: { seasonality: [{month, level, opportunity}], trends: [{trend, how_to_use, urgency}] }
-- audience_intelligence: { ideal_profile: "descrição detalhada", pain_map: [{pain, how_to_address, content_example}], desire_map: [{desire, content_angle, emotional_trigger}], journey_stage: "qual estágio seu público está" }
-- competitive_intelligence: { likely_competitors: [{name, strength, weakness, opportunity_for_you}], content_gaps: [{gap, why_important, how_to_exploit}] }
-- financial_intelligence: { follower_value_estimate: "R$/seguidor", monthly_revenue_potential: "R$", monetization_opportunities: [{type, effort, potential_revenue}], investment_priority: "o que fazer primeiro" }
-- operational_intelligence: { content_repurposing: [{original, repurpose_to, tip}], production_calendar: {weekly_hours: "X horas", batch_suggestion: "como fazer", best_production_day: "dia", tools_suggestion: "ferramentas gratis"} }
-- bio_optimized: [{version: 1, bio: "texto", strategy: "por que funciona", char_count: 150}]
-- strategic_score: { content_quality: 0-10, posting_consistency: 0-10, audience_alignment: 0-10, growth_potential: 0-10, overall: 0-10, diagnosis: "resumo honesto", recommendations: [{priority: "URGENTE/IMPORTANTE/LEGAL", action: "ação específica", expected_result: "resultado em X dias/semanas"}] }`;
-
-   try {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    let fullText = '';
-    const message = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.75,
-      max_tokens: 8192
-    });
-    fullText = message.choices[0]?.message?.content || '';
-    res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
-
-`);try {
-      const parsed = cleanAndParseJSON(fullText);
-      cleanedText = JSON.stringify(parsed);
-    } catch (e) {
-      console.warn('[INTELLIGENCE] Não foi possível pré-parsear JSON, enviando texto bruto limpo');
-      cleanedText = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    }
-
-    res.write(`data: ${JSON.stringify({ type: 'done', fullText: cleanedText })}\n\n`);
-    res.end();
-  } catch (e) {
-    console.error('[INTELLIGENCE] Erro Groq:', e.message);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}
-
-`);
-    res.end();
-   }
-});
-
-/// ─── GENERATE PLAN (COM FUNIL, LINHAS EDITORIAIS E HOOKS) ─────
-app.post('/api/generate', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!(process.env.GROQ_API_KEY || '').trim()) {
-    res.setHeader('Content-Type', 'text/event-stream');
-      res.write(`data: ${JSON.stringify({ type: 'error', message: 'GROQ_API_KEY não configurada. Adicione a chave no painel de variáveis de ambiente do Railway/Render.' })}
-
-`);
-    res.end();
-    return;
-  }
-  const { igId, posts, reels, carousels, singlePosts, goal, tone, extra, objections, audience, niche, location } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-
-  let profileContext = '', topPostsContext = '';
-  if (account) {
-    profileContext = `PERFIL REAL @${account.username}:
-- Nome: ${account.name} | Seguidores: ${(account.followers_count||0).toLocaleString('pt-BR')} | Posts: ${account.media_count}
-- Bio atual: ${account.biography || 'Não informada'} | Website: ${account.website || 'Não informado'}`;
-
-    const media = await fetchMedia(account.id, account.ig_token, 12);
-    if (media.length) {
-      const avgLikes = Math.round(media.reduce((s,m)=>s+(m.like_count||0),0)/media.length);
-      const avgComments = Math.round(media.reduce((s,m)=>s+(m.comments_count||0),0)/media.length);
-      topPostsContext = `\nENGAJAMENTO REAL: Média ${avgLikes} curtidas e ${avgComments} comentários por post.\nÚLTIMOS POSTS:\n` +
-        media.slice(0,6).map((m,i) => `${i+1}. [${m.media_type}] "${m.caption?.substring(0,100)||'Sem legenda'}" | ❤️${m.like_count||0} 💬${m.comments_count||0}`).join('\n');
-    }
-  }
-
-  const now = new Date();
-  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const month = months[now.getMonth()];
-  const year = now.getFullYear();
-  const totalPosts = parseInt(posts)||24;
-  const totalReels = parseInt(reels)||Math.round(totalPosts*.4);
-  const totalCarousels = parseInt(carousels)||Math.round(totalPosts*.35);
-  const totalSingle = Math.max(0, totalPosts - totalReels - totalCarousels);
-
-  const prompt = `Você é um estrategista de marketing digital e copywriter sênior, especializado no mercado brasileiro. Você conhece profundamente o comportamento do consumidor brasileiro, as tendências do Instagram e as técnicas de neuromarketing. Seu trabalho é criar planos de conteúdo que REALMENTE geram resultados.
-
-${profileContext}
-${topPostsContext}
-
-BRIEFING DO PLANO (SIGA RIGOROSAMENTE):
-- Nicho: ${niche}
-- Localização: ${location || 'Brasil'}
-- Público-alvo: ${audience}
-- Objetivo principal do mês: ${goal} (ISSO É A PRIORIDADE #1)
-- Tom de voz: ${tone} (USE EXATAMENTE ASSIM EM TODOS OS POSTS)
-- Mix de conteúdo: ${totalReels} Reels + ${totalCarousels} Carrosséis + ${totalSingle} Fotos = ${totalPosts} posts
-- Mês: ${month} de ${year}
-- Contexto/diferenciais: ${extra || 'Não informado'}
-- Principais objeções do público: ${objections || 'Não informadas'} (RESPONDA A ESSAS OBJEÇÕES NO CONTEÚDO)
-
-DIRETRIZES DE QUALIDADE (OBRIGATÓRIO - NÃO NEGOCIE):
-1. FIDELIDADE ÀS SOLICITAÇÕES: O tom de voz, objetivo e objeções são SAGRADOS. Cada post deve refletir isso
-2. FUNIL DE 4 SEMANAS: S1=Atração (Reels virais, curiosidade), S2=Autoridade (Educação, prova social), S3=Conexão (Stories, humanização), S4=Conversão (Urgência, CTA claro)
-3. LINHAS EDITORIAIS FIXAS: Defina 3 pilares de conteúdo que se repetem (ex: Educativo, Lifestyle, Prova Social)
-4. GANCHOS MAGNÉTICOS: Cada post começa com uma frase que PARA o scroll — use curiosidade, medo, desejo ou surpresa
-5. SCRIPTS FALADOS: Reels devem ser roteiros para GRAVAR, não textos — use linguagem oral, pausas, entonações
-6. HUMANIZAÇÃO EXTREMA: Evite clichés de IA. Use exemplos reais, histórias, emojis com propósito
-7. CTAs ESPECÍFICOS: Nunca genéricos como "me chama no DM". Seja criativo e alinhado ao objetivo
-8. HISTÓRIAS DIÁRIAS: 30 sequências de Stories (uma por dia) com objetivo estratégico claro
-
-FORMATO DE SAÍDA (OBRIGATÓRIO):
-Retorne SOMENTE JSON puro e válido, sem markdown, sem blocos de código, sem texto antes ou depois. Estrutura exata:
-{
-  "audit": { "summary": "...", "month_strategy": "...", "engagement_analysis": "...", "differentials": ["..."], "positioning": "..." },
-  "editorial_pillars": [{ "name": "...", "description": "...", "frequency": "..." }],
-  "posts": [
-    {
-      "n": 1, "week": 1, "day_suggestion": "Segunda", "format": "Reels",
-      "pillar": "Educativo", "title": "...", "objective": "...",
-      "visual": "...", "hook": "...", "copy": "...", "cta": "...", "audio": "...",
-      "script": "roteiro falado para gravar (apenas para Reels)",
-      "carousel_slides": ["Slide 1: ...", "Slide 2: ..."]
-    }
-  ],
-  "stories": [
-    {
-      "day": "Dia 1", "theme": "...", "objective": "...", "funnel_stage": "topo/meio/fundo",
-      "slides": [{ "n": 1, "text": "...", "action": "...", "copy_detail": "..." }]
-    }
-  ],
-  "hashtags": {
-    "niche": ["#hashtag1", "#hashtag2"],
-    "local": ["#cidade", "#estado"],
-    "broad": ["#hashtag_ampla"],
-    "strategy": "explicação da estratégia de hashtags"
-  },
-  "post_days": [1, 3, 5, 8, 10],
-  "dates": [{ "day": 15, "name": "...", "relevance": "...", "content_idea": "..." }],
-  "tips": [{ "icon": "💡", "title": "...", "text": "..." }]
-}`;
-
-  try {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-      const message = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.8,
-      max_tokens: 8192
-    });
-    fullText = message.choices[0]?.message?.content || '';
-    res.write(`data: ${JSON.stringify({ type: 'delta', text: fullText })}
-
-`); let finalText = fullText;
-    try {
-      const parsed = cleanAndParseJSON(fullText);
-      const normalized = validateAndNormalizePlan(parsed);
-      finalText = JSON.stringify(normalized);
-      console.log(`[GENERATE] Plano gerado com sucesso: ${normalized.posts?.length || 0} posts, ${normalized.stories?.length || 0} stories`);
-    } catch (parseErr) {
-      console.error('[GENERATE] Erro de parse, enviando texto bruto:', parseErr.message);
-      // Tenta pelo menos remover o markdown
-      finalText = fullText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    }
-
-    res.write(`data: ${JSON.stringify({ type: 'done', fullText: finalText })}\n\n`);
-    res.end();
-  } catch (e) {
-    console.error('[GENERATE] Erro Groq:', e.message);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`);
-    res.end();
-  }
-});
-
-// ─── EXPORT PDF ────────────────────────────────────────────────
-app.post('/api/export-pdf', (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  const { plan, username } = req.body;
-  try {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
-    const filename = `plano_${username}_${Date.now()}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    doc.pipe(res);
-    doc.fontSize(24).font('Helvetica-Bold').text('Plano Estratégico Instagram', { align: 'center' });
-    doc.fontSize(14).font('Helvetica').text(`@${username}`, { align: 'center' });
-    doc.fontSize(10).fillColor('#999').text(new Date().toLocaleDateString('pt-BR'), { align: 'center' });
-    doc.moveDown(1);
-    if (plan.audit) {
-      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('📊 Auditoria');
-      doc.fontSize(11).font('Helvetica');
-      if (plan.audit.summary) doc.text(`Resumo: ${plan.audit.summary}`, { width: 500 });
-      if (plan.audit.month_strategy) doc.text(`Estratégia: ${plan.audit.month_strategy}`, { width: 500 });
-      doc.moveDown(0.5);
-    }
-    if (plan.posts && plan.posts.length) {
-      doc.fontSize(16).font('Helvetica-Bold').text('📅 Plano de Posts');
-      plan.posts.slice(0, 10).forEach((p) => {
-        doc.fontSize(12).fillColor('#ff6b35').font('Helvetica-Bold').text(`Post #${p.n} - ${p.format}`);
-        doc.fontSize(10).fillColor('#000').font('Helvetica');
-        doc.text(`Título: ${p.title || ''}`);
-        doc.text(`Gancho: ${p.hook || ''}`);
-        doc.text(`Legenda: ${(p.copy || '').substring(0, 150)}...`);
-        if (p.cta) doc.text(`CTA: ${p.cta}`);
-        doc.moveDown(0.3);
-      });
-      if (plan.posts.length > 10) doc.fontSize(10).fillColor('#999').text(`... e mais ${plan.posts.length - 10} posts`);
-      doc.moveDown(0.5);
-    }
-    if (plan.hashtags) {
-      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('🔍 Hashtags');
-      doc.fontSize(10).font('Helvetica');
-      if (plan.hashtags.niche && plan.hashtags.niche.length) doc.text(`Nicho: ${plan.hashtags.niche.slice(0, 5).join(', ')}`);
-      if (plan.hashtags.strategy) doc.text(`Estratégia: ${plan.hashtags.strategy.substring(0, 200)}`);
-      doc.moveDown(0.5);
-    }
-    if (plan.tips && plan.tips.length) {
-      doc.fontSize(16).fillColor('#000').font('Helvetica-Bold').text('💡 Dicas');
-      plan.tips.slice(0, 5).forEach(t => doc.fontSize(10).font('Helvetica').text(`${t.icon || '•'} ${t.title}: ${t.text}`, { width: 500 }));
-    }
-    doc.fontSize(9).fillColor('#999').text('Gerado por Instagram Marketing Planner', { align: 'center' });
-    doc.end();
-  } catch (e) {
-    console.error('[PDF_EXPORT] Erro:', e.message);
-    res.status(500).json({ error: 'Erro ao gerar PDF: ' + e.message });
-  }
-});
-
-app.get('/health', (req, res) => res.status(200).send('OK'));
-app.get('/privacy.html', (req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
+// ─── ROTAS ──────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 app.get('/app', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   res.sendFile(path.join(publicDir, 'app.html'));
 });
 
-app.use((req, res) => {
-  console.log(`[404] Rota não encontrada: ${req.url}`);
-  res.status(404).sendFile(path.join(publicDir, 'index.html'));
+app.post('/api/auth', (req, res) => {
+  if (IG_TOKENS.length === 0) return res.status(500).json({ error: 'Nenhum token configurado no servidor.' });
+  req.session.user = { accounts: [] };
+  res.json({ success: true });
+});
+
+app.get('/api/me', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  const accounts = [];
+  for (const token of IG_TOKENS) {
+    try {
+      const me = await axios.get(`https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website&access_token=${token}`);
+      accounts.push({ ...me.data, ig_token: token });
+    } catch (e) { console.error('[AUTH] Erro token:', e.message); }
+  }
+  req.session.user.accounts = accounts;
+  res.json(accounts);
+});
+
+// SUGGESTIONS (ANÁLISE DE PERFIL)
+app.post('/api/suggestions', async (req, res) => {
+  if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
+  const { igId } = req.body;
+  const account = req.session.user.accounts.find(a => a.id === igId);
+  if (!account) return res.status(404).json({ error: 'Not found' });
+
+  const media = await fetchMedia(account.id, account.ig_token, 10);
+  const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
+
+  const prompt = `Você é um estrategista de Instagram de alto nível. Analise este perfil e dê sugestões HUMANAS e ESTRATÉGICAS.
+  PERFIL: @${account.username} (${account.name})
+  BIO: ${account.biography}
+  ÚLTIMAS LEGENDAS: ${captions}
+  
+  PROIBIDO: Começar frases com "Você sabia", "Já pensou", "Descubra como".
+  FOCO: Linguagem natural brasileira, direta, como um consultor conversando no WhatsApp. Use neuromarketing.
+  
+  Retorne JSON: { "niche": "...", "audience": "...", "suggestions": ["..."], "bio_options": ["..."], "insights": "..." }`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: "json_object" }
+    });
+    res.json(cleanAndParseJSON(response.choices[0].message.content));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// INTELLIGENCE (ANÁLISE DE CONCORRENTES)
+app.post('/api/intelligence', async (req, res) => {
+  const { igId, competitors, niche, location, goal } = req.body;
+  const account = req.session.user.accounts.find(a => a.id === igId);
+  
+  const prompt = `Analise o mercado para @${account.username} no nicho ${niche} em ${location}.
+  CONCORRENTES: ${competitors || 'Analise os 5 principais do setor automaticamente'}.
+  OBJETIVO: ${goal}
+  
+  ESTILO: Humanizado, sem clichês de IA. Analise GAPS de mercado que ninguém está explorando. Seja disruptivo.
+  Retorne JSON com: market_intelligence, audience_intelligence, competitive_intelligence, financial_intelligence, bio_optimized, strategic_score.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: "json_object" }
+    });
+    res.json(cleanAndParseJSON(response.choices[0].message.content));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GENERATE (PLANNER)
+app.post('/api/generate', async (req, res) => {
+  const { igId, posts, goal, tone, extra, objections, audience, niche } = req.body;
+  const account = req.session.user.accounts.find(a => a.id === igId);
+
+  const prompt = `Crie um plano de 30 dias para @${account.username}.
+  NICHO: ${niche} | OBJETIVO: ${goal} | TOM: ${tone} | OBJEÇÕES: ${objections}
+  
+  REGRAS DE OURO:
+  1. NUNCA comece um post com "Você sabia", "Sabia que", "Ei você". 
+  2. HUMANIZAÇÃO TOTAL: Use histórias reais, ganchos emocionais (medo, desejo, surpresa) e linguagem falada brasileira.
+  3. ANÁLISE DE CONCORRENTES: Diferencie o conteúdo do que todo mundo já faz. Se todos fazem "dicas", você faz "o erro que ninguém te conta".
+  4. OBEDEÇA AO TOM: Se o tom é "${tone}", cada palavra deve refletir isso.
+  
+  Retorne JSON: { "audit": {...}, "posts": [...], "stories": [...], "tips": [...] }`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: "json_object" }
+    });
+    res.json(cleanAndParseJSON(response.choices[0].message.content));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/status', (req, res) => {
+  res.json({
+    openai_configured: !!process.env.OPENAI_API_KEY,
+    ig_tokens_configured: IG_TOKENS.length,
+    status: 'OK - GPT-4o Ativo'
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram Marketing Planner com Groq (Llama 3) rodando em http://0.0.0.0:${PORT}`);
-  console.log(`[SERVER] Base URL: ${BASE_URL}`);
-
-
-  console.log(`[SERVER] GROQ_API_KEY: ${process.env.GROQ_API_KEY ? 'CONFIGURADA ✅' : 'NÃO CONFIGURADA ❌ - A IA não funcionará!'}`);
-  console.log(`[SERVER] IG_TOKENS: ${IG_TOKENS.length} token(s) configurado(s)`);
+  console.log(`🚀 Instagram Planner GPT-4o rodando na porta ${PORT}`);
 });

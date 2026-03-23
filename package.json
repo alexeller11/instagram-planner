@@ -4,8 +4,8 @@
     "type": "git",
     "url": "https://github.com/alexeller11/instagram-planner.git"
   },
-  "version": "3.0.0",
-  "description": "Instagram Marketing Planner com IA Groq (Llama 3) + Meta API",
+  "version": "4.0.0",
+  "description": "Instagram Marketing Planner com IA GPT-4o + Meta API",
   "main": "server.js",
   "author": "Instagram Planner Team",
   "license": "MIT",
@@ -19,7 +19,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
-    "groq-sdk": "^0.3.3",
+    "openai": "^4.104.0",
     "pdfkit": "^0.13.0"
   },
   "engines": {
@@ -29,7 +29,7 @@
     "instagram",
     "marketing",
     "planner",
-    "gemini",
+    "gpt-4o",
     "ai",
     "social-media"
   ]
