@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram Planner Agency • Painel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0c0a1a;
+      --surface:#13112a;
+      --card:#1a1733;
+      --border:rgba(255,255,255,.08);
+      --text:#fff;
+      --muted:rgba(255,255,255,.58);
+      --subtle:rgba(255,255,255,.26);
+      --brand:#ff6b35;
+      --brand2:#ffd166;
+      --ok:#6ac36a;
+    }
+    body{
+      font-family:'DM Sans',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      min-height:100vh;
+    }
+    header{
+      position:sticky;
+      top:0;
+      z-index:99;
+      background:rgba(19,17,42,.96);
+      border-bottom:1px solid var(--border);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      padding:14px 20px;
+      backdrop-filter:blur(10px);
+    }
+    .logo{
+      font-family:'Syne',sans-serif;
+      font-weight:800;
+      background:linear-gradient(90deg,var(--brand),var(--brand2));
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
+      font-size:1rem;
+    }
+    .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .chip{
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.05);
+      border:1px solid var(--border);
+      color:var(--muted);
+      font-size:12px;
+      cursor:pointer;
+    }
+    .chip.on{
+      background:rgba(255,107,53,.14);
+      border-color:rgba(255,107,53,.35);
+      color:#ffb38a;
+    }
+    .btn-out{
+      color:var(--muted);
+      text-decoration:none;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:8px 12px;
+      font-size:12px;
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      padding:16px 20px 0;
+      flex-wrap:wrap;
+    }
+    .tab{
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      color:var(--muted);
+      cursor:pointer;
+      font-size:13px;
+    }
+    .tab.on{
+      background:rgba(255,107,53,.14);
+      border-color:rgba(255,107,53,.35);
+      color:#ffb38a;
+    }
+    .page{
+      display:none;
+      padding:20px;
+      max-width:1280px;
+      margin:0 auto;
+    }
+    .page.on{display:block}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12,1fr);
+      gap:16px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px;
+    }
+    .span-12{grid-column:span 12}
+    .span-8{grid-column:span 8}
+    .span-6{grid-column:span 6}
+    .span-4{grid-column:span 4}
+    .span-3{grid-column:span 3}
+    .title{
+      font-family:'Syne',sans-serif;
+      font-size:1rem;
+      margin-bottom:14px;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+    }
+    .metrics{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    .metric{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+    }
+    .metric .label{
+      color:var(--muted);
+      font-size:11px;
+      margin-bottom:8px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .metric .value{
+      font-family:'Syne',sans-serif;
+      font-size:1.4rem;
+      font-weight:700;
+    }
+    .chart-wrap{height:260px}
+    input, textarea, select{
+      width:100%;
+      background:rgba(255,255,255,.05);
+      border:1px solid var(--border);
+      border-radius:14px;
+      color:#fff;
+      padding:12px 14px;
+      font-family:'DM Sans',sans-serif;
+      font-size:14px;
+      outline:none;
+    }
+    textarea{resize:vertical;min-height:90px}
+    .field{margin-bottom:14px}
+    .label{
+      display:block;
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:6px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .btn{
+      border:none;
+      border-radius:14px;
+      padding:14px 16px;
+      background:linear-gradient(135deg,var(--brand),#f7931e);
+      color:#fff;
+      font-family:'Syne',sans-serif;
+      font-size:14px;
+      cursor:pointer;
+      width:100%;
+    }
+    .btn.secondary{
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      color:#fff;
+    }
+    .stack{display:grid;gap:12px}
+    .tag-list{display:flex;gap:8px;flex-wrap:wrap}
+    .tag{
+      padding:7px 10px;
+      border-radius:999px;
+      background:rgba(255,107,53,.12);
+      border:1px solid rgba(255,107,53,.26);
+      color:#ffb38a;
+      font-size:12px;
+    }
+    .list{display:grid;gap:10px}
+    .list-item{
+      padding:14px;
+      border-radius:16px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      line-height:1.6;
+      font-size:14px;
+      color:rgba(255,255,255,.88);
+    }
+    .top-post{
+      display:grid;
+      gap:4px;
+      padding:12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .post-title{
+      font-size:13px;
+      color:#fff;
+      font-weight:700;
+    }
+    .muted{color:var(--muted);font-size:12px}
+    .result-title{
+      font-family:'Syne',sans-serif;
+      font-size:1.15rem;
+      margin-bottom:8px;
+    }
+    .format{
+      display:inline-block;
+      font-size:10px;
+      padding:4px 8px;
+      border-radius:999px;
+      margin-bottom:8px;
+      background:rgba(255,255,255,.08);
+      color:#fff;
+    }
+    .copy-box{
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:14px;
+      white-space:pre-wrap;
+      line-height:1.7;
+      font-size:14px;
+    }
+    .calendar{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+    }
+    .day{
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:12px;
+      min-height:110px;
+    }
+    .day strong{
+      display:block;
+      margin-bottom:8px;
+      color:#ffb38a;
+      font-size:12px;
+    }
+    .story-box{
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:14px;
+    }
+    .copy-btn{
+      margin-top:10px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+      cursor:pointer;
+      font-size:12px;
+    }
+    .small-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+    .notice{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+    }
+    .token-row{
+      display:flex;
+      gap:10px;
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:20px;
+      transform:translateX(-50%);
+      background:#fff;
+      color:#000;
+      border-radius:999px;
+      padding:10px 16px;
+      font-size:12px;
+      font-weight:700;
+      display:none;
+      z-index:999;
+    }
+    .toast.show{display:block}
+    @media (max-width: 1100px){
+      .span-8,.span-6,.span-4,.span-3{grid-column:span 12}
+      .metrics{grid-template-columns:repeat(2,1fr)}
+      .calendar{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width: 640px){
+      .metrics,.small-grid,.calendar{grid-template-columns:1fr}
+      .token-row{flex-direction:column}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">✦ Instagram Planner Agency</div>
+    <div class="row" id="accountsRow"></div>
+    <a class="btn-out" href="/auth/logout">Sair</a>
+  </header>
+
+  <div class="tabs">
+    <div class="tab on" onclick="switchPage('dashboard', this)">📊 Dashboard</div>
+    <div class="tab" onclick="switchPage('intelligence', this)">🧠 Inteligência</div>
+    <div class="tab" onclick="switchPage('competitors', this)">🥊 Concorrência</div>
+    <div class="tab" onclick="switchPage('planner', this)">📅 Planner</div>
+    <div class="tab" onclick="switchPage('settings', this)">🔧 Tokens</div>
+  </div>
+
+  <section class="page on" id="page-dashboard">
+    <div class="grid">
+      <div class="card span-12">
+        <div class="title">Visão geral do perfil</div>
+        <div class="metrics">
+          <div class="metric"><div class="label">Seguidores</div><div class="value" id="mFollowers">-</div></div>
+          <div class="metric"><div class="label">Posts</div><div class="value" id="mPosts">-</div></div>
+          <div class="metric"><div class="label">Engajamento médio</div><div class="value" id="mEngagement">-</div></div>
+          <div class="metric"><div class="label">Taxa de engajamento</div><div class="value" id="mRate">-</div></div>
+        </div>
+      </div>
+
+      <div class="card span-8">
+        <div class="title">Mix de formatos</div>
+        <div class="chart-wrap">
+          <canvas id="formatChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card span-4">
+        <div class="title">Leitura rápida</div>
+        <div class="list" id="quickRead">
+          <div class="list-item">Selecione uma conta para carregar o dashboard.</div>
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="title">Top posts recentes</div>
+        <div class="small-grid" id="topPosts"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-intelligence">
+    <div class="grid">
+      <div class="card span-4">
+        <div class="title">Parâmetros da análise</div>
+
+        <div class="field">
+          <label class="label">Nicho</label>
+          <input id="intelNiche" placeholder="Ex: clínica oftalmológica, pizzaria, esquadrias..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Público</label>
+          <input id="intelAudience" placeholder="Ex: mulheres 28 a 45, empresários, famílias..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Objetivo</label>
+          <input id="intelGoal" placeholder="Ex: autoridade, gerar leads, vender mais..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Tom de voz</label>
+          <input id="intelTone" placeholder="Ex: profissional, humanizado, premium..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Contexto extra</label>
+          <textarea id="intelExtra" placeholder="Diferenciais, momento da empresa, campanha, foco do mês..."></textarea>
+        </div>
+
+        <button class="btn" onclick="runIntelligence()">Gerar diagnóstico por IA</button>
+      </div>
+
+      <div class="card span-8">
+        <div class="title">Diagnóstico estratégico</div>
+        <div id="intelResult" class="notice">Preencha os campos e rode a análise.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-competitors">
+    <div class="grid">
+      <div class="card span-4">
+        <div class="title">Análise de concorrência</div>
+
+        <div class="field">
+          <label class="label">Nicho</label>
+          <input id="compNiche" placeholder="Ex: moda feminina, saúde, construção..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Público</label>
+          <input id="compAudience" placeholder="Ex: classe A/B, famílias, lojistas..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Concorrentes / referências</label>
+          <textarea id="compList" placeholder="@concorrente1&#10;@concorrente2&#10;marca referência 3"></textarea>
+        </div>
+
+        <button class="btn" onclick="runCompetitors()">Analisar concorrência</button>
+      </div>
+
+      <div class="card span-8">
+        <div class="title">Leitura competitiva</div>
+        <div id="compResult" class="notice">Informe as referências para a IA montar o mapa competitivo.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-planner">
+    <div class="grid">
+      <div class="card span-4">
+        <div class="title">Configuração do plano</div>
+
+        <div class="field">
+          <label class="label">Nicho</label>
+          <input id="planNiche" placeholder="Ex: hospital-dia, drogaria, loja premium..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Público</label>
+          <input id="planAudience" placeholder="Ex: pacientes 40+, confeiteiras, casais..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Objetivo do mês</label>
+          <input id="planGoal" placeholder="Ex: vender mais, posicionar, aumentar procura..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Tom de voz</label>
+          <input id="planTone" placeholder="Ex: elegante, direto, acolhedor..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Contexto extra</label>
+          <textarea id="planExtra" placeholder="Datas do mês, campanha, diferenciais, foco comercial..."></textarea>
+        </div>
+
+        <div class="small-grid">
+          <div class="field">
+            <label class="label">Total de posts</label>
+            <input id="planTotal" type="number" value="16" />
+          </div>
+          <div class="field">
+            <label class="label">Reels</label>
+            <input id="planReels" type="number" value="6" />
+          </div>
+          <div class="field">
+            <label class="label">Carrosséis</label>
+            <input id="planCarousels" type="number" value="6" />
+          </div>
+          <div class="field">
+            <label class="label">Estáticos</label>
+            <input id="planSingles" type="number" value="4" />
+          </div>
+        </div>
+
+        <button class="btn" onclick="generatePlanner()">Gerar planner completo</button>
+        <button class="btn secondary" style="margin-top:10px" onclick="exportPlannerPDF()">Exportar PDF</button>
+      </div>
+
+      <div class="card span-8">
+        <div class="title">Planejamento do mês</div>
+        <div id="planResult" class="notice">Gere um plano para visualizar calendário, posts, stories e hashtags.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-settings">
+    <div class="grid">
+      <div class="card span-6">
+        <div class="title">Adicionar conta com token manual</div>
+        <div class="token-row">
+          <input id="manualToken" placeholder="Cole aqui um token do Instagram Graph API" />
+          <button class="btn" style="width:auto" onclick="testToken()">Conectar</button>
+        </div>
+        <div class="notice" style="margin-top:12px">
+          Use isso quando quiser testar outra conta sem mexer imediatamente no .env.
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="title">Status do sistema</div>
+        <div class="list" id="statusBox">
+          <div class="list-item">Carregando status...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let ACCOUNTS = [];
+    let CURRENT = null;
+    let DASHBOARD = null;
+    let PLAN_DATA = null;
+    let formatChart = null;
+
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function switchPage(page, el) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("on"));
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("on"));
+      el.classList.add("on");
+      document.getElementById("page-" + page).classList.add("on");
+    }
+
+    async function init() {
+      const me = await fetch("/api/me").then(r => r.json()).catch(() => ({ logged: false, accounts: [] }));
+      if (!me.logged) {
+        window.location.href = "/";
+        return;
+      }
+
+      ACCOUNTS = me.accounts || [];
+      renderAccounts();
+
+      if (ACCOUNTS.length) {
+        selectAccount(ACCOUNTS[0].id);
+      }
+
+      loadStatus();
+    }
+
+    function renderAccounts() {
+      const row = document.getElementById("accountsRow");
+      row.innerHTML = "";
+
+      if (!ACCOUNTS.length) {
+        row.innerHTML = `<div class="chip">Nenhuma conta</div>`;
+        return;
+      }
+
+      ACCOUNTS.forEach(acc => {
+        const el = document.createElement("div");
+        el.className = "chip" + (CURRENT && CURRENT.id === acc.id ? " on" : "");
+        el.textContent = "@" + acc.username;
+        el.onclick = () => selectAccount(acc.id);
+        row.appendChild(el);
+      });
+    }
+
+    async function selectAccount(id) {
+      CURRENT = ACCOUNTS.find(a => a.id === id);
+      renderAccounts();
+      await loadDashboard();
+    }
+
+    async function loadDashboard() {
+      if (!CURRENT) return;
+
+      const data = await fetch(`/api/dashboard/${CURRENT.id}`).then(r => r.json());
+      DASHBOARD = data;
+
+      document.getElementById("mFollowers").textContent = formatNumber(data.account.followers_count || 0);
+      document.getElementById("mPosts").textContent = formatNumber(data.account.media_count || 0);
+      document.getElementById("mEngagement").textContent = formatNumber(data.metrics.avg_engagement || 0);
+      document.getElementById("mRate").textContent = (data.metrics.engagement_rate || 0) + "%";
+
+      document.getElementById("quickRead").innerHTML = `
+        <div class="list-item">Bio atual: ${escapeHtml(data.account.biography || "Sem bio")}</div>
+        <div class="list-item">Website: ${escapeHtml(data.account.website || "Não informado")}</div>
+        <div class="list-item">Frequência média: ${data.metrics.posting_frequency_days ? `${data.metrics.posting_frequency_days} dias entre posts` : "dados insuficientes"}</div>
+      `;
+
+      document.getElementById("topPosts").innerHTML = (data.top_posts || []).map(p => `
+        <div class="top-post">
+          <div class="post-title">${escapeHtml((p.caption || "Sem legenda").slice(0, 90))}</div>
+          <div class="muted">${p.media_type || "POST"} • ❤️ ${p.like_count || 0} • 💬 ${p.comments_count || 0}</div>
+        </div>
+      `).join("");
+
+      renderFormatChart(data.format_mix || {});
+    }
+
+    function renderFormatChart(formatMix) {
+      const ctx = document.getElementById("formatChart").getContext("2d");
+      const labels = Object.keys(formatMix);
+      const values = labels.map(l => formatMix[l].count);
+
+      if (formatChart) formatChart.destroy();
+
+      formatChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{ data: values }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: "rgba(255,255,255,.7)" }
+            }
+          }
+        }
+      });
+    }
+
+    async function runIntelligence() {
+      if (!CURRENT) return toast("Selecione uma conta.");
+
+      const payload = {
+        igId: CURRENT.id,
+        niche: document.getElementById("intelNiche").value,
+        audience: document.getElementById("intelAudience").value,
+        goal: document.getElementById("intelGoal").value,
+        tone: document.getElementById("intelTone").value,
+        extra: document.getElementById("intelExtra").value
+      };
+
+      document.getElementById("intelResult").innerHTML = "Analisando perfil...";
+      try {
+        const data = await fetch("/api/intelligence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById("intelResult").innerHTML = `
+          <div class="result-title">Resumo executivo</div>
+          <div class="copy-box">${escapeHtml(data.executive_summary || "")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Diagnóstico</div>
+          <div class="list">
+            <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(data.diagnosis?.positioning || "")}</div>
+            <div class="list-item"><strong>Força atual:</strong><br>${escapeHtml(data.diagnosis?.content_strength || "")}</div>
+            <div class="list-item"><strong>Gap:</strong><br>${escapeHtml(data.diagnosis?.content_gap || "")}</div>
+            <div class="list-item"><strong>Engajamento:</strong><br>${escapeHtml(data.diagnosis?.engagement_read || "")}</div>
+            <div class="list-item"><strong>Funil:</strong><br>${escapeHtml(data.diagnosis?.funnel_read || "")}</div>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Oportunidades</div>
+          <div class="tag-list">${(data.opportunities || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Ações prioritárias</div>
+          <div class="list">${(data.priority_actions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Ângulos de conteúdo</div>
+          <div class="tag-list">${(data.content_angles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Sugestões de bio</div>
+          <div class="list">${(data.bio_suggestions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
+        `;
+      } catch (error) {
+        document.getElementById("intelResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function runCompetitors() {
+      if (!CURRENT) return toast("Selecione uma conta.");
+
+      const competitors = document.getElementById("compList").value
+        .split("\n")
+        .map(v => v.trim())
+        .filter(Boolean);
+
+      document.getElementById("compResult").innerHTML = "Analisando concorrência...";
+
+      try {
+        const data = await fetch("/api/competitors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            igId: CURRENT.id,
+            niche: document.getElementById("compNiche").value,
+            audience: document.getElementById("compAudience").value,
+            competitors
+          })
+        }).then(r => r.json());
+
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById("compResult").innerHTML = `
+          <div class="result-title">Leitura do mercado</div>
+          <div class="copy-box">${escapeHtml(data.market_read || "")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Padrões competitivos</div>
+          <div class="list">${(data.competitor_patterns || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">O que eles fazem bem</div>
+          <div class="tag-list">${(data.what_they_do_well || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Gaps para explorar</div>
+          <div class="list">${(data.gaps_to_exploit || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Diferenciais de posicionamento</div>
+          <div class="tag-list">${(data.positioning_differentiators || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Oportunidades de conteúdo</div>
+          <div class="list">${(data.content_opportunities || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
+        `;
+      } catch (error) {
+        document.getElementById("compResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function generatePlanner() {
+      if (!CURRENT) return toast("Selecione uma conta.");
+
+      document.getElementById("planResult").innerHTML = "Gerando planejamento...";
+
+      try {
+        const data = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            igId: CURRENT.id,
+            niche: document.getElementById("planNiche").value,
+            audience: document.getElementById("planAudience").value,
+            goal: document.getElementById("planGoal").value,
+            tone: document.getElementById("planTone").value,
+            extra: document.getElementById("planExtra").value,
+            totalPosts: Number(document.getElementById("planTotal").value || 16),
+            reels: Number(document.getElementById("planReels").value || 6),
+            carousels: Number(document.getElementById("planCarousels").value || 6),
+            singlePosts: Number(document.getElementById("planSingles").value || 4)
+          })
+        }).then(r => r.json());
+
+        if (data.error) throw new Error(data.error);
+
+        PLAN_DATA = data;
+
+        document.getElementById("planResult").innerHTML = `
+          <div class="result-title">Resumo do mês</div>
+          <div class="copy-box">${escapeHtml(data.audit?.summary || "")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Estratégia central</div>
+          <div class="list">
+            <div class="list-item"><strong>Estratégia:</strong><br>${escapeHtml(data.audit?.month_strategy || "")}</div>
+            <div class="list-item"><strong>Funil:</strong><br>${escapeHtml(data.audit?.funnel_logic || "")}</div>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Pilares</div>
+          <div class="tag-list">${(data.content_pillars || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Calendário resumido</div>
+          <div class="calendar">
+            ${(data.posts || []).map(p => `
+              <div class="day">
+                <strong>#${p.n} • ${escapeHtml(p.day_suggestion || "Dia")}</strong>
+                <div class="muted">${escapeHtml(p.format || "")} • ${escapeHtml(p.pillar || "")}</div>
+                <div style="margin-top:8px;font-size:13px;line-height:1.5">${escapeHtml(p.title || "")}</div>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Posts</div>
+          <div class="list">
+            ${(data.posts || []).map(p => `
+              <div class="list-item">
+                <div class="format">${escapeHtml(p.format || "")}</div>
+                <div style="font-weight:700;margin-bottom:6px">${escapeHtml(p.title || "")}</div>
+                <div class="muted" style="margin-bottom:8px">Objetivo: ${escapeHtml(p.objective || "")}</div>
+                <div class="copy-box"><strong>Gancho:</strong>\n${escapeHtml(p.hook || "")}\n\n<strong>Legenda:</strong>\n${escapeHtml(p.copy || "")}\n\n<strong>CTA:</strong>\n${escapeHtml(p.cta || "")}</div>
+                ${p.script ? `<button class="copy-btn" onclick="copyText(${JSON.stringify(p.script).replace(/"/g, '&quot;')})">Copiar roteiro do reels</button>` : ""}
+                ${Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `<button class="copy-btn" onclick="copyText(${JSON.stringify(p.carousel_slides.join("\\n")).replace(/"/g, '&quot;')})">Copiar slides do carrossel</button>` : ""}
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Stories</div>
+          <div class="list">
+            ${(data.stories || []).map(s => `
+              <div class="story-box">
+                <div style="font-weight:700;margin-bottom:8px">${escapeHtml(s.day || "")} • ${escapeHtml(s.theme || "")}</div>
+                <div class="muted" style="margin-bottom:10px">${escapeHtml(s.objective || "")}</div>
+                <div class="copy-box">${(s.slides || []).map(sl => `Slide ${sl.n}: ${sl.text} (${sl.action || "ação"})`).join("\n\n")}</div>
+                <button class="copy-btn" onclick="copyText(${JSON.stringify((s.slides || []).map(sl => `Slide ${sl.n}: ${sl.text} (${sl.action || "ação"})`).join("\\n\\n")).replace(/"/g, '&quot;')})">Copiar sequência</button>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Hashtags</div>
+          <div class="tag-list">
+            ${[...(data.hashtags?.niche || []), ...(data.hashtags?.local || []), ...(data.hashtags?.broad || [])]
+              .map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}
+          </div>
+          <div class="notice" style="margin-top:10px">${escapeHtml(data.hashtags?.strategy || "")}</div>
+        `;
+
+        toast("Planner gerado!");
+      } catch (error) {
+        document.getElementById("planResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function exportPlannerPDF() {
+      if (!PLAN_DATA || !CURRENT) {
+        return toast("Gere um planner antes.");
+      }
+
+      const res = await fetch("/api/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: PLAN_DATA, username: CURRENT.username })
+      });
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `plano_${CURRENT.username}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function testToken() {
+      const token = document.getElementById("manualToken").value.trim();
+      if (!token) return toast("Cole um token.");
+
+      const data = await fetch("/api/test-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token })
+      }).then(r => r.json());
+
+      if (!data.success) {
+        return toast(data.error || "Erro no token.");
+      }
+
+      data.accounts.forEach(acc => {
+        const exists = ACCOUNTS.find(a => a.id === acc.id);
+        if (!exists) ACCOUNTS.push(acc);
+      });
+
+      document.getElementById("manualToken").value = "";
+      renderAccounts();
+      toast("Conta conectada.");
+    }
+
+    async function loadStatus() {
+      const data = await fetch("/api/status").then(r => r.json()).catch(() => null);
+      const box = document.getElementById("statusBox");
+
+      if (!data) {
+        box.innerHTML = `<div class="list-item">Erro ao carregar status.</div>`;
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
+        <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
+        <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
+      `;
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text || "");
+      toast("Copiado!");
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    init();
+  </script>
+</body>
+</html>
