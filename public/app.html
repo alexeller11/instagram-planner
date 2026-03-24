@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • Painel 5.1</title>
+  <title>Instagram Planner Agency • Painel 5.2</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -18,369 +18,75 @@
       --subtle:rgba(255,255,255,.26);
       --brand:#ff6b35;
       --brand2:#ffd166;
-      --ok:#6ac36a;
-      --danger:#ff7575;
     }
-    body{
-      font-family:'DM Sans',sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      min-height:100vh;
-    }
-    header{
-      position:sticky;
-      top:0;
-      z-index:99;
-      background:rgba(19,17,42,.96);
-      border-bottom:1px solid var(--border);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:16px;
-      padding:14px 20px;
-      backdrop-filter:blur(10px);
-    }
-    .logo{
-      font-family:'Syne',sans-serif;
-      font-weight:800;
-      background:linear-gradient(90deg,var(--brand),var(--brand2));
-      -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-      background-clip:text;
-      font-size:1rem;
-    }
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{position:sticky;top:0;z-index:99;background:rgba(19,17,42,.96);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;backdrop-filter:blur(10px)}
+    .logo{font-family:'Syne',sans-serif;font-weight:800;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:1rem}
     .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .chip{
-      padding:8px 12px;
-      border-radius:999px;
-      background:rgba(255,255,255,.05);
-      border:1px solid var(--border);
-      color:var(--muted);
-      font-size:12px;
-      cursor:pointer;
-    }
-    .chip.on{
-      background:rgba(255,107,53,.14);
-      border-color:rgba(255,107,53,.35);
-      color:#ffb38a;
-    }
-    .btn-out{
-      color:var(--muted);
-      text-decoration:none;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:8px 12px;
-      font-size:12px;
-    }
-    .tabs{
-      display:flex;
-      gap:8px;
-      padding:16px 20px 0;
-      flex-wrap:wrap;
-    }
-    .tab{
-      padding:10px 14px;
-      border-radius:999px;
-      background:rgba(255,255,255,.04);
-      border:1px solid var(--border);
-      color:var(--muted);
-      cursor:pointer;
-      font-size:13px;
-    }
-    .tab.on{
-      background:rgba(255,107,53,.14);
-      border-color:rgba(255,107,53,.35);
-      color:#ffb38a;
-    }
-    .page{
-      display:none;
-      padding:20px;
-      max-width:1280px;
-      margin:0 auto;
-    }
+    .chip{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer}
+    .chip.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
+    .btn-out{color:var(--muted);text-decoration:none;border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px}
+    .tabs{display:flex;gap:8px;padding:16px 20px 0;flex-wrap:wrap}
+    .tab{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:13px}
+    .tab.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
+    .page{display:none;padding:20px;max-width:1280px;margin:0 auto}
     .page.on{display:block}
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(12,1fr);
-      gap:16px;
-    }
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:22px;
-      padding:18px;
-    }
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px}
     .span-12{grid-column:span 12}
     .span-8{grid-column:span 8}
     .span-6{grid-column:span 6}
     .span-4{grid-column:span 4}
-    .span-3{grid-column:span 3}
-    .title{
-      font-family:'Syne',sans-serif;
-      font-size:1rem;
-      margin-bottom:14px;
-    }
-    .sub{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
-    .metrics{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:12px;
-    }
-    .metric{
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:14px;
-    }
-    .metric .label{
-      color:var(--muted);
-      font-size:11px;
-      margin-bottom:8px;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .metric .value{
-      font-family:'Syne',sans-serif;
-      font-size:1.4rem;
-      font-weight:700;
-    }
-    .score-box{
-      display:flex;
-      align-items:center;
-      gap:14px;
-      padding:16px;
-      border-radius:18px;
-      background:linear-gradient(135deg,rgba(255,107,53,.12),rgba(255,209,102,.08));
-      border:1px solid rgba(255,107,53,.2);
-      margin-bottom:16px;
-    }
-    .score-value{
-      width:70px;
-      height:70px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-family:'Syne',sans-serif;
-      font-size:1.4rem;
-      font-weight:800;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
-      flex-shrink:0;
-    }
+    .title{font-family:'Syne',sans-serif;font-size:1rem;margin-bottom:14px}
+    .sub{color:var(--muted);font-size:13px;line-height:1.6}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .metric{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .metric .label{color:var(--muted);font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+    .metric .value{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
+    .score-box{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:linear-gradient(135deg,rgba(255,107,53,.12),rgba(255,209,102,.08));border:1px solid rgba(255,107,53,.2);margin-bottom:16px}
+    .score-value{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);flex-shrink:0}
     .chart-wrap{height:260px}
-    input, textarea, select{
-      width:100%;
-      background:rgba(255,255,255,.05);
-      border:1px solid var(--border);
-      border-radius:14px;
-      color:#fff;
-      padding:12px 14px;
-      font-family:'DM Sans',sans-serif;
-      font-size:14px;
-      outline:none;
-    }
+    input,textarea,select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;color:#fff;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none}
     textarea{resize:vertical;min-height:90px}
     .field{margin-bottom:14px}
-    .label{
-      display:block;
-      font-size:11px;
-      color:var(--muted);
-      margin-bottom:6px;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .btn{
-      border:none;
-      border-radius:14px;
-      padding:14px 16px;
-      background:linear-gradient(135deg,var(--brand),#f7931e);
-      color:#fff;
-      font-family:'Syne',sans-serif;
-      font-size:14px;
-      cursor:pointer;
-      width:100%;
-    }
-    .btn.secondary{
-      background:rgba(255,255,255,.06);
-      border:1px solid var(--border);
-      color:#fff;
-    }
+    .label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .btn{border:none;border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,var(--brand),#f7931e);color:#fff;font-family:'Syne',sans-serif;font-size:14px;cursor:pointer;width:100%}
+    .btn.secondary{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff}
     .btn:disabled{opacity:.6;cursor:not-allowed}
-    .stack{display:grid;gap:12px}
     .tag-list{display:flex;gap:8px;flex-wrap:wrap}
-    .tag{
-      padding:7px 10px;
-      border-radius:999px;
-      background:rgba(255,107,53,.12);
-      border:1px solid rgba(255,107,53,.26);
-      color:#ffb38a;
-      font-size:12px;
-    }
+    .tag{padding:7px 10px;border-radius:999px;background:rgba(255,107,53,.12);border:1px solid rgba(255,107,53,.26);color:#ffb38a;font-size:12px}
     .list{display:grid;gap:10px}
-    .list-item{
-      padding:14px;
-      border-radius:16px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      line-height:1.6;
-      font-size:14px;
-      color:rgba(255,255,255,.88);
-    }
-    .top-post{
-      display:grid;
-      gap:4px;
-      padding:12px;
-      border-radius:14px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-    }
-    .post-title{
-      font-size:13px;
-      color:#fff;
-      font-weight:700;
-    }
+    .list-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);line-height:1.6;font-size:14px;color:rgba(255,255,255,.88)}
+    .top-post{display:grid;gap:4px;padding:12px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+    .post-title{font-size:13px;color:#fff;font-weight:700}
     .muted{color:var(--muted);font-size:12px}
-    .result-title{
-      font-family:'Syne',sans-serif;
-      font-size:1.15rem;
-      margin-bottom:8px;
-    }
-    .format{
-      display:inline-block;
-      font-size:10px;
-      padding:4px 8px;
-      border-radius:999px;
-      margin-bottom:8px;
-      background:rgba(255,255,255,.08);
-      color:#fff;
-    }
-    .copy-box{
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:14px;
-      padding:14px;
-      white-space:pre-wrap;
-      line-height:1.7;
-      font-size:14px;
-    }
-    .calendar{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:10px;
-    }
-    .day{
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:16px;
-      padding:12px;
-      min-height:110px;
-    }
-    .day strong{
-      display:block;
-      margin-bottom:8px;
-      color:#ffb38a;
-      font-size:12px;
-    }
-    .story-box{
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:16px;
-      padding:14px;
-    }
-    .copy-btn{
-      margin-top:10px;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
-      color:#fff;
-      cursor:pointer;
-      font-size:12px;
-    }
-    .copy-btn:hover{border-color:rgba(255,107,53,.35)}
-    .small-grid{
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      gap:12px;
-    }
-    .notice{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
-    .token-row{
-      display:flex;
-      gap:10px;
-    }
-    .history-item{
-      padding:14px;
-      border-radius:16px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      cursor:pointer;
-    }
+    .result-title{font-family:'Syne',sans-serif;font-size:1.15rem;margin-bottom:8px}
+    .format{display:inline-block;font-size:10px;padding:4px 8px;border-radius:999px;margin-bottom:8px;background:rgba(255,255,255,.08);color:#fff}
+    .copy-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px;white-space:pre-wrap;line-height:1.7;font-size:14px}
+    .calendar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .day{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px;min-height:110px}
+    .day strong{display:block;margin-bottom:8px;color:#ffb38a;font-size:12px}
+    .story-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px}
+    .copy-btn{margin-top:10px;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:#fff;cursor:pointer;font-size:12px}
+    .small-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .notice{color:var(--muted);font-size:13px;line-height:1.6}
+    .token-row{display:flex;gap:10px}
+    .history-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);cursor:pointer}
     .history-item:hover{border-color:rgba(255,107,53,.3)}
-    .toolbar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:14px;
-    }
-    .toolbar button{
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
-      color:#fff;
-      cursor:pointer;
-      font-size:12px;
-    }
-    .toolbar button.on{
-      background:rgba(255,107,53,.12);
-      border-color:rgba(255,107,53,.3);
-      color:#ffb38a;
-    }
-    .loader{
-      display:none;
-      padding:14px 0;
-      color:#ffb38a;
-      font-size:13px;
-    }
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .toolbar button{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:#fff;cursor:pointer;font-size:12px}
+    .toolbar button.on{background:rgba(255,107,53,.12);border-color:rgba(255,107,53,.3);color:#ffb38a}
+    .loader{display:none;padding:14px 0;color:#ffb38a;font-size:13px}
     .loader.on{display:block}
-    .toast{
-      position:fixed;
-      left:50%;
-      bottom:20px;
-      transform:translateX(-50%);
-      background:#fff;
-      color:#000;
-      border-radius:999px;
-      padding:10px 16px;
-      font-size:12px;
-      font-weight:700;
-      display:none;
-      z-index:999;
-    }
+    .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#fff;color:#000;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:700;display:none;z-index:999}
     .toast.show{display:block}
-    @media (max-width: 1100px){
-      .span-8,.span-6,.span-4,.span-3{grid-column:span 12}
-      .metrics{grid-template-columns:repeat(2,1fr)}
-      .calendar{grid-template-columns:repeat(2,1fr)}
-    }
-    @media (max-width: 640px){
-      .metrics,.small-grid,.calendar{grid-template-columns:1fr}
-      .token-row{flex-direction:column}
-    }
+    @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:640px){.metrics,.small-grid,.calendar{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 5.1</div>
+    <div class="logo">✦ Instagram Planner Agency 5.2</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -415,9 +121,7 @@
 
       <div class="card span-8">
         <div class="title">Mix de formatos</div>
-        <div class="chart-wrap">
-          <canvas id="formatChart"></canvas>
-        </div>
+        <div class="chart-wrap"><canvas id="formatChart"></canvas></div>
       </div>
 
       <div class="card span-4">
@@ -460,6 +164,11 @@
         </div>
 
         <div class="field">
+          <label class="label">Localização da empresa</label>
+          <input id="intelLocation" placeholder="Ex: Linhares ES, Vitória ES, Vila Velha..." />
+        </div>
+
+        <div class="field">
           <label class="label">Contexto extra</label>
           <textarea id="intelExtra" placeholder="Diferenciais, momento da empresa, campanha, foco do mês..."></textarea>
         </div>
@@ -491,8 +200,28 @@
         </div>
 
         <div class="field">
+          <label class="label">Localização da empresa</label>
+          <input id="compLocation" placeholder="Ex: Linhares ES, Colatina, Espírito Santo..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Objetivo da marca</label>
+          <input id="compGoal" placeholder="Ex: vender mais, reforçar autoridade, virar referência..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Tom desejado</label>
+          <input id="compTone" placeholder="Ex: premium, técnico, próximo, sofisticado..." />
+        </div>
+
+        <div class="field">
           <label class="label">Concorrentes / referências</label>
           <textarea id="compList" placeholder="@concorrente1&#10;@concorrente2&#10;marca referência 3"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="label">Contexto extra</label>
+          <textarea id="compExtra" placeholder="Observações sobre o mercado, sobre a cidade, comportamento local..."></textarea>
         </div>
 
         <button class="btn" id="compBtn" onclick="runCompetitors()">Analisar concorrência</button>
@@ -529,6 +258,11 @@
         <div class="field">
           <label class="label">Tom de voz</label>
           <input id="planTone" placeholder="Ex: elegante, direto, acolhedor..." />
+        </div>
+
+        <div class="field">
+          <label class="label">Localização da empresa</label>
+          <input id="planLocation" placeholder="Ex: Linhares ES, Colatina, Vitória..." />
         </div>
 
         <div class="field">
@@ -614,7 +348,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v51_history";
+    const HISTORY_KEY = "ig_planner_agency_v52_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
@@ -743,6 +477,7 @@
         audience: document.getElementById("intelAudience").value,
         goal: document.getElementById("intelGoal").value,
         tone: document.getElementById("intelTone").value,
+        location: document.getElementById("intelLocation").value,
         extra: document.getElementById("intelExtra").value
       };
 
@@ -771,6 +506,10 @@
             <div class="list-item"><strong>Engajamento:</strong><br>${escapeHtml(data.diagnosis?.engagement_read || "")}</div>
             <div class="list-item"><strong>Funil:</strong><br>${escapeHtml(data.diagnosis?.funnel_read || "")}</div>
           </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Leitura local</div>
+          <div class="copy-box">${escapeHtml(data.local_market_read || "")}</div>
 
           <div style="height:14px"></div>
           <div class="result-title">Oportunidades</div>
@@ -814,6 +553,10 @@
             igId: CURRENT.id,
             niche: document.getElementById("compNiche").value,
             audience: document.getElementById("compAudience").value,
+            location: document.getElementById("compLocation").value,
+            goal: document.getElementById("compGoal").value,
+            tone: document.getElementById("compTone").value,
+            extra: document.getElementById("compExtra").value,
             competitors
           })
         }).then(r => r.json());
@@ -823,6 +566,14 @@
         document.getElementById("compResult").innerHTML = `
           <div class="result-title">Leitura do mercado</div>
           <div class="copy-box">${escapeHtml(data.market_read || "")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Contexto competitivo local</div>
+          <div class="copy-box">${escapeHtml(data.local_competitive_context || "")}</div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Perfis de referência sugeridos</div>
+          <div class="tag-list">${(data.suggested_reference_profiles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
 
           <div style="height:14px"></div>
           <div class="result-title">Padrões competitivos</div>
@@ -867,6 +618,7 @@
             audience: document.getElementById("planAudience").value,
             goal: document.getElementById("planGoal").value,
             tone: document.getElementById("planTone").value,
+            location: document.getElementById("planLocation").value,
             extra: document.getElementById("planExtra").value,
             totalPosts: Number(document.getElementById("planTotal").value || 16),
             reels: Number(document.getElementById("planReels").value || 6),
