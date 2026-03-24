@@ -15,28 +15,22 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .acc-chip{background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .2s;white-space:nowrap}
 .acc-chip.on{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.5)}
 .btn-out{font-size:11px;color:var(--muted);background:none;border:.5px solid var(--border);padding:4px 10px;border-radius:8px;cursor:pointer}
-.nav-tabs{background:var(--surface);border-bottom:.5px solid var(--border);display:flex;overflow-x:auto;padding:0 1rem;position:sticky;top:53px;z-index:99}
-.nav-tab{padding:11px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
-.nav-tab.on{color:var(--brand);border-bottom-color:var(--brand)}
-.page{display:none;padding:1.25rem;max-width:960px;margin:0 auto}.page.on{display:block}
+.page{padding:1.25rem;max-width:960px;margin:0 auto}
 .card{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1rem}
 .card-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
 
-/* DIAGNOSTIC AREA */
-.diag-box{background:rgba(224,75,74,.08);border:.5px solid rgba(224,75,74,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
-.diag-title{font-size:12px;font-weight:700;color:#f09595;margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
-.diag-item{font-size:11px;color:rgba(240,149,149,.8);margin-bottom:.3rem;padding-left:18px;position:relative}
-.diag-item::before{content:'•';position:absolute;left:6px}
-.manual-token-wrap{margin-top:.75rem;display:flex;gap:8px}
-.manual-token-wrap input{flex:1;font-size:11px;padding:8px 12px}
+/* MANUAL TOKEN BOX */
+.manual-box{background:rgba(255,107,53,.08);border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
+.manual-title{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.manual-input-wrap{display:flex;gap:8px}
+.manual-input-wrap input{flex:1;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;color:#fff;outline:none}
 .btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
 
-/* REST OF STYLES... (Simplificado para o exemplo) */
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1rem}
 .metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
 .metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
 .metric-card .ml{font-size:11px;color:var(--muted);margin-top:3px}
-input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none}
+select{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none}
 .gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer}
 </style>
 </head>
@@ -51,15 +45,15 @@ input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px
   <button class="btn-out" onclick="location.href='/'">Sair</button>
 </header>
 
-<main class="page on">
-  <!-- ÁREA DE DIAGNÓSTICO -->
-  <div id="diag-area" class="diag-box" style="display:none">
-    <div class="diag-title">⚠️ Erro de Conexão com Instagram</div>
-    <div id="diag-errors"></div>
-    <div class="manual-token-wrap">
-      <input type="text" id="manual-token" placeholder="Cole um Token do Graph API Explorer aqui para testar...">
-      <button class="btn-test" id="btn-test-token">Testar Token</button>
+<main class="page">
+  <!-- CONECTAR MANUALMENTE -->
+  <div class="manual-box">
+    <div class="manual-title">📸 Conectar Nova Conta do Instagram</div>
+    <div class="manual-input-wrap">
+      <input type="text" id="manual-token" placeholder="Cole seu Token de Acesso da Meta aqui...">
+      <button class="btn-test" id="btn-test-token">Conectar</button>
     </div>
+    <div id="diag-msg" style="font-size:10px;color:var(--muted);margin-top:8px">Seus tokens configurados no Railway serão carregados automaticamente.</div>
   </div>
 
   <div id="main-content">
@@ -95,35 +89,22 @@ let currentAccount = null;
 async function init() {
   const res = await fetch('/api/me');
   const data = await res.json();
-  
   if (!data.logged) return location.href = '/';
-  
   accounts = data.accounts || [];
-  
-  // Mostrar erros de diagnóstico se houver
-  if (data.errors && data.errors.length > 0) {
-    const diag = document.getElementById('diag-area');
-    const list = document.getElementById('diag-errors');
-    diag.style.display = 'block';
-    list.innerHTML = data.errors.map(e => `<div class="diag-item">Token #${e.index}: ${e.error}</div>`).join('');
-  }
-  
   renderAccounts();
 }
 
 function renderAccounts() {
   const list = document.getElementById('acc-list');
   if (accounts.length === 0) {
-    list.innerHTML = '<span style="font-size:11px;color:#f09595">Nenhuma conta ativa.</span>';
+    list.innerHTML = '<span style="font-size:11px;color:#f09595">Nenhuma conta encontrada. Use o campo acima para conectar.</span>';
     return;
   }
-  
   list.innerHTML = accounts.map(acc => `
     <div class="acc-chip ${currentAccount?.id === acc.id ? 'on' : ''}" onclick="selectAcc('${acc.id}')">
       @${acc.username}
     </div>
   `).join('');
-  
   if (!currentAccount && accounts.length > 0) selectAcc(accounts[0].id);
 }
 
@@ -145,11 +126,10 @@ function updateMetrics() {
 document.getElementById('btn-test-token').addEventListener('click', async () => {
   const token = document.getElementById('manual-token').value;
   if (!token) return alert('Cole um token primeiro!');
-  
   const btn = document.getElementById('btn-test-token');
+  const msg = document.getElementById('diag-msg');
   btn.disabled = true;
-  btn.textContent = 'Testando...';
-  
+  btn.textContent = 'Conectando...';
   try {
     const res = await fetch('/api/test-token', {
       method: 'POST',
@@ -157,20 +137,21 @@ document.getElementById('btn-test-token').addEventListener('click', async () => 
       body: JSON.stringify({ token })
     });
     const data = await res.json();
-    
     if (data.success) {
-      alert('Token válido! @' + data.account.username + ' adicionado.');
-      accounts.push(data.account);
+      msg.innerHTML = '<span style="color:#639922">✓ Conta @' + data.accounts[0].username + ' conectada com sucesso!</span>';
+      data.accounts.forEach(acc => {
+        if (!accounts.find(a => a.id === acc.id)) accounts.push(acc);
+      });
       renderAccounts();
-      document.getElementById('diag-area').style.display = 'none';
+      document.getElementById('manual-token').value = '';
     } else {
-      alert('Erro no token: ' + data.error);
+      msg.innerHTML = '<span style="color:#f09595">✗ Erro: ' + data.error + '</span>';
     }
   } catch (e) {
-    alert('Erro ao testar token.');
+    msg.innerHTML = '<span style="color:#f09595">✗ Erro de conexão com o servidor.</span>';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Testar Token';
+    btn.textContent = 'Conectar';
   }
 });
 

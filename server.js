@@ -58,7 +58,6 @@ async function fetchMedia(userId, token, limit = 20) {
     });
     return response.data.data || [];
   } catch (e) {
-    console.error(`[IG] Erro media ${userId}:`, e.response?.data || e.message);
     return [];
   }
 }
@@ -76,15 +75,15 @@ function cleanAndParseJSON(rawText) {
 async function discoverInstagramAccounts(token) {
   const accounts = [];
   try {
-    // 1. Tentar ver se o token já é de uma conta do Instagram (raro, mas possível)
+    // 1. Tentar ver se o token já é de uma conta do Instagram direta
     try {
       const direct = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (direct.data.username) accounts.push({ ...direct.data, ig_token: token });
-    } catch (e) { /* Não é conta direta, ignorar erro */ }
+    } catch (e) { /* Não é conta direta */ }
 
-    // 2. Se não encontrou nada direto, buscar Páginas do Facebook vinculadas
+    // 2. Buscar Páginas do Facebook vinculadas
     if (accounts.length === 0) {
       const pages = await axios.get('https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,followers_count,media_count,biography,website}', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -95,14 +94,13 @@ async function discoverInstagramAccounts(token) {
           if (page.instagram_business_account) {
             accounts.push({
               ...page.instagram_business_account,
-              ig_token: page.access_token || token // Usa o token da página se disponível
+              ig_token: page.access_token || token 
             });
           }
         }
       }
     }
   } catch (e) {
-    console.error('[AUTH] Erro na descoberta de contas:', e.response?.data || e.message);
     throw e;
   }
   return accounts;
@@ -117,8 +115,6 @@ app.get('/app', (req, res) => {
 });
 
 app.post('/api/auth', (req, res) => {
-  const tokens = getCleanTokens();
-  if (tokens.length === 0) return res.status(500).json({ success: false, error: 'Nenhum token configurado.' });
   req.session.user = { accounts: [] };
   req.session.save((err) => {
     if (err) return res.status(500).json({ success: false, error: 'Erro de sessão.' });
@@ -130,22 +126,20 @@ app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
   const tokens = getCleanTokens();
-  console.log(`[AUTH] Validando ${tokens.length} tokens...`);
-  const allAccounts = [];
-  const errors = [];
+  const allAccounts = req.session.user.accounts || [];
   
+  // Tentar carregar tokens da variável de ambiente (silenciosamente)
   for (let i = 0; i < tokens.length; i++) {
     try {
       const found = await discoverInstagramAccounts(tokens[i]);
-      allAccounts.push(...found);
-      console.log(`[AUTH] Token #${i+1} encontrou ${found.length} contas.`);
-    } catch (e) {
-      errors.push({ index: i + 1, error: e.response?.data?.error?.message || e.message });
-    }
+      found.forEach(acc => {
+        if (!allAccounts.find(a => a.id === acc.id)) allAccounts.push(acc);
+      });
+    } catch (e) { /* Ignora erros de tokens corrompidos */ }
   }
   
   req.session.user.accounts = allAccounts;
-  res.json({ logged: true, accounts: allAccounts, errors: errors });
+  res.json({ logged: true, accounts: allAccounts });
 });
 
 app.post('/api/test-token', async (req, res) => {
@@ -160,7 +154,6 @@ app.post('/api/test-token', async (req, res) => {
     }
     
     if (req.session.user) {
-      // Evitar duplicatas
       found.forEach(acc => {
         if (!req.session.user.accounts.find(a => a.id === acc.id)) {
           req.session.user.accounts.push(acc);
@@ -170,11 +163,12 @@ app.post('/api/test-token', async (req, res) => {
     
     res.json({ success: true, accounts: found });
   } catch (e) {
-    res.status(401).json({ success: false, error: e.response?.data?.error?.message || e.message });
+    const errData = e.response?.data?.error || { message: e.message };
+    res.status(401).json({ success: false, error: errData.message });
   }
 });
 
-// Outras rotas (suggestions, intelligence, generate) permanecem iguais...
+// Outras rotas (suggestions, intelligence, generate)
 app.post('/api/suggestions', async (req, res) => {
   if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
