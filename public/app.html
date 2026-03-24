@@ -15,7 +15,10 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .acc-chip{background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .2s;white-space:nowrap}
 .acc-chip.on{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.5)}
 .btn-out{font-size:11px;color:var(--muted);background:none;border:.5px solid var(--border);padding:4px 10px;border-radius:8px;cursor:pointer}
-.page{padding:1.25rem;max-width:960px;margin:0 auto}
+.nav-tabs{background:var(--surface);border-bottom:.5px solid var(--border);display:flex;overflow-x:auto;padding:0 1rem;position:sticky;top:53px;z-index:99}
+.nav-tab{padding:11px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
+.nav-tab.on{color:var(--brand);border-bottom-color:var(--brand)}
+.page{display:none;padding:1.25rem;max-width:960px;margin:0 auto}.page.on{display:block}
 .card{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1rem}
 .card-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
 
@@ -30,8 +33,10 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
 .metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
 .metric-card .ml{font-size:11px;color:var(--muted);margin-top:3px}
-select{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none}
+input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none}
 .gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:30px;font-size:12px;z-index:1000;display:none}
+#toast.show{display:block}
 </style>
 </head>
 <body>
@@ -45,18 +50,24 @@ select{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgb
   <button class="btn-out" onclick="location.href='/'">Sair</button>
 </header>
 
-<main class="page">
-  <!-- CONECTAR MANUALMENTE -->
-  <div class="manual-box">
-    <div class="manual-title">📸 Conectar Nova Conta do Instagram</div>
-    <div class="manual-input-wrap">
-      <input type="text" id="manual-token" placeholder="Cole seu Token de Acesso da Meta aqui...">
-      <button class="btn-test" id="btn-test-token">Conectar</button>
-    </div>
-    <div id="diag-msg" style="font-size:10px;color:var(--muted);margin-top:8px">Seus tokens configurados no Railway serão carregados automaticamente.</div>
-  </div>
+<nav class="nav-tabs">
+  <div class="nav-tab on" onclick="goPage('dashboard', this)">Dashboard</div>
+  <div class="nav-tab" onclick="goPage('intelligence', this)">Inteligência</div>
+  <div class="nav-tab" onclick="goPage('planner', this)">Planejador</div>
+</nav>
 
-  <div id="main-content">
+<main>
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="page on">
+    <div class="manual-box">
+      <div class="manual-title">📸 Conectar Nova Conta do Instagram</div>
+      <div class="manual-input-wrap">
+        <input type="text" id="manual-token" placeholder="Cole seu Token de Acesso da Meta aqui...">
+        <button class="btn-test" id="btn-test-token">Conectar</button>
+      </div>
+      <div id="diag-msg" style="font-size:10px;color:var(--muted);margin-top:8px">Conecte sua conta para começar.</div>
+    </div>
+
     <div class="card">
       <div class="card-title">📊 Visão Geral do Perfil</div>
       <div class="metrics-grid" id="metrics">
@@ -64,23 +75,39 @@ select{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgb
         <div class="metric-card"><div class="mv">-</div><div class="ml">Posts</div></div>
       </div>
     </div>
+  </div>
 
+  <!-- INTELIGÊNCIA -->
+  <div id="intelligence" class="page">
     <div class="card">
-      <div class="card-title">🚀 Gerar Novo Plano</div>
+      <div class="card-title">🧠 Análise Estratégica AI</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">A IA analisará seu perfil e concorrentes para sugerir o melhor caminho.</p>
+      <button class="gen-btn" onclick="getIntelligence()">Analisar Perfil</button>
+      <div id="intel-result" style="margin-top:1rem;display:none"></div>
+    </div>
+  </div>
+
+  <!-- PLANEJADOR -->
+  <div id="planner" class="page">
+    <div class="card">
+      <div class="card-title">🚀 Gerar Novo Plano de 30 Dias</div>
       <div style="display:flex;flex-direction:column;gap:1rem">
         <div>
-          <label style="font-size:11px;color:var(--muted)">Objetivo do Mês</label>
+          <label style="font-size:11px;color:var(--muted)">Objetivo Principal</label>
           <select id="goal">
             <option value="Vendas">Vendas e Conversão</option>
             <option value="Engajamento">Engajamento e Comunidade</option>
             <option value="Crescimento">Crescimento de Seguidores</option>
           </select>
         </div>
-        <button class="gen-btn" id="btn-gen">Gerar Plano Estratégico com GPT-4o</button>
+        <button class="gen-btn" id="btn-gen" onclick="generatePlan()">Gerar Plano Estratégico com GPT-4o</button>
       </div>
+      <div id="plan-result" style="margin-top:1.5rem;display:none"></div>
     </div>
   </div>
 </main>
+
+<div id="toast"></div>
 
 <script>
 let accounts = [];
@@ -94,10 +121,17 @@ async function init() {
   renderAccounts();
 }
 
+function goPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+}
+
 function renderAccounts() {
   const list = document.getElementById('acc-list');
   if (accounts.length === 0) {
-    list.innerHTML = '<span style="font-size:11px;color:#f09595">Nenhuma conta encontrada. Use o campo acima para conectar.</span>';
+    list.innerHTML = '<span style="font-size:11px;color:#f09595">Nenhuma conta encontrada.</span>';
     return;
   }
   list.innerHTML = accounts.map(acc => `
@@ -123,6 +157,48 @@ function updateMetrics() {
   `;
 }
 
+async function getIntelligence() {
+  if (!currentAccount) return alert('Selecione uma conta!');
+  const res = await fetch('/api/intelligence', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ igId: currentAccount.id, niche: 'Geral' })
+  });
+  const data = await res.json();
+  const div = document.getElementById('intel-result');
+  div.style.display = 'block';
+  div.innerHTML = `<div class="card" style="background:rgba(255,255,255,0.05)">${JSON.stringify(data, null, 2)}</div>`;
+}
+
+async function generatePlan() {
+  if (!currentAccount) return alert('Selecione uma conta!');
+  const btn = document.getElementById('btn-gen');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando Plano...';
+  
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ 
+        igId: currentAccount.id, 
+        goal: document.getElementById('goal').value,
+        niche: 'Geral'
+      })
+    });
+    const data = await res.json();
+    const div = document.getElementById('plan-result');
+    div.style.display = 'block';
+    div.innerHTML = `<div class="card" style="background:rgba(255,255,255,0.05)">${JSON.stringify(data, null, 2)}</div>`;
+    toast('Plano gerado com sucesso!');
+  } catch (e) {
+    alert('Erro ao gerar plano.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar Plano Estratégico com GPT-4o';
+  }
+}
+
 document.getElementById('btn-test-token').addEventListener('click', async () => {
   const token = document.getElementById('manual-token').value;
   if (!token) return alert('Cole um token primeiro!');
@@ -138,7 +214,7 @@ document.getElementById('btn-test-token').addEventListener('click', async () => 
     });
     const data = await res.json();
     if (data.success) {
-      msg.innerHTML = '<span style="color:#639922">✓ Conta @' + data.accounts[0].username + ' conectada com sucesso!</span>';
+      msg.innerHTML = '<span style="color:#639922">✓ Conta @' + data.accounts[0].username + ' conectada!</span>';
       data.accounts.forEach(acc => {
         if (!accounts.find(a => a.id === acc.id)) accounts.push(acc);
       });
@@ -148,12 +224,19 @@ document.getElementById('btn-test-token').addEventListener('click', async () => 
       msg.innerHTML = '<span style="color:#f09595">✗ Erro: ' + data.error + '</span>';
     }
   } catch (e) {
-    msg.innerHTML = '<span style="color:#f09595">✗ Erro de conexão com o servidor.</span>';
+    msg.innerHTML = '<span style="color:#f09595">✗ Erro de conexão.</span>';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Conectar';
   }
 });
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
 
 init();
 </script>
