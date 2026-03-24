@@ -1,37 +1,3 @@
-function plannerSystemPrompt() {
-  return `
-Você é um estrategista sênior de conteúdo, posicionamento e marketing para Instagram, com mentalidade de agência de publicidade.
-Você trabalha com empresas reais, mercados locais, nichos competitivos e objetivos comerciais concretos.
-
-Seu trabalho NÃO é gerar texto genérico.
-Seu trabalho é pensar como estrategista, entender contexto, identificar oportunidades e transformar isso em conteúdo forte, humano e útil.
-
-REGRAS OBRIGATÓRIAS:
-- escreva sempre em português do Brasil
-- retorne SOMENTE JSON válido
-- seja específico, prático e estratégico
-- pense como alguém que monta estratégia para cliente de agência
-- use o nicho, o público, o objetivo, o tom e a localização para personalizar a resposta
-- considere mercado local quando a cidade ou região for informada
-- escreva com linguagem natural, mais humana e menos robótica
-- evite cara de texto de IA
-
-PROIBIDO:
-- repetir título em formato de pergunta em quase todos os posts
-- usar "você sabia" de forma recorrente
-- usar "sabia que" de forma recorrente
-- fazer legenda curta, rasa ou vazia
-- repetir a mesma abertura em vários conteúdos
-- criar planner com posts parecidos entre si
-- responder com conteúdo superficial
-
-ESTILO DE CONTEÚDO:
-- variar entre dor, desejo, objeção, autoridade, bastidor, prova, comparação, percepção de erro, contexto local e oportunidade comercial
-- as legendas devem ser mais desenvolvidas, explicativas e persuasivas quando fizer sentido
-- os títulos devem ser mais fortes, menos previsíveis e menos infantis
-- os conteúdos precisam soar como algo que uma agência experiente realmente apresentaria ao cliente
-`;
-}
 require("dotenv").config();
 
 const express = require("express");
@@ -292,23 +258,78 @@ function buildDashboard(media, account) {
 
 function plannerSystemPrompt() {
   return `
-Você é um estrategista sênior de conteúdo e posicionamento para Instagram, com mentalidade de agência.
-Você trabalha com contas reais de empresas de nichos diversos.
+Você é um estrategista sênior de marketing, conteúdo e posicionamento para Instagram, com nível de agência premium.
 
-Seu papel é pensar como estrategista, não como redator genérico.
-Você deve analisar posicionamento, mercado, concorrência, público, localização e objetivo comercial.
+Você NÃO escreve como uma IA genérica.
+Você NÃO cria conteúdo para preencher calendário.
+Você cria conteúdo para gerar atenção, percepção de valor, autoridade, desejo e ação.
+
+Seu trabalho é:
+- analisar o perfil e o contexto do negócio
+- pensar como estrategista de marca e conversão
+- propor conteúdos que façam o público parar, sentir, pensar e agir
+- evitar qualquer linguagem previsível, rasa ou repetitiva
 
 REGRAS OBRIGATÓRIAS:
 - escreva sempre em português do Brasil
 - retorne SOMENTE JSON válido
-- seja específico, prático e estratégico
-- evite frases genéricas e previsíveis
-- NÃO use repetidamente ganchos como "você sabia", "arraste para o lado", "sabia que", "confira", "descubra"
-- varie os ângulos de conteúdo
-- pense em funil e intenção do post
-- crie ideias que uma agência realmente apresentaria para cliente
-- considere contexto local quando a localização for informada
-- quando falar de concorrência, use raciocínio estratégico e não invente métricas exatas
+- seja específico, prático, estratégico e comercial
+- evite respostas genéricas, superficiais ou decorativas
+- não use repetidamente expressões como:
+  "você sabia", "arraste para o lado", "sabia que", "descubra", "confira", "entenda", "veja os benefícios"
+- não crie títulos burocráticos, escolares ou frios
+- não escreva como blog genérico
+- não monte calendário com o mesmo ângulo repetido
+- varie ganchos, tensões, intenções e tipos de conteúdo
+- considere nicho, público, objetivo, tom de voz, contexto e localização
+- pense como alguém que quer gerar resultado real para o cliente
+
+ÂNGULOS QUE VOCÊ DEVE MISTURAR NO CONTEÚDO:
+- dor real
+- erro comum
+- prejuízo evitável
+- objeção
+- bastidor
+- prova
+- autoridade
+- percepção de problema
+- desejo
+- comparação
+- quebra de crença
+- contexto local
+- oportunidade comercial
+- comportamento do público
+- urgência inteligente
+
+QUANDO GERAR POSTS:
+- títulos precisam ser fortes, humanos e específicos
+- títulos não podem soar como matéria de blog
+- ganchos precisam abrir loops mentais
+- legendas precisam soar naturais e úteis
+- CTA precisa combinar com a intenção do post
+- nem todo post precisa vender diretamente, mas todo post precisa mover a pessoa
+
+QUANDO GERAR PLANNER:
+- cada post precisa ter função clara no funil
+- não repetir a mesma ideia com palavras diferentes
+- alternar formatos e intenções
+- não concentrar tudo em conteúdo informativo
+- incluir posts que gerem atenção, identificação, prova, autoridade e conversão
+
+QUANDO GERAR CONCORRÊNCIA:
+- não invente dados exatos
+- use raciocínio estratégico
+- considere contexto regional quando houver localização
+- sugira diferenciação real
+
+QUANDO GERAR INTELIGÊNCIA:
+- fale como consultor estratégico
+- mostre o que está travando o perfil
+- mostre o que fazer
+- seja direto e útil
+
+Seu padrão é:
+forte, específico, humano, estratégico e comercial.
 `;
 }
 
@@ -455,7 +476,7 @@ app.post("/api/intelligence", async (req, res) => {
   const dashboard = buildDashboard(media, account);
 
   const userPrompt = `
-Analise este perfil de Instagram e devolva um diagnóstico estratégico real, útil e específico.
+Faça uma análise estratégica profunda deste perfil de Instagram.
 
 ${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
 
@@ -465,17 +486,29 @@ ${JSON.stringify(dashboard, null, 2)}
 ÚLTIMOS POSTS:
 ${summarizePosts(media)}
 
+QUERO UMA LEITURA REAL DE NEGÓCIO, NÃO UMA ANÁLISE GENÉRICA.
+
+Você deve responder:
+- o que esse perfil comunica hoje
+- onde ele está fraco
+- onde ele perde atenção
+- onde ele não gera percepção de valor
+- o que está faltando no funil
+- como a localização e o nicho interferem no jogo
+- quais oportunidades estão mal exploradas
+- o que precisa ser feito para o perfil ficar mais forte e mais vendável
+
 RETORNE EXATAMENTE NESTE JSON:
 {
   "executive_summary": "resumo estratégico em 3 a 5 frases",
   "diagnosis": {
-    "positioning": "leitura do posicionamento",
+    "positioning": "como o perfil está posicionado hoje",
     "content_strength": "o que está funcionando",
     "content_gap": "o que está faltando",
-    "engagement_read": "interpretação do engajamento",
+    "engagement_read": "leitura do engajamento",
     "funnel_read": "leitura do funil"
   },
-  "local_market_read": "como a localização e o contexto local impactam o perfil",
+  "local_market_read": "como nicho e localização influenciam o perfil",
   "opportunities": [
     "oportunidade 1",
     "oportunidade 2",
@@ -489,11 +522,11 @@ RETORNE EXATAMENTE NESTE JSON:
     "ação prática 4"
   ],
   "content_angles": [
-    "ângulo 1",
-    "ângulo 2",
-    "ângulo 3",
-    "ângulo 4",
-    "ângulo 5"
+    "ângulo forte 1",
+    "ângulo forte 2",
+    "ângulo forte 3",
+    "ângulo forte 4",
+    "ângulo forte 5"
   ],
   "bio_suggestions": [
     "bio 1",
@@ -503,9 +536,11 @@ RETORNE EXATAMENTE NESTE JSON:
 }
 
 REGRAS:
-- não dê resposta genérica
-- use a localização para enriquecer o raciocínio
-- não repita ângulos superficiais
+- não use linguagem genérica
+- não escreva como diagnóstico escolar
+- seja direto e consultivo
+- não repita ideias parecidas
+- os ângulos precisam ser fortes e úteis de verdade
 `;
 
   try {
@@ -559,10 +594,21 @@ ${summarizePosts(media)}
 CONCORRENTES/REFERÊNCIAS INFORMADAS:
 ${competitorsText}
 
+IMPORTANTE:
+Se a lista de concorrentes estiver fraca ou vazia, use nicho + localização + público para inferir o tipo de concorrência e o tipo de referência que a empresa deveria observar.
+
+QUERO UMA RESPOSTA DE AGÊNCIA:
+- o que o mercado provavelmente valoriza
+- o que os concorrentes tendem a explorar
+- o que costuma saturar nesse nicho
+- onde existe espaço de diferenciação
+- quais temas e abordagens podem destacar essa marca
+- como localização e comportamento local interferem nisso
+
 RETORNE EXATAMENTE NESTE JSON:
 {
-  "market_read": "leitura geral do cenário competitivo",
-  "local_competitive_context": "como localização e nicho afetam a concorrência",
+  "market_read": "leitura do cenário competitivo",
+  "local_competitive_context": "como localização e nicho influenciam o mercado",
   "suggested_reference_profiles": [
     "tipo de perfil/referência 1",
     "tipo de perfil/referência 2",
@@ -600,9 +646,10 @@ RETORNE EXATAMENTE NESTE JSON:
 }
 
 REGRAS:
-- se não houver concorrentes manuais, sugira referências com base em nicho e localização
-- pense como agência, não como texto genérico
-- não invente números exatos dos concorrentes
+- não invente dados exatos
+- não faça comparação superficial
+- não sugira conteúdo genérico
+- use nicho + localização como parte central do raciocínio
 `;
 
   try {
@@ -657,6 +704,17 @@ MIX SOLICITADO:
 POSTS RECENTES:
 ${summarizePosts(media)}
 
+O planejamento precisa parecer feito por um estrategista forte, não por uma IA genérica.
+
+QUERO UM PLANO QUE:
+- chame atenção
+- gere identificação
+- trabalhe dor, desejo, objeção e prova
+- ajude a posicionar
+- ajude a vender
+- use o contexto do nicho e da localização
+- evite completamente títulos previsíveis e conteúdos burocráticos
+
 RETORNE EXATAMENTE NESTE JSON:
 {
   "audit": {
@@ -671,10 +729,10 @@ RETORNE EXATAMENTE NESTE JSON:
       "day_suggestion": "Segunda",
       "format": "Reels",
       "pillar": "Autoridade",
-      "title": "título",
+      "title": "título forte e humano",
       "objective": "objetivo do post",
       "hook": "gancho inicial",
-      "copy": "legenda completa",
+      "copy": "legenda completa natural e estratégica",
       "cta": "cta",
       "script": "roteiro completo se for reels",
       "carousel_slides": ["slide 1", "slide 2", "slide 3"]
@@ -715,13 +773,17 @@ REGRAS IMPORTANTÍSSIMAS:
 - reels precisam ter script
 - carrosséis precisam ter slides
 - stories precisam ser úteis e práticos
-- use a localização e o nicho para tornar o plano mais aderente ao mercado da empresa
-- NÃO use ganchos repetitivos tipo "você sabia" em vários posts
-- varie os inícios dos conteúdos
-- alterne posts de dor, desejo, objeção, bastidor, autoridade, prova, comparação, percepção de erro, contexto local, oportunidade comercial
-- evite planner com cara de IA
-- títulos e ângulos precisam soar estratégicos, naturais e menos previsíveis
-- não faça todos os posts começarem iguais
+- use a localização e o nicho como parte da construção das ideias
+- NÃO use repetidamente ganchos como:
+  "você sabia", "arraste para o lado", "sabia que", "entenda", "veja os benefícios"
+- NÃO escreva títulos como:
+  "a importância de", "os benefícios de", "entenda", "conheça nossa equipe", "por que isso é importante"
+- varie os ângulos entre:
+  dor, erro, objeção, desejo, prova, bastidor, percepção, comparação, contexto local, oportunidade comercial
+- não faça todos os posts começarem do mesmo jeito
+- não faça o planner parecer blog genérico
+- títulos precisam ser mais magnéticos, mais humanos e mais específicos
+- pense em conteúdo que alguém realmente pararia para ver
 `;
 
   try {
@@ -729,7 +791,7 @@ REGRAS IMPORTANTÍSSIMAS:
       system: plannerSystemPrompt(),
       user: userPrompt,
       maxTokens: 7600,
-      temperature: 0.8
+      temperature: 0.85
     });
 
     return res.json(data);
