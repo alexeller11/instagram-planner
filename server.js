@@ -11,12 +11,18 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
 
-// Limpeza de tokens (mantém apenas o que é alfanumérico e caracteres permitidos em tokens da Meta)
+// Função de limpeza ULTRA-AGRESSIVA de tokens
+// Remove ABSOLUTAMENTE tudo que não for letra ou número (A-Z, a-z, 0-9)
+function superClean(token) {
+  if (!token) return '';
+  return token.replace(/[^a-zA-Z0-9]/g, '').trim();
+}
+
 function getCleanTokens() {
   const raw = process.env.IG_TOKENS || '';
   return raw.split(',')
-    .map(t => t.replace(/[\r\n\t\s]/g, '').trim())
-    .filter(t => t.length > 10);
+    .map(t => superClean(t))
+    .filter(t => t.length > 20); 
 }
 
 const IG_TOKENS = getCleanTokens();
@@ -132,7 +138,9 @@ app.post('/api/test-token', async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token não fornecido' });
   
-  const cleanToken = token.trim();
+  const cleanToken = superClean(token);
+  console.log(`[DEBUG] Testando token manual: ${cleanToken.substring(0, 10)}... (Tamanho: ${cleanToken.length})`);
+  
   try {
     const response = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
       headers: { 'Authorization': `Bearer ${cleanToken}` }
@@ -144,6 +152,7 @@ app.post('/api/test-token', async (req, res) => {
     res.json({ success: true, account });
   } catch (e) {
     const errData = e.response?.data?.error || { message: e.message };
+    console.error(`[DEBUG] Falha no token manual:`, JSON.stringify(errData));
     res.status(401).json({ success: false, error: errData.message });
   }
 });
