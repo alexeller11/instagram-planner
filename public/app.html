@@ -21,1214 +21,159 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .page{display:none;padding:1.25rem;max-width:960px;margin:0 auto}.page.on{display:block}
 .card{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1rem}
 .card-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
-.cicon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+
+/* DIAGNOSTIC AREA */
+.diag-box{background:rgba(224,75,74,.08);border:.5px solid rgba(224,75,74,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
+.diag-title{font-size:12px;font-weight:700;color:#f09595;margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.diag-item{font-size:11px;color:rgba(240,149,149,.8);margin-bottom:.3rem;padding-left:18px;position:relative}
+.diag-item::before{content:'•';position:absolute;left:6px}
+.manual-token-wrap{margin-top:.75rem;display:flex;gap:8px}
+.manual-token-wrap input{flex:1;font-size:11px;padding:8px 12px}
+.btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
+
+/* REST OF STYLES... (Simplificado para o exemplo) */
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1rem}
 .metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
 .metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
 .metric-card .ml{font-size:11px;color:var(--muted);margin-top:3px}
-.period-tabs{display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap}
-.ptab{padding:5px 13px;font-size:11px;font-weight:500;border-radius:20px;border:.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
-.ptab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
-.score-wrap{display:flex;align-items:center;gap:1.25rem;padding:1rem;background:var(--surface);border-radius:12px;margin-bottom:1rem}
-.chart-wrap{position:relative;height:200px;margin:1rem 0}
-.flabel{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;display:block}
-.fgroup{margin-bottom:.85rem;position:relative}
-input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .2s}
-input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
-textarea{resize:vertical;min-height:60px}
-select option{background:#1c1a35}
-/* AI SUGGEST BUTTON */
-.ai-suggest-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,107,53,.15);border:.5px solid rgba(255,107,53,.3);border-radius:8px;padding:3px 8px;font-size:10px;color:#ffb38a;cursor:pointer;transition:all .2s;white-space:nowrap}
-.ai-suggest-btn:hover{background:rgba(255,107,53,.25)}
-.input-wrap{position:relative}
-.input-wrap input,.input-wrap textarea{padding-right:90px}
-/* SUGGESTION BADGE */
-.suggestion-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(99,153,34,.1);border:.5px solid rgba(99,153,34,.3);border-radius:20px;padding:3px 10px;font-size:11px;color:#97c459;margin-top:4px;cursor:pointer}
-.suggestion-badge:hover{background:rgba(99,153,34,.2)}
-/* BIO OPTIONS */
-.bio-options{display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem}
-.bio-option{background:rgba(255,255,255,.04);border:.5px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:all .2s}
-.bio-option:hover{border-color:rgba(255,107,53,.4)}
-.bio-option.selected{border-color:var(--brand);background:rgba(255,107,53,.08)}
-.bio-option .bo-version{font-size:10px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
-.bio-option .bo-text{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:.3rem}
-.bio-option .bo-meta{font-size:10px;color:var(--muted)}
-/* PILL ROW */
-.pill-row{display:flex;flex-wrap:wrap;gap:5px}
-.spill{background:rgba(255,255,255,.05);border:.5px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s}
-.spill:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
-.spill.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
-/* MIX */
-.mix-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin:.75rem 0}
-.mix-item{background:var(--surface);border-radius:12px;padding:.75rem;text-align:center}
-.mix-label{font-size:11px;color:var(--muted);margin-bottom:.4rem}
-.mix-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700}
-.mix-btns{display:flex;justify-content:center;gap:.5rem;margin-top:.5rem}
-.mix-btn{width:26px;height:26px;border-radius:50%;border:.5px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
-.mix-btn:hover{border-color:var(--brand);color:var(--brand)}
-/* INSIGHTS BANNER */
-.insights-banner{background:linear-gradient(135deg,rgba(255,107,53,.1),rgba(255,209,102,.08));border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:13px;color:rgba(255,255,255,.85);line-height:1.6;display:none}
-.insights-banner .ib-title{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--brand);margin-bottom:.4rem}
-/* GEN BTN */
-.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s;margin-top:.5rem}
-.gen-btn:hover{opacity:.9}.gen-btn:active{transform:scale(.99)}.gen-btn:disabled{opacity:.4;cursor:not-allowed}
-.ld-wrap{display:none;text-align:center;padding:2.5rem 1rem}
-.ld-ring{width:48px;height:48px;border-radius:50%;border:3px solid rgba(255,107,53,.15);border-top-color:var(--brand);animation:spin 1s linear infinite;margin:0 auto 1rem}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ld-msg{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:.75rem}
-.ld-steps{display:flex;justify-content:center;gap:5px;flex-wrap:wrap}
-.lds{font-size:11px;color:var(--subtle);padding:3px 10px;border-radius:20px;border:.5px solid var(--border);transition:all .3s}
-.lds.act{color:var(--brand);background:rgba(255,107,53,.08);border-color:rgba(255,107,53,.3)}
-.lds.done{color:#639922;background:rgba(99,153,34,.08);border-color:rgba(99,153,34,.3)}
-.rtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem}
-.rtab{padding:6px 13px;font-size:12px;font-weight:500;border-radius:20px;border:.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
-.rtab:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
-.rtab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
-.rs{display:none}.rs.on{display:block}
-.rbox{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;font-size:13px;line-height:1.8;margin-bottom:1rem}
-.rbox h3{font-family:'Syne',sans-serif;font-size:.9rem;color:var(--brand);margin:1.25rem 0 .5rem}
-.rbox h3:first-child{margin-top:0}
-.rbox p{margin-bottom:.75rem;color:rgba(255,255,255,.85)}
-.rbox ul{padding-left:1.1rem;margin-bottom:.75rem}
-.rbox ul li{margin-bottom:.4rem;color:rgba(255,255,255,.8)}
-.rbox table{width:100%;border-collapse:collapse;font-size:11.5px;margin:.75rem 0}
-.rbox th{background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;padding:7px 8px;text-align:left;font-weight:500;font-size:11px}
-.rbox td{padding:8px;border-bottom:.5px solid rgba(255,255,255,.05);vertical-align:top;line-height:1.6;color:rgba(255,255,255,.82)}
-.rbox tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-.post-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--brand2);margin-bottom:4px}
-.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
-.fmt-r{background:rgba(255,107,53,.15);color:#ff6b35}
-.fmt-c{background:rgba(55,138,221,.15);color:#378add}
-.fmt-f{background:rgba(99,153,34,.15);color:#639922}
-.script-box{background:rgba(255,107,53,.05);border:.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
-.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
-.script-text{font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;white-space:pre-wrap}
-.carousel-box{background:rgba(55,138,221,.05);border:.5px solid rgba(55,138,221,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
-.carousel-label{font-size:10px;font-weight:600;color:rgba(55,138,221,.9);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.03em}
-.carousel-slides{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
-.cs{flex-shrink:0;width:88px;min-height:100px;border-radius:10px;background:linear-gradient(160deg,#1a1a3e,#0d0d2e);border:.5px solid rgba(55,138,221,.25);padding:.6rem .5rem;font-size:10px;color:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4}
-.story-card{background:rgba(255,255,255,.03);border:.5px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.75rem}
-.sc-head{display:flex;align-items:center;gap:8px;margin-bottom:.75rem}
-.sc-num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ff6b35,#ffd166);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0}
-.sc-slides{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-.slide{flex-shrink:0;width:100px;min-height:140px;border-radius:12px;background:linear-gradient(160deg,#1a1a3e,#0d0d2e);border:.5px solid var(--border);padding:.75rem;display:flex;flex-direction:column;gap:.5rem}
-.slide-n{font-size:9px;font-weight:700;color:var(--brand);text-transform:uppercase}
-.slide-t{font-size:10px;color:rgba(255,255,255,.9);line-height:1.45;flex:1;display:flex;align-items:center;text-align:center;padding:.3rem 0}
-.slide-a{font-size:9px;color:#ffb38a;text-align:center;border-top:.5px solid rgba(255,255,255,.1);padding-top:.3rem}
-.slide-d{font-size:9px;color:rgba(255,255,255,.4);margin-top:2px;text-align:center;line-height:1.3}
-.htag-cloud{display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem}
-.htag{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;border:.5px solid}
-.htag.nic{background:rgba(55,138,221,.1);border-color:rgba(55,138,221,.3);color:#378add}
-.htag.loc{background:rgba(99,153,34,.1);border-color:rgba(99,153,34,.3);color:#639922}
-.htag.brd{background:rgba(186,117,23,.1);border-color:rgba(186,117,23,.3);color:#ba7517}
-.htag.ok{background:rgba(99,153,34,.2)!important;border-color:#639922!important;color:#639922!important}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:.5rem}
-.cal-dl{font-size:10px;font-weight:500;color:var(--muted);text-align:center;padding:4px 0}
-.cal-day{border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:.5px solid transparent}
-.cal-day .dn{font-size:11px;color:var(--muted)}
-.cal-day .dot-row{display:flex;gap:2px;margin-top:2px}
-.cal-day .dot{width:5px;height:5px;border-radius:50%}
-.cal-day.hp{background:rgba(255,107,53,.08);border-color:rgba(255,107,53,.25)}
-.cal-day.he{background:rgba(186,117,23,.08);border-color:rgba(186,117,23,.2)}
-.cal-day.today{border-color:var(--brand)!important}
-.tip-list{display:flex;flex-direction:column;gap:.75rem}
-.tip{display:flex;gap:10px;align-items:flex-start;padding:.9rem;background:rgba(255,255,255,.03);border:.5px solid var(--border);border-radius:12px;border-left:3px solid var(--brand)}
-.tip-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px}
-.tip-text{font-size:13px;color:rgba(255,255,255,.8);line-height:1.6}
-.tip-text strong{font-weight:600;color:var(--text);display:block;margin-bottom:.2rem}
-.intel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem}
-.intel-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem}
-.ic-title{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--brand);margin-bottom:.75rem}
-.ic-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:.6rem;font-size:12px;color:rgba(255,255,255,.78);line-height:1.5}
-.ic-dot{width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px}
-.pos-scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin:1rem 0}
-.ps-item{background:var(--surface);border-radius:12px;padding:.75rem}
-.ps-label{font-size:11px;color:var(--muted);margin-bottom:.5rem}
-.ps-bar-bg{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
-.ps-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#ff6b35,#ffd166);transition:width .8s}
-.ps-val{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-top:.3rem}
-.act-bar{display:flex;gap:7px;flex-wrap:wrap;margin-top:1rem}
-.act-btn{flex:1;min-width:100px;padding:9px;border:.5px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .2s;text-align:center}
-.act-btn:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
-.act-btn.primary{background:linear-gradient(135deg,#ff6b35,#f7931e);border-color:transparent;color:#fff}
-.hist-item{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:1rem;cursor:pointer;transition:all .2s;margin-bottom:.6rem;display:flex;align-items:center;justify-content:space-between}
-.hist-item:hover{border-color:rgba(255,107,53,.4)}
-.hi-t{background:rgba(255,255,255,.06);border:.5px solid var(--border);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--muted)}
-.top-post{display:flex;align-items:center;gap:.75rem;padding:.6rem;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:.5rem}
-.tp-rank{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--brand);width:22px;flex-shrink:0;text-align:center}
-.tp-info{flex:1;min-width:0}
-.tp-cap{font-size:12px;color:rgba(255,255,255,.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tp-stats{font-size:11px;color:var(--muted);margin-top:2px}
-.hour-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem;margin-top:.75rem}
-.hour-item{background:var(--surface);border-radius:10px;padding:.6rem;text-align:center}
-.hour-num{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--brand)}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#13112a;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;transition:transform .3s;z-index:9999;border:.5px solid rgba(255,107,53,.3);pointer-events:none}
-.toast.show{transform:translateX(-50%) translateY(0)}
-.empty-state{text-align:center;padding:3rem 1rem;color:var(--subtle);font-size:13px;line-height:1.8}
-.divider{height:.5px;background:rgba(255,255,255,.06);margin:1rem 0}
-.funnel-stage{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
-.fs-top{background:rgba(55,138,221,.15);color:#378add}
-.fs-mid{background:rgba(255,107,53,.15);color:#ff6b35}
-.fs-bot{background:rgba(99,153,34,.15);color:#639922}
+input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none}
+.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
+
 <header>
-  <div style="display:flex;align-items:center;gap:.5rem">
-    <div class="logo">✦ Social Planner</div>
-    <span class="v-badge">v4.0 PRO</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="logo">✦ Social Planner Pro</div>
+    <div class="v-badge">v4.1 AI</div>
   </div>
-  <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap" id="acc-sel"></div>
-  <a href="/auth/logout" class="btn-out">Sair</a>
+  <div id="acc-list" style="display:flex;gap:8px;overflow-x:auto"></div>
+  <button class="btn-out" onclick="location.href='/'">Sair</button>
 </header>
 
-<div class="nav-tabs">
-  <div class="nav-tab on" onclick="goPage('dashboard',this)">📊 Dashboard</div>
-  <div class="nav-tab" onclick="goPage('intelligence',this)">🧠 Inteligência</div>
-  <div class="nav-tab" onclick="goPage('planner',this)">📅 Planner</div>
-  <div class="nav-tab" onclick="goPage('history',this)">🗂️ Histórico</div>
-</div>
-
-<!-- DASHBOARD -->
-<div class="page on" id="page-dashboard">
-  <div style="margin-top:1rem">
-    <div class="period-tabs">
-      <button class="ptab on" onclick="loadDash('7d',this)">7 dias</button>
-      <button class="ptab" onclick="loadDash('15d',this)">15 dias</button>
-      <button class="ptab" onclick="loadDash('30d',this)">30 dias</button>
-      <button class="ptab" onclick="loadDash('90d',this)">90 dias</button>
+<main class="page on">
+  <!-- ÁREA DE DIAGNÓSTICO -->
+  <div id="diag-area" class="diag-box" style="display:none">
+    <div class="diag-title">⚠️ Erro de Conexão com Instagram</div>
+    <div id="diag-errors"></div>
+    <div class="manual-token-wrap">
+      <input type="text" id="manual-token" placeholder="Cole um Token do Graph API Explorer aqui para testar...">
+      <button class="btn-test" id="btn-test-token">Testar Token</button>
     </div>
   </div>
-  <div id="dash-content"></div>
-</div>
 
-<!-- INTELLIGENCE -->
-<div class="page" id="page-intelligence">
-  <div style="margin-top:1rem">
+  <div id="main-content">
     <div class="card">
-      <div class="card-title"><div class="cicon" style="background:rgba(168,85,247,.15)">🧠</div>Análise Estratégica Completa</div>
-      <div class="fgroup">
-        <span class="flabel">Concorrentes <span style="color:var(--muted);font-weight:400;text-transform:none">(a IA busca automaticamente, ou informe os seus)</span></span>
-        <input id="i-competitors" type="text" placeholder="@concorrente1, @concorrente2 (opcional — a IA detecta automaticamente)"/>
+      <div class="card-title">📊 Visão Geral do Perfil</div>
+      <div class="metrics-grid" id="metrics">
+        <div class="metric-card"><div class="mv">-</div><div class="ml">Seguidores</div></div>
+        <div class="metric-card"><div class="mv">-</div><div class="ml">Posts</div></div>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Localização</span>
-        <input id="i-location" type="text" placeholder="Ex: Vila Velha ES"/>
-      </div>
-      <div class="fgroup">
-        <span class="flabel">Objetivo estratégico</span>
-        <div class="pill-row">
-          <button class="spill on" onclick="pickSpill(this,'igoal')">Crescer seguidores</button>
-          <button class="spill" onclick="pickSpill(this,'igoal')">Vender mais</button>
-          <button class="spill" onclick="pickSpill(this,'igoal')">Autoridade no nicho</button>
-          <button class="spill" onclick="pickSpill(this,'igoal')">Lançar produto</button>
-          <button class="spill" onclick="pickSpill(this,'igoal')">Fidelizar clientes</button>
-        </div>
-      </div>
-      <button class="gen-btn" onclick="runIntelligence()">🧠 Gerar Análise Estratégica Completa</button>
-    </div>
-    <div class="ld-wrap" id="ld-intel">
-      <div class="ld-ring"></div>
-      <p class="ld-msg" id="ld-intel-msg">Analisando o mercado...</p>
-    </div>
-    <div id="intel-result" style="display:none"></div>
-  </div>
-</div>
-
-<!-- PLANNER -->
-<div class="page" id="page-planner">
-  <div style="margin-top:1rem">
-    <div class="insights-banner" id="insights-banner">
-      <div class="ib-title">✦ Sugestões da IA baseadas no seu perfil</div>
-      <div id="insights-text"></div>
     </div>
 
-    <div style="display:grid;grid-template-columns:320px 1fr;gap:1rem" id="planner-layout">
-      <div>
-        <div class="card">
-          <div class="card-title"><div class="cicon" style="background:rgba(255,107,53,.15)">📋</div>Configurar Plano</div>
-
-          <div class="fgroup">
-            <span class="flabel">Nicho</span>
-            <div class="input-wrap">
-              <input id="p-niche" type="text" placeholder="Detectando..."/>
-              <span class="ai-suggest-btn" onclick="applySuggestion('niche')">✦ IA sugere</span>
-            </div>
-            <div id="sug-niche"></div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Localização</span>
-            <div class="input-wrap">
-              <input id="p-loc" type="text" placeholder="Ex: Vila Velha ES"/>
-              <span class="ai-suggest-btn" onclick="applySuggestion('location')">✦ IA sugere</span>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Público-alvo</span>
-            <div class="input-wrap">
-              <input id="p-audience" type="text" placeholder="Ex: Mulheres 25-40 anos"/>
-              <span class="ai-suggest-btn" onclick="applySuggestion('audience')">✦ IA sugere</span>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Total de posts</span>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
-              <button class="spill" data-v="12" onclick="pickTotal(this)">12</button>
-              <button class="spill" data-v="18" onclick="pickTotal(this)">18</button>
-              <button class="spill on" data-v="24" onclick="pickTotal(this)">24</button>
-              <button class="spill" data-v="30" onclick="pickTotal(this)">30</button>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Mix de formatos</span>
-            <div class="mix-row">
-              <div class="mix-item">
-                <div class="mix-label">Reels</div>
-                <div class="mix-val" style="color:#ff6b35" id="mv-reels">10</div>
-                <div style="font-size:10px;color:var(--muted)">posts</div>
-                <div class="mix-btns">
-                  <button class="mix-btn" onclick="adjustMix('reels',-1)">−</button>
-                  <button class="mix-btn" onclick="adjustMix('reels',1)">+</button>
-                </div>
-              </div>
-              <div class="mix-item">
-                <div class="mix-label">Carrossel</div>
-                <div class="mix-val" style="color:#378add" id="mv-carousels">8</div>
-                <div style="font-size:10px;color:var(--muted)">posts</div>
-                <div class="mix-btns">
-                  <button class="mix-btn" onclick="adjustMix('carousels',-1)">−</button>
-                  <button class="mix-btn" onclick="adjustMix('carousels',1)">+</button>
-                </div>
-              </div>
-              <div class="mix-item">
-                <div class="mix-label">Foto</div>
-                <div class="mix-val" style="color:#639922" id="mv-single">6</div>
-                <div style="font-size:10px;color:var(--muted)">auto</div>
-              </div>
-            </div>
-            <div style="text-align:center;font-size:11px;color:var(--muted)" id="mix-total">Total: 24 posts</div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Objetivo do mês</span>
-            <div class="pill-row" id="goals-row">
-              <button class="spill on" onclick="pickSpill(this,'goal')">Vender mais</button>
-              <button class="spill" onclick="pickSpill(this,'goal')">Ganhar seguidores</button>
-              <button class="spill" onclick="pickSpill(this,'goal')">Lançar serviço</button>
-              <button class="spill" onclick="pickSpill(this,'goal')">Engajamento</button>
-              <button class="spill" onclick="pickSpill(this,'goal')">Autoridade</button>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Tom de voz</span>
-            <div class="pill-row" id="tone-row">
-              <button class="spill on" onclick="pickSpill(this,'tone')">Próximo e amigável</button>
-              <button class="spill" onclick="pickSpill(this,'tone')">Profissional</button>
-              <button class="spill" onclick="pickSpill(this,'tone')">Humor</button>
-              <button class="spill" onclick="pickSpill(this,'tone')">Inspirador</button>
-              <button class="spill" onclick="pickSpill(this,'tone')">Luxo</button>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Contexto / diferenciais</span>
-            <div class="input-wrap">
-              <textarea id="p-extra" placeholder="Promoções, lançamentos, diferenciais..."></textarea>
-              <span class="ai-suggest-btn" style="top:12px;transform:none" onclick="applySuggestion('extra')">✦ IA sugere</span>
-            </div>
-          </div>
-
-          <div class="fgroup">
-            <span class="flabel">Objeções dos clientes</span>
-            <textarea id="p-obj" placeholder="O que impede de comprar?" style="min-height:50px"></textarea>
-          </div>
-
-          <button class="gen-btn" id="gen-btn" onclick="generatePlan()">✦ Gerar Plano Completo</button>
+    <div class="card">
+      <div class="card-title">🚀 Gerar Novo Plano</div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div>
+          <label style="font-size:11px;color:var(--muted)">Objetivo do Mês</label>
+          <select id="goal">
+            <option value="Vendas">Vendas e Conversão</option>
+            <option value="Engajamento">Engajamento e Comunidade</option>
+            <option value="Crescimento">Crescimento de Seguidores</option>
+          </select>
         </div>
-      </div>
-
-      <!-- RESULT AREA -->
-      <div>
-        <div class="ld-wrap" id="ld-plan">
-          <div class="ld-ring"></div>
-          <p class="ld-msg" id="ld-plan-msg">Construindo seu plano estratégico...</p>
-          <div class="ld-steps">
-            <span class="lds" id="ls1">Auditoria</span>
-            <span class="lds" id="ls2">Datas</span>
-            <span class="lds" id="ls3">Posts</span>
-            <span class="lds" id="ls4">Stories</span>
-            <span class="lds" id="ls5">Hashtags</span>
-            <span class="lds" id="ls6">Dicas</span>
-          </div>
-        </div>
-
-        <div id="plan-result" style="display:none">
-          <div style="background:linear-gradient(135deg,#13112a,#1c1a35);border:.5px solid rgba(255,107,53,.25);border-radius:14px;padding:1.25rem;margin-bottom:1rem">
-            <div style="font-family:Syne,sans-serif;font-size:1rem;font-weight:700;margin-bottom:.5rem" id="r-title">Plano Estratégico</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap" id="r-tags"></div>
-          </div>
-          <div class="rtabs">
-            <button class="rtab on" onclick="switchRtab('overview',this)">📊 Visão Geral</button>
-            <button class="rtab" onclick="switchRtab('feed',this)">📅 Feed</button>
-            <button class="rtab" onclick="switchRtab('stories',this)">📱 Stories</button>
-            <button class="rtab" onclick="switchRtab('hashtags',this)">🔍 Hashtags</button>
-            <button class="rtab" onclick="switchRtab('calendar',this)">🗓️ Calendário</button>
-            <button class="rtab" onclick="switchRtab('tips',this)">💡 Dicas</button>
-          </div>
-          <div class="rs on" id="rs-overview"><div class="rbox" id="rb-overview"></div></div>
-          <div class="rs" id="rs-feed"><div class="rbox" id="rb-feed"></div></div>
-          <div class="rs" id="rs-stories"><div id="rb-stories"></div></div>
-          <div class="rs" id="rs-hashtags">
-            <div class="rbox">
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.75rem">
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#378add;display:inline-block"></span>Nicho</span>
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#639922;display:inline-block"></span>Local</span>
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#ba7517;display:inline-block"></span>Amplo</span>
-              </div>
-              <div class="htag-cloud" id="htag-cloud"></div>
-              <div class="divider"></div>
-              <div id="rb-htag-tip"></div>
-            </div>
-          </div>
-          <div class="rs" id="rs-calendar"><div class="rbox"><div id="cal-container"></div></div></div>
-          <div class="rs" id="rs-tips"><div class="rbox"><div class="tip-list" id="rb-tips"></div></div></div>
-          <div class="act-bar">
-            <button class="act-btn" onclick="copyAll()">📋 Copiar</button>
-            <button class="act-btn" onclick="exportTxt()">📄 Exportar TXT</button>
-            <button class="act-btn" onclick="exportPDF()">📕 Exportar PDF</button>
-            <button class="act-btn primary" onclick="savePlan()">💾 Salvar</button>
-            <button class="act-btn" onclick="newPlan()">+ Novo</button>
-          </div>
-        </div>
+        <button class="gen-btn" id="btn-gen">Gerar Plano Estratégico com GPT-4o</button>
       </div>
     </div>
   </div>
-</div>
+</main>
 
-<!-- HISTORY -->
-<div class="page" id="page-history">
-  <div style="margin-top:1rem">
-    <div class="card" style="padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:13px;color:var(--muted)">Planos salvos: <strong id="h-count" style="color:var(--text)">0</strong></span>
-      <button onclick="clearHist()" style="font-size:11px;color:var(--muted);background:none;border:.5px solid var(--border);padding:4px 9px;border-radius:8px;cursor:pointer">Limpar tudo</button>
-    </div>
-    <div id="hist-list"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
 <script>
-const SK = 'spp_v4_hist';
+let accounts = [];
+let currentAccount = null;
 
-// ── PARSE JSON ROBUSTO ────────────────────────────────────────
-function robustParseJSON(text) {
-  if (!text || typeof text !== 'string') throw new Error('Texto vazio');
-  let t = text.trim();
-  // Remove blocos markdown
-  t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-  // Encontra o início do JSON
-  const fb = t.indexOf('{'), fbr = t.indexOf('[');
-  let si = -1;
-  if (fb !== -1 && fbr !== -1) si = Math.min(fb, fbr);
-  else if (fb !== -1) si = fb;
-  else if (fbr !== -1) si = fbr;
-  if (si > 0) t = t.substring(si);
-  // Encontra o fim do JSON
-  const lb = t.lastIndexOf('}'), lbr = t.lastIndexOf(']');
-  const ei = Math.max(lb, lbr);
-  if (ei !== -1 && ei < t.length - 1) t = t.substring(0, ei + 1);
-  // Tenta parse direto
-  try { return JSON.parse(t); } catch(e1) {
-    // Tenta corrigir vírgulas extras
-    const fixed = t.replace(/,\s*([}\]])/g, '$1');
-    try { return JSON.parse(fixed); } catch(e2) {
-      throw new Error('JSON inválido: ' + e2.message);
-    }
-  }
-}
-let selAccount = null, dashData = null, curPeriod = '7d';
-let rawPlan = {}, planData = {};
-let mix = { reels: 10, carousels: 8 }, totalPosts = 24;
-let suggestions = null, chartInstances = {};
-
-// ── INIT ──────────────────────────────────────────────────────
 async function init() {
-  try {
-    const res = await fetch('/api/me').then(r=>r.json()).catch(()=>({logged:false}));
-    console.log('[INIT] api/me response:', JSON.stringify(res));
-
-    if (!res.logged) {
-      console.log('[INIT] Not logged, redirecting...');
-      window.location.href='/';
-      return;
-    }
-
-    const accs = res.igAccounts || res.accounts || [];
-    console.log('[INIT] Accounts found:', accs.length, 'Response:', JSON.stringify(res));
-
-    if (!accs.length) {
-      document.getElementById('dash-content').innerHTML = '<div class="empty-state">Nenhuma conta encontrada.<br>Verifique a variável IG_TOKENS no Railway.<br><a href="/" style="color:var(--brand)">Voltar</a></div>';
-      renderHist();
-      return;
-    }
-
-    const sel = document.getElementById('acc-sel');
-    sel.innerHTML = '';
-
-    accs.forEach((a,i) => {
-      const chip = document.createElement('div');
-      chip.className = 'acc-chip' + (i===0?' on':'');
-      chip.innerHTML = '@' + a.username + ' <span style="opacity:.5;font-size:10px">' + (a.followers_count||0).toLocaleString('pt-BR') + '</span>';
-      chip.onclick = () => {
-        document.querySelectorAll('.acc-chip').forEach(c=>c.classList.remove('on'));
-        chip.classList.add('on');
-        selAccount = a;
-        loadDash(curPeriod, document.querySelector('.ptab.on'));
-        loadSuggestions(a);
-      };
-      sel.appendChild(chip);
-      if (i===0) {
-        selAccount = a;
-        console.log('[INIT] Selected account:', a.username);
-        loadDash('7d', document.querySelector('.ptab.on'));
-        loadSuggestions(a);
-      }
-    });
-  } catch(e) {
-    console.error('[INIT ERROR]', e);
-    document.getElementById('dash-content').innerHTML = '<div class="empty-state">Erro ao carregar: ' + e.message + '<br><a href="/" style="color:var(--brand)">Voltar</a></div>';
-  }
-  renderHist();
-}
-
-// ── SUGGESTIONS ───────────────────────────────────────────────
-async function loadSuggestions(account) {
-  try {
-    const res = await fetch('/api/suggestions', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ igId: account.id })
-    });
-    suggestions = await res.json();
-    if (suggestions && suggestions.error) {
-      console.warn('[SUGGESTIONS] Erro da IA:', suggestions.error);
-      if (suggestions.raw) console.log('[SUGGESTIONS] Resposta bruta que falhou:', suggestions.raw);
-      
-      const banner = document.getElementById('insights-banner');
-      if (banner) {
-        banner.style.display = 'block';
-        banner.style.background = 'linear-gradient(135deg,rgba(226,75,74,.1),rgba(226,75,74,.05))';
-        banner.style.borderColor = 'rgba(226,75,74,.3)';
-        const title = banner.querySelector('.ib-title');
-        const text = document.getElementById('insights-text');
-        if (title) title.textContent = '⚠️ Erro na análise da IA';
-        if (text) text.textContent = suggestions.error;
-      }
-
-      // Mostra aviso específico se a chave não está configurada
-      if (suggestions.error.includes('GEMINI_API_KEY')) {
-        const banner = document.getElementById('insights-banner');
-        if (banner) {
-          banner.style.display = 'block';
-          banner.style.background = 'linear-gradient(135deg,rgba(226,75,74,.1),rgba(226,75,74,.05))';
-          banner.style.borderColor = 'rgba(226,75,74,.3)';
-          const title = banner.querySelector('.ib-title');
-          const text = document.getElementById('insights-text');
-          if (title) title.textContent = '⚠️ Configuração necessária';
-          if (text) text.textContent = 'A chave GEMINI_API_KEY não está configurada. Acesse o painel do Railway/Render e adicione a variável de ambiente GEMINI_API_KEY com sua chave do Google AI Studio (aistudio.google.com).';
-        }
-      }
-    }
-    if (suggestions && !suggestions.error) {
-      // Auto-fill fields
-      if (suggestions.niche) document.getElementById('p-niche').value = suggestions.niche;
-      if (suggestions.location) document.getElementById('p-loc').value = suggestions.location;
-      if (suggestions.audience) document.getElementById('p-audience').value = suggestions.audience;
-      if (suggestions.extra) document.getElementById('p-extra').value = suggestions.extra;
-      // Auto-select goal
-      if (suggestions.goal) {
-        document.querySelectorAll('#goals-row .spill').forEach(b => {
-          if (b.textContent.trim() === suggestions.goal) { b.click(); }
-        });
-      }
-      // Auto-select tone
-      if (suggestions.tone) {
-        document.querySelectorAll('#tone-row .spill').forEach(b => {
-          if (b.textContent.trim() === suggestions.tone) { b.click(); }
-        });
-      }
-      // Show insights banner
-      if (suggestions.insights) {
-        document.getElementById('insights-banner').style.display = 'block';
-        document.getElementById('insights-text').textContent = suggestions.insights;
-      }
-      // Show niche confidence badge
-      if (suggestions.niche_confidence) {
-        document.getElementById('sug-niche').innerHTML = `<span class="suggestion-badge">✦ ${suggestions.niche_confidence === 'alto' ? 'Nicho detectado com alta confiança' : 'Nicho estimado — confirme'}</span>`;
-      }
-    }
-  } catch(e) { 
-    console.log('Suggestions error:', e.message);
-    const banner = document.getElementById('insights-banner');
-    if (banner) {
-      banner.style.display = 'block';
-      banner.style.background = 'linear-gradient(135deg,rgba(226,75,74,.1),rgba(226,75,74,.05))';
-      banner.style.borderColor = 'rgba(226,75,74,.3)';
-      const text = document.getElementById('insights-text');
-      if (text) text.textContent = 'Erro ao carregar sugestões: ' + e.message + '. Verifique se a GEMINI_API_KEY está correta.';
-    }
-  }
-}
-
-function applySuggestion(field) {
-  if (!suggestions) { toast('Aguarde a IA analisar o perfil...'); return; }
-  const map = {
-    niche: ['p-niche', suggestions.niche],
-    location: ['p-loc', suggestions.location],
-    audience: ['p-audience', suggestions.audience],
-    extra: ['p-extra', suggestions.extra]
-  };
-  if (map[field] && map[field][1]) {
-    document.getElementById(map[field][0]).value = map[field][1];
-    toast('✦ Sugestão aplicada!');
-  }
-}
-
-// ── NAVIGATION ────────────────────────────────────────────────
-function goPage(id, btn) {
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  btn.classList.add('on');
-  document.getElementById('page-'+id).classList.add('on');
-}
-
-function pickSpill(btn, group) {
-  btn.closest('.pill-row, .fgroup').querySelectorAll('.spill').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-}
-
-// ── DASHBOARD ─────────────────────────────────────────────────
-async function loadDash(period, btn) {
-  if (!selAccount) return;
-  curPeriod = period;
-  if (btn) { document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('on')); btn.classList.add('on'); }
-  const cont = document.getElementById('dash-content');
-  cont.innerHTML = '<div class="ld-wrap" style="display:block"><div class="ld-ring"></div><p class="ld-msg">Carregando dados reais...</p></div>';
-  try {
-    const data = await fetch(`/api/dashboard/${selAccount.id}`).then(r=>r.json());
-    dashData = data; renderDash(data, period);
-  } catch(e) { cont.innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
-}
-
-function renderDash(data, period) {
-  const s = data.periodStats[period] || {};
-  const score = data.profileScore || 0;
-  const circ = 2 * Math.PI * 28;
-  const offset = circ - (score/100) * circ;
-  const sc = score >= 70 ? '#639922' : score >= 40 ? '#ff6b35' : '#e24b4a';
-
-  document.getElementById('dash-content').innerHTML = `
-    <div class="score-wrap">
-      <svg width="70" height="70" viewBox="0 0 70 70">
-        <circle cx="35" cy="35" r="28" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
-        <circle cx="35" cy="35" r="28" fill="none" stroke="${sc}" stroke-width="6"
-          stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"
-          stroke-linecap="round" transform="rotate(-90 35 35)"/>
-        <text x="35" y="40" text-anchor="middle" fill="${sc}" font-family="Syne,sans-serif" font-size="14" font-weight="700">${score}</text>
-      </svg>
-      <div>
-        <div style="font-family:Syne,sans-serif;font-size:1.05rem;font-weight:700">Score do Perfil: ${score>=70?'Bom ✅':score>=40?'Regular ⚠️':'Precisa melhorar ❌'}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:.25rem">Taxa de engajamento: <strong>${data.engRate}%</strong> · ${data.totalMedia} posts analisados</div>
-      </div>
-    </div>
-    <div class="metrics-grid">
-      <div class="metric-card"><div class="mv">${(selAccount.followers_count||0).toLocaleString('pt-BR')}</div><div class="ml">Seguidores</div></div>
-      <div class="metric-card"><div class="mv">${s.posts||0}</div><div class="ml">Posts no período</div></div>
-      <div class="metric-card"><div class="mv">${(s.likes||0).toLocaleString('pt-BR')}</div><div class="ml">Curtidas</div></div>
-      <div class="metric-card"><div class="mv">${(s.comments||0).toLocaleString()}</div><div class="ml">Comentários</div></div>
-      <div class="metric-card"><div class="mv">${s.avgLikes||0}</div><div class="ml">Média curtidas</div></div>
-      <div class="metric-card"><div class="mv">${s.engagement||0}</div><div class="ml">Eng. médio/post</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-      <div class="card"><div class="card-title" style="margin-bottom:.5rem"><div class="cicon" style="background:rgba(55,138,221,.15)">📈</div>Evolução Mensal</div><div class="chart-wrap"><canvas id="chart-evolution"></canvas></div></div>
-      <div class="card"><div class="card-title" style="margin-bottom:.5rem"><div class="cicon" style="background:rgba(99,153,34,.15)">🎬</div>Mix de Formatos</div><div class="chart-wrap"><canvas id="chart-formats"></canvas></div></div>
-    </div>
-    <div class="card" style="margin-top:1rem">
-      <div class="card-title"><div class="cicon" style="background:rgba(255,209,102,.15)">⏰</div>Melhores Horários</div>
-      <div class="hour-grid">${(data.bestHours||[]).map((h,i)=>`<div class="hour-item"><div class="hour-num">${String(h.hour).padStart(2,'0')}h</div><div style="font-size:10px;color:var(--muted)">#${i+1}</div><div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px">${h.avgEngagement} eng</div></div>`).join('')}</div>
-      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">${(data.bestDays||[]).map(d=>`<div style="background:var(--surface);border-radius:8px;padding:5px 10px;font-size:12px"><strong style="color:var(--brand)">${d.day}</strong> <span style="color:var(--muted)">${d.avgEngagement}</span></div>`).join('')}</div>
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="cicon" style="background:rgba(255,107,53,.15)">🏆</div>Top Posts</div>
-      ${(data.topPosts||[]).map((p,i)=>`<div class="top-post"><div class="tp-rank">${i+1}</div><div class="tp-info"><div class="tp-cap">${p.caption?.substring(0,80)||'Sem legenda'}...</div><div class="tp-stats">❤️ ${p.like_count||0} · 💬 ${p.comments_count||0} · ${new Date(p.timestamp).toLocaleDateString('pt-BR')}</div></div><span class="fmt ${p.media_type==='VIDEO'?'fmt-r':p.media_type==='CAROUSEL_ALBUM'?'fmt-c':'fmt-f'}" style="font-size:10px">${p.media_type}</span></div>`).join('')}
-    </div>`;
-
-  setTimeout(() => {
-    const ev = data.monthlyEvolution || [];
-    if (chartInstances.ev) chartInstances.ev.destroy();
-    chartInstances.ev = new Chart(document.getElementById('chart-evolution'), {
-      type: 'line',
-      data: { labels: ev.map(e=>e.month), datasets: [
-        { label: 'Engajamento', data: ev.map(e=>parseFloat(e.engagement)||0), borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,.1)', tension:.4, fill:true, pointBackgroundColor:'#ff6b35' },
-        { label: 'Posts', data: ev.map(e=>e.posts), borderColor:'#ffd166', backgroundColor:'transparent', tension:.4, yAxisID:'y2', pointBackgroundColor:'#ffd166' }
-      ]},
-      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'rgba(255,255,255,.6)',font:{size:10}}}}, scales:{x:{ticks:{color:'rgba(255,255,255,.5)',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'rgba(255,255,255,.5)',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},y2:{position:'right',ticks:{color:'rgba(255,255,255,.4)',font:{size:9}},grid:{display:false}}}}
-    });
-    const fmt = data.formatMix || {};
-    if (chartInstances.fmt) chartInstances.fmt.destroy();
-    chartInstances.fmt = new Chart(document.getElementById('chart-formats'), {
-      type: 'doughnut',
-      data: { labels: Object.keys(fmt), datasets:[{data:Object.values(fmt),backgroundColor:['#ff6b35','#378add','#639922','#ffd166','#d4537e'],borderWidth:0}]},
-      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,.6)',font:{size:11},padding:12}}}}
-    });
-  }, 100);
-}
-
-// ── INTELLIGENCE ──────────────────────────────────────────────
-async function runIntelligence() {
-  if (!selAccount) { toast('Selecione um perfil!'); return; }
-  const ld = document.getElementById('ld-intel');
-  const result = document.getElementById('intel-result');
-  ld.style.display = 'block'; result.style.display = 'none';
-  const msgs = ['Analisando o comportamento do seu nicho no Brasil...','Identificando oportunidades que seus concorrentes ignoram...','Mapeando dores e desejos do seu público-alvo...','Calculando potencial de monetização da sua audiência...','Finalizando seu dossiê estratégico...'];
-  let mi = 0;
-  const iv = setInterval(() => {
-    document.getElementById('ld-intel-msg').textContent = msgs[mi % msgs.length];
-    mi++;
-  }, 3000);
-
-  try {
-    const res = await fetch('/api/intelligence', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        igId: selAccount.id,
-        competitors: document.getElementById('i-competitors').value,
-        location: document.getElementById('i-location').value,
-        goal: document.querySelector('#page-intelligence .spill.on').textContent,
-        niche: suggestions?.niche || 'Geral'
-      })
-    });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '';
-
-    while(true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.substring(6));
-          if (data.type === 'delta') fullText += data.text;
-          if (data.type === 'done') fullText = data.fullText;
-          if (data.type === 'error') throw new Error(data.message);
-        }
-      }
-    }
-
-    clearInterval(iv);
-    ld.style.display = 'none';
-    result.style.display = 'block';
-    const intel = robustParseJSON(fullText);
-    renderIntelligence(intel);
-  } catch(e) {
-    clearInterval(iv);
-    ld.style.display = 'none';
-    toast('Erro: ' + e.message);
-  }
-}
-
-function renderIntelligence(data) {
-  const res = document.getElementById('intel-result');
-  const s = data.strategic_score || {};
-  res.innerHTML = `
-    <div class="card" style="background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(168,85,247,.05));border-color:rgba(168,85,247,.3)">
-      <div class="card-title" style="color:#a855f7">📊 Diagnóstico Estratégico</div>
-      <p style="font-size:13px;line-height:1.6;margin-bottom:1rem">${s.diagnosis || ''}</p>
-      <div class="pos-scores">
-        <div class="ps-item"><div class="ps-label">Qualidade Conteúdo</div><div class="ps-bar-bg"><div class="ps-bar-fill" style="width:${s.content_quality}%"></div></div><div class="ps-val">${s.content_quality}/100</div></div>
-        <div class="ps-item"><div class="ps-label">Consistência</div><div class="ps-bar-bg"><div class="ps-bar-fill" style="width:${s.posting_consistency}%"></div></div><div class="ps-val">${s.posting_consistency}/100</div></div>
-        <div class="ps-item"><div class="ps-label">Alinhamento Público</div><div class="ps-bar-bg"><div class="ps-bar-fill" style="width:${s.audience_alignment}%"></div></div><div class="ps-val">${s.audience_alignment}/100</div></div>
-        <div class="ps-item"><div class="ps-label">Potencial Crescimento</div><div class="ps-bar-bg"><div class="ps-bar-fill" style="width:${s.growth_potential}%"></div></div><div class="ps-val">${s.growth_potential}/100</div></div>
-      </div>
-    </div>
-
-    <div class="intel-grid">
-      <div class="intel-card">
-        <div class="ic-title">🎯 Inteligência de Público</div>
-        <div style="font-size:11px;color:var(--brand2);margin-bottom:.5rem;font-weight:600">PERFIL IDEAL:</div>
-        <p style="font-size:12px;margin-bottom:.8rem">${data.audience_intelligence?.ideal_profile || ''}</p>
-        <div style="font-size:11px;color:var(--brand2);margin-bottom:.5rem;font-weight:600">DORES & DESEJOS:</div>
-        ${(data.audience_intelligence?.pain_map || []).slice(0,2).map(p=>`<div class="ic-item"><div class="ic-dot"></div><span><strong>Dor:</strong> ${p.pain}</span></div>`).join('')}
-        ${(data.audience_intelligence?.desire_map || []).slice(0,2).map(d=>`<div class="ic-item"><div class="ic-dot" style="background:#639922"></div><span><strong>Desejo:</strong> ${d.desire}</span></div>`).join('')}
-      </div>
-
-      <div class="intel-card">
-        <div class="ic-title">💰 Inteligência Financeira</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem">
-          <div style="background:rgba(255,255,255,.03);padding:.5rem;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted)">VALOR/SEGUIDOR</div><div style="font-size:13px;font-weight:700;color:#639922">${data.financial_intelligence?.follower_value_estimate || ''}</div></div>
-          <div style="background:rgba(255,255,255,.03);padding:.5rem;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted)">POTENCIAL MENSAL</div><div style="font-size:13px;font-weight:700;color:#639922">${data.financial_intelligence?.monthly_revenue_potential || ''}</div></div>
-        </div>
-        <div style="font-size:11px;color:var(--brand2);margin-bottom:.5rem;font-weight:600">OPORTUNIDADES:</div>
-        ${(data.financial_intelligence?.monetization_opportunities || []).map(o=>`<div class="ic-item"><div class="ic-dot" style="background:#ffd166"></div><span>${o}</span></div>`).join('')}
-      </div>
-
-      <div class="intel-card">
-        <div class="ic-title">🚀 Inteligência de Mercado</div>
-        <div style="font-size:11px;color:var(--brand2);margin-bottom:.5rem;font-weight:600">TENDÊNCIAS ATUAIS:</div>
-        ${(data.market_intelligence?.trends || []).map(t=>`<div class="ic-item"><div class="ic-dot"></div><span><strong>${t.trend}:</strong> ${t.how_to_use}</span></div>`).join('')}
-      </div>
-
-      <div class="intel-card">
-        <div class="ic-title">⚙️ Inteligência Operacional</div>
-        <div style="font-size:11px;color:var(--brand2);margin-bottom:.5rem;font-weight:600">CALENDÁRIO DE PRODUÇÃO:</div>
-        <div class="ic-item"><div class="ic-dot"></div><span><strong>Tempo:</strong> ${data.operational_intelligence?.production_calendar?.weekly_hours || ''}</span></div>
-        <div class="ic-item"><div class="ic-dot"></div><span><strong>Melhor dia:</strong> ${data.operational_intelligence?.production_calendar?.best_production_day || ''}</span></div>
-        <div class="ic-item"><div class="ic-dot"></div><span><strong>Sugestão:</strong> ${data.operational_intelligence?.production_calendar?.batch_suggestion || ''}</span></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:1rem">
-      <div class="card-title">✨ Bio Otimizada (Sugestões)</div>
-      <div class="bio-options">
-        ${(data.bio_optimized || []).map((b,i)=>`
-          <div class="bio-option" onclick="copyBio('${b.bio.replace(/'/g,"\\'")}')">
-            <div class="bo-version">Opção ${i+1}: ${b.version}</div>
-            <div class="bo-text">${b.bio}</div>
-            <div class="bo-meta">Estratégia: ${b.strategy} · ${b.char_count} chars</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🚩 Plano de Ação Prioritário</div>
-      ${(s.recommendations || []).map(r=>`
-        <div style="background:rgba(255,255,255,.03);padding:.8rem;border-radius:10px;margin-bottom:.5rem;border-left:3px solid ${r.priority==='Alta'?'#e24b4a':r.priority==='Média'?'#ff6b35':'#378add'}">
-          <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
-            <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:${r.priority==='Alta'?'#e24b4a':r.priority==='Média'?'#ff6b35':'#378add'}">Prioridade ${r.priority}</span>
-            <span style="font-size:10px;color:var(--muted)">Resultado: ${r.expected_result}</span>
-          </div>
-          <div style="font-size:13px;font-weight:600">${r.action}</div>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function copyBio(text) {
-  navigator.clipboard.writeText(text);
-  toast('Bio copiada!');
-}
-
-// ── PLANNER ───────────────────────────────────────────────────
-function pickTotal(btn) {
-  document.querySelectorAll('#page-planner .spill').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  totalPosts = parseInt(btn.dataset.v);
-  mix.reels = Math.round(totalPosts * 0.4);
-  mix.carousels = Math.round(totalPosts * 0.35);
-  updateMixUI();
-}
-
-function adjustMix(type, delta) {
-  mix[type] = Math.max(0, mix[type] + delta);
-  if (mix.reels + mix.carousels > totalPosts) {
-    if (type === 'reels') mix.carousels = Math.max(0, totalPosts - mix.reels);
-    else mix.reels = Math.max(0, totalPosts - mix.carousels);
-  }
-  updateMixUI();
-}
-
-function updateMixUI() {
-  document.getElementById('mv-reels').textContent = mix.reels;
-  document.getElementById('mv-carousels').textContent = mix.carousels;
-  const single = Math.max(0, totalPosts - mix.reels - mix.carousels);
-  document.getElementById('mv-single').textContent = single;
-  document.getElementById('mix-total').textContent = `Total: ${totalPosts} posts`;
-}
-
-async function generatePlan() {
-  if (!selAccount) { toast('Selecione um perfil!'); return; }
-  const btn = document.getElementById('gen-btn');
-  const ld = document.getElementById('ld-plan');
-  const res = document.getElementById('plan-result');
+  const res = await fetch('/api/me');
+  const data = await res.json();
   
-  btn.disabled = true;
-  ld.style.display = 'block';
-  res.style.display = 'none';
+  if (!data.logged) return location.href = '/';
   
-  const steps = ['ls1','ls2','ls3','ls4','ls5','ls6'];
-  steps.forEach(s=>document.getElementById(s).className='lds');
+  accounts = data.accounts || [];
   
-  let curStep = 0;
-  const stepIv = setInterval(() => {
-    steps.forEach((s,i) => {
-      const el = document.getElementById(s);
-      if (i < curStep) el.className = 'lds done';
-      else if (i === curStep) el.className = 'lds act';
-      else el.className = 'lds';
-    });
-    if (curStep < steps.length - 1) curStep++;
-  }, 4000);
-
-  try {
-    const body = {
-      igId: selAccount.id,
-      posts: totalPosts,
-      reels: mix.reels,
-      carousels: mix.carousels,
-      goal: document.querySelector('#goals-row .spill.on').textContent,
-      tone: document.querySelector('#tone-row .spill.on').textContent,
-      extra: document.getElementById('p-extra').value,
-      objections: document.getElementById('p-obj').value,
-      audience: document.getElementById('p-audience').value,
-      niche: document.getElementById('p-niche').value,
-      location: document.getElementById('p-loc').value
-    };
-
-    const response = await fetch('/api/generate', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '';
-
-    while(true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.substring(6));
-          if (data.type === 'delta') fullText += data.text;
-          if (data.type === 'done') fullText = data.fullText;
-          if (data.type === 'error') throw new Error(data.message);
-        }
-      }
-    }
-
-    clearInterval(stepIv);
-    steps.forEach(s=>document.getElementById(s).className='lds done');
-    ld.style.display = 'none';
-    res.style.display = 'block';
-    btn.disabled = false;
-
-    rawPlan = robustParseJSON(fullText);
-    renderPlan(rawPlan);
-    toast('✅ Plano gerado com sucesso!');
-  } catch(e) {
-    clearInterval(stepIv);
-    ld.style.display = 'none';
-    btn.disabled = false;
-    toast('Erro: ' + e.message);
-  }
-}
-
-function renderPlan(data) {
-  const tags = document.getElementById('r-tags');
-  tags.innerHTML = `
-    <span class="hi-t">🎯 ${data.audit?.month_strategy || 'Estratégia Mensal'}</span>
-    <span class="hi-t">📅 ${totalPosts} posts</span>
-    <span class="hi-t">👥 ${document.getElementById('p-audience').value || 'Público Geral'}</span>
-  `;
-
-  // Overview
-  let ov = `<h3>🔍 Auditoria & Posicionamento</h3><p>${data.audit?.summary || ''}</p>`;
-  ov += `<h3>💎 Pilares Editoriais</h3><ul>${(data.editorial_pillars || []).map(p=>`<li><strong>${p.name}:</strong> ${p.description} (${p.frequency})</li>`).join('')}</ul>`;
-  ov += `<h3>📈 Análise de Engajamento</h3><p>${data.audit?.engagement_analysis || ''}</p>`;
-  document.getElementById('rb-overview').innerHTML = ov;
-
-  // Feed
-  document.getElementById('rb-feed').innerHTML = (data.posts || []).map(p => `
-    <div style="margin-bottom:1.5rem;border-bottom:.5px solid rgba(255,255,255,.05);padding-bottom:1rem">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
-        <div>
-          <div class="post-title">POST #${p.n} — ${p.day_suggestion} (Semana ${p.week})</div>
-          <div style="font-size:13px;font-weight:700">${p.title}</div>
-        </div>
-        <div style="display:flex;gap:.5rem;align-items:center"><span class="fmt ${p.format==='Reels'?'fmt-r':p.format==='Carrossel'?'fmt-c':'fmt-f'}">${p.format}</span><button onclick="copyPost(${p.n})" style="font-size:10px;padding:4px 8px;border-radius:6px;border:.5px solid rgba(255,107,53,.3);background:rgba(255,107,53,.1);color:#ffb38a;cursor:pointer;transition:all .2s">📋 Copiar</button></div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">🎯 Objetivo: ${p.objective} | 🏛️ Pilar: ${p.pillar}</div>
-      <div style="background:rgba(255,255,255,.03);padding:.75rem;border-radius:8px;margin-bottom:.6rem">
-        <div style="font-size:11px;color:var(--brand2);font-weight:600;margin-bottom:.3rem">🪝 GANCHO (HOOK):</div>
-        <div style="font-size:12px;font-style:italic;color:#fff">"${p.hook}"</div>
-      </div>
-      <div style="font-size:12px;line-height:1.6;white-space:pre-wrap;margin-bottom:.6rem"><strong>Legenda:</strong>\n${p.copy}</div>
-      <div style="font-size:11px;color:var(--brand);font-weight:600">📣 CTA: ${p.cta}</div>
-      ${p.format==='Reels' && p.script ? `<div class="script-box"><div class="script-label">🎬 Roteiro do Reels</div><div class="script-text">${p.script}</div><div style="font-size:10px;color:var(--muted);margin-top:.4rem">🎵 Áudio: ${p.audio||'Tendência'}</div></div>` : ''}
-      ${p.format==='Carrossel' && p.carousel_slides ? `<div class="carousel-box"><div class="carousel-label">🖼️ Estrutura de Slides</div><div class="carousel-slides">${p.carousel_slides.map((s,i)=>`<div class="cs">Slide ${i+1}:<br>${s}</div>`).join('')}</div></div>` : ''}
-    </div>
-  `).join('');
-
-  // Stories
-  document.getElementById('rb-stories').innerHTML = (data.stories || []).map(s => `
-    <div class="story-card">
-      <div class="sc-head" style="justify-content:space-between">
-        <div class="sc-num">${s.day.replace(/\D/g,'')}</div>
-        <div>
-          <div style="font-size:13px;font-weight:700">${s.theme}</div>
-          </div><button onclick="copyStory(${s.day.replace(/\D/g,'')})" style="font-size:10px;padding:4px 8px;border-radius:6px;border:.5px solid rgba(255,107,53,.3);background:rgba(255,107,53,.1);color:#ffb38a;cursor:pointer">📋 Copiar</button></div><div style="font-size:10px;color:var(--muted)">${s.objective} · <span class="funnel-stage ${s.funnel_stage==='topo'?'fs-top':s.funnel_stage==='meio'?'fs-mid':'fs-bot'}">${s.funnel_stage}</span></div>
-        </div>
-      </div>
-      <div class="sc-slides">
-        ${(s.slides || []).map(sl => `
-          <div class="slide">
-            <div class="slide-n">Slide ${sl.n}</div>
-            <div class="slide-t">${sl.text}</div>
-            <div class="slide-a">⚡ ${sl.action}</div>
-            <div class="slide-d">${sl.copy_detail}</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
-
-  // Hashtags
-  const h = data.hashtags || {};
-  const cloud = document.getElementById('htag-cloud');
-  cloud.innerHTML = '';
-  (h.niche || []).forEach(t => cloud.innerHTML += `<span class="htag nic" onclick="copyTag(this)">${t}</span>`);
-  (h.local || []).forEach(t => cloud.innerHTML += `<span class="htag loc" onclick="copyTag(this)">${t}</span>`);
-  (h.broad || []).forEach(t => cloud.innerHTML += `<span class="htag brd" onclick="copyTag(this)">${t}</span>`);
-  document.getElementById('rb-htag-tip').innerHTML = `<div style="font-size:12px;color:rgba(255,255,255,.7)"><strong>Estratégia:</strong> ${h.strategy || ''}</div>`;
-
-  // Calendar
-  renderCalendar(data.post_days || [], data.dates || []);
-
-  // Tips
-  document.getElementById('rb-tips').innerHTML = (data.tips || []).map(t => `
-    <div class="tip">
-      <div class="tip-icon">${t.icon || '💡'}</div>
-      <div class="tip-text"><strong>${t.title}</strong>${t.text}</div>
-    </div>
-  `).join('');
-}
-
-function renderCalendar(postDays, specialDates) {
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const dayNames = ['D','S','T','Q','Q','S','S'];
-  
-  let html = `<div style="font-family:Syne,sans-serif;font-size:.85rem;font-weight:700;margin-bottom:.75rem;color:var(--brand)">Calendário de Postagens</div>`;
-  html += `<div class="cal">`;
-  dayNames.forEach(d => html += `<div class="cal-dl">${d}</div>`);
-  
-  for(let i=0; i<firstDay; i++) html += `<div></div>`;
-  
-  for(let d=1; d<=daysInMonth; d++) {
-    const isPost = postDays.includes(d);
-    const spec = specialDates.find(s=>s.day===d);
-    const isToday = d === now.getDate();
-    
-    html += `
-      <div class="cal-day ${isPost?'hp':''} ${spec?'he':''} ${isToday?'today':''}">
-        <div class="dn">${d}</div>
-        <div class="dot-row">
-          ${isPost?`<div class="dot" style="background:#ff6b35"></div>`:''}
-          ${spec?`<div class="dot" style="background:#ba7517"></div>`:''}
-        </div>
-      </div>
-    `;
-  }
-  html += `</div>`;
-  
-  if (specialDates.length) {
-    html += `<div style="margin-top:1rem">`;
-    specialDates.forEach(s => {
-      html += `<div style="font-size:11px;margin-bottom:.4rem;color:rgba(255,255,255,.7)"><strong style="color:#ba7517">Dia ${s.day}: ${s.name}</strong> — ${s.content_idea}</div>`;
-    });
-    html += `</div>`;
+  // Mostrar erros de diagnóstico se houver
+  if (data.errors && data.errors.length > 0) {
+    const diag = document.getElementById('diag-area');
+    const list = document.getElementById('diag-errors');
+    diag.style.display = 'block';
+    list.innerHTML = data.errors.map(e => `<div class="diag-item">Token #${e.index}: ${e.error}</div>`).join('');
   }
   
-  document.getElementById('cal-container').innerHTML = html;
+  renderAccounts();
 }
 
-function switchRtab(id, btn) {
-  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.rs').forEach(r=>r.classList.remove('on'));
-  btn.classList.add('on');
-  document.getElementById('rs-'+id).classList.add('on');
-}
-
-function copyPost(postNum) {
-
-function copyStory(dayNum) {
-  if (!rawPlan || !rawPlan.stories) return;
-  const story = rawPlan.stories.find(s => parseInt(s.day.replace(/\D/g,"")) === dayNum);
-  if (!story) return;
-  let txt = `STORY - ${story.day}\n`;
-  txt += `Tema: ${story.theme}\n`;
-  txt += `Objetivo: ${story.objective}\n`;
-  txt += `Etapa do Funil: ${story.funnel_stage}\n\n`;
-  (story.slides || []).forEach(sl => {
-    txt += `Slide ${sl.n}: ${sl.text}\n`;
-    txt += `Ação: ${sl.action}\n`;
-    txt += `Detalhe: ${sl.copy_detail}\n\n`;
-  });
-  navigator.clipboard.writeText(txt);
-  toast(`✅ Story ${dayNum} copiado!`);
-}
-  if (!rawPlan || !rawPlan.posts) return;
-  const post = rawPlan.posts.find(p => p.n === postNum);
-  if (!post) return;
-  let txt = `POST #${post.n} - ${post.format}\n`;
-  txt += `Título: ${post.title}\n`;
-  txt += `Gancho: ${post.hook}\n`;
-  txt += `Legenda:\n${post.copy}\n`;
-  txt += `CTA: ${post.cta}\n`;
-  if (post.script) txt += `Roteiro: ${post.script}\n`;
-  navigator.clipboard.writeText(txt);
-  toast(`✅ Post #${postNum} copiado!`);
-}
-
-function copyTag(el) {
-  navigator.clipboard.writeText(el.textContent);
-  el.classList.add('ok');
-  setTimeout(()=>el.classList.remove('ok'), 1000);
-  toast('Hashtag copiada!');
-}
-
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 3000);
-}
-
-function copyAll() {
-  let txt = `PLANO ESTRATÉGICO - ${selAccount?.username}\n\n`;
-  txt += `ESTRATÉGIA: ${rawPlan.audit?.month_strategy}\n\n`;
-  txt += `--- FEED ---\n`;
-  rawPlan.posts.forEach(p => {
-    txt += `POST #${p.n} (${p.format}): ${p.title}\nGancho: ${p.hook}\nLegenda: ${p.copy}\nCTA: ${p.cta}\n\n`;
-  });
-  navigator.clipboard.writeText(txt);
-  toast('Todo o plano copiado!');
-}
-
-function exportTxt() {
-  let txt = `PLANO ESTRATÉGICO - ${selAccount?.username}\n\n`;
-  txt += `ESTRATÉGIA: ${rawPlan.audit?.month_strategy}\n\n`;
-  txt += `--- FEED ---\n`;
-  rawPlan.posts.forEach(p => {
-    txt += `POST #${p.n} (${p.format}): ${p.title}\nGancho: ${p.hook}\nLegenda: ${p.copy}\nCTA: ${p.cta}\n\n`;
-  });
-  const blob = new Blob([txt], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `plano_${selAccount?.username}.txt`;
-  a.click();
-}
-
-function savePlan() {
-  const hist = JSON.parse(localStorage.getItem(SK) || '[]');
-  hist.unshift({
-    id: Date.now(),
-    username: selAccount.username,
-    date: new Date().toISOString(),
-    plan: rawPlan
-  });
-  localStorage.setItem(SK, JSON.stringify(hist.slice(0, 50)));
-  renderHist();
-  toast('Plano salvo no histórico!');
-}
-
-function renderHist() {
-  const hist = JSON.parse(localStorage.getItem(SK) || '[]');
-  document.getElementById('h-count').textContent = hist.length;
-  const list = document.getElementById('hist-list');
-  if (!hist.length) {
-    list.innerHTML = '<div class="empty-state">Nenhum plano salvo ainda.</div>';
+function renderAccounts() {
+  const list = document.getElementById('acc-list');
+  if (accounts.length === 0) {
+    list.innerHTML = '<span style="font-size:11px;color:#f09595">Nenhuma conta ativa.</span>';
     return;
   }
-  list.innerHTML = hist.map(h => `
-    <div class="hist-item" onclick="loadHist(${h.id})">
-      <div>
-        <div style="font-size:13px;font-weight:700">@${h.username}</div>
-        <div style="font-size:11px;color:var(--muted)">${new Date(h.date).toLocaleDateString('pt-BR')} · ${h.plan.posts?.length || 0} posts</div>
-      </div>
-      <span class="hi-t">${h.plan.audit?.month_strategy?.substring(0,20)}...</span>
+  
+  list.innerHTML = accounts.map(acc => `
+    <div class="acc-chip ${currentAccount?.id === acc.id ? 'on' : ''}" onclick="selectAcc('${acc.id}')">
+      @${acc.username}
     </div>
   `).join('');
-}
-
-function loadHist(id) {
-  const hist = JSON.parse(localStorage.getItem(SK) || '[]');
-  const item = hist.find(h => h.id === id);
-  if (item) {
-    rawPlan = item.plan;
-    renderPlan(rawPlan);
-    goPage('planner', document.querySelectorAll('.nav-tab')[2]);
-    document.getElementById('plan-result').style.display = 'block';
-    toast('Plano carregado!');
-  }
-}
-
-function clearHist() {
-  if (confirm('Limpar todo o histórico?')) {
-    localStorage.removeItem(SK);
-    renderHist();
-  }
-}
-
-function newPlan() {
-  if (confirm('Deseja criar um novo plano? O atual será perdido se não estiver salvo.')) {
-    document.getElementById('plan-result').style.display = 'none';
-    window.scrollTo(0,0);
-  }
-}
-
-
-function exportPDF() {
-  if (!rawPlan || !selAccount) { toast('Nenhum plano para exportar'); return; }
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '⏳ Gerando PDF...';
   
-  fetch('/api/export-pdf', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ plan: rawPlan, username: selAccount.username })
-  })
-  .then(r => r.blob())
-  .then(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `plano_${selAccount.username}_${new Date().getTime()}.pdf`;
-    a.click();
-    toast('📕 PDF exportado com sucesso!');
-  })
-  .catch(e => {
-    console.error('Erro ao exportar PDF:', e);
-    toast('❌ Erro ao gerar PDF');
-  })
-  .finally(() => {
+  if (!currentAccount && accounts.length > 0) selectAcc(accounts[0].id);
+}
+
+function selectAcc(id) {
+  currentAccount = accounts.find(a => a.id === id);
+  renderAccounts();
+  updateMetrics();
+}
+
+function updateMetrics() {
+  if (!currentAccount) return;
+  const metrics = document.getElementById('metrics');
+  metrics.innerHTML = `
+    <div class="metric-card"><div class="mv">${currentAccount.followers_count || 0}</div><div class="ml">Seguidores</div></div>
+    <div class="metric-card"><div class="mv">${currentAccount.media_count || 0}</div><div class="ml">Posts</div></div>
+  `;
+}
+
+document.getElementById('btn-test-token').addEventListener('click', async () => {
+  const token = document.getElementById('manual-token').value;
+  if (!token) return alert('Cole um token primeiro!');
+  
+  const btn = document.getElementById('btn-test-token');
+  btn.disabled = true;
+  btn.textContent = 'Testando...';
+  
+  try {
+    const res = await fetch('/api/test-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      alert('Token válido! @' + data.account.username + ' adicionado.');
+      accounts.push(data.account);
+      renderAccounts();
+      document.getElementById('diag-area').style.display = 'none';
+    } else {
+      alert('Erro no token: ' + data.error);
+    }
+  } catch (e) {
+    alert('Erro ao testar token.');
+  } finally {
     btn.disabled = false;
-    btn.textContent = '📕 Exportar PDF';
-  });
-}
-function loginWithInstagram(e) {
-  e.preventDefault();
-  fetch('/api/auth', { method: 'POST' })
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) window.location.href = '/app';
-      else console.error('Auth failed:', d.error);
-    })
-    .catch(err => console.error('Auth error:', err));
-}
+    btn.textContent = 'Testar Token';
+  }
+});
+
 init();
 </script>
 </body>

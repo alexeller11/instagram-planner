@@ -111,7 +111,6 @@ app.get('/api/me', async (req, res) => {
   for (let i = 0; i < currentTokens.length; i++) {
     const token = currentTokens[i];
     try {
-      // Usando Header de Autorização em vez de query param para evitar erro de parsing na URL
       const response = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -126,6 +125,27 @@ app.get('/api/me', async (req, res) => {
   
   req.session.user.accounts = accounts;
   res.json({ logged: true, accounts: accounts, errors: errors });
+});
+
+// ROTA PARA TESTAR TOKEN MANUAL
+app.post('/api/test-token', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Token não fornecido' });
+  
+  const cleanToken = token.trim();
+  try {
+    const response = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
+      headers: { 'Authorization': `Bearer ${cleanToken}` }
+    });
+    const account = { ...response.data, ig_token: cleanToken };
+    if (req.session.user) {
+      req.session.user.accounts.push(account);
+    }
+    res.json({ success: true, account });
+  } catch (e) {
+    const errData = e.response?.data?.error || { message: e.message };
+    res.status(401).json({ success: false, error: errData.message });
+  }
 });
 
 // Outras rotas permanecem iguais...
