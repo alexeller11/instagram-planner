@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • Painel 5.2</title>
+  <title>Instagram Planner Agency • 5.4</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -15,7 +15,6 @@
       --border:rgba(255,255,255,.08);
       --text:#fff;
       --muted:rgba(255,255,255,.58);
-      --subtle:rgba(255,255,255,.26);
       --brand:#ff6b35;
       --brand2:#ffd166;
     }
@@ -29,7 +28,7 @@
     .tabs{display:flex;gap:8px;padding:16px 20px 0;flex-wrap:wrap}
     .tab{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:13px}
     .tab.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
-    .page{display:none;padding:20px;max-width:1280px;margin:0 auto}
+    .page{display:none;padding:20px;max-width:1340px;margin:0 auto}
     .page.on{display:block}
     .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px}
@@ -72,7 +71,6 @@
     .notice{color:var(--muted);font-size:13px;line-height:1.6}
     .token-row{display:flex;gap:10px}
     .history-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);cursor:pointer}
-    .history-item:hover{border-color:rgba(255,107,53,.3)}
     .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
     .toolbar button{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:#fff;cursor:pointer;font-size:12px}
     .toolbar button.on{background:rgba(255,107,53,.12);border-color:rgba(255,107,53,.3);color:#ffb38a}
@@ -86,7 +84,7 @@
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 5.2</div>
+    <div class="logo">✦ Instagram Planner Agency 5.4</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -142,37 +140,12 @@
     <div class="grid">
       <div class="card span-4">
         <div class="title">Parâmetros da análise</div>
-
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="intelNiche" placeholder="Ex: clínica oftalmológica, pizzaria, esquadrias..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="intelAudience" placeholder="Ex: mulheres 28 a 45, empresários, famílias..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Objetivo</label>
-          <input id="intelGoal" placeholder="Ex: autoridade, gerar leads, vender mais..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom de voz</label>
-          <input id="intelTone" placeholder="Ex: profissional, humanizado, premium..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="intelLocation" placeholder="Ex: Linhares ES, Vitória ES, Vila Velha..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="intelExtra" placeholder="Diferenciais, momento da empresa, campanha, foco do mês..."></textarea>
-        </div>
-
+        <div class="field"><label class="label">Nicho</label><input id="intelNiche" /></div>
+        <div class="field"><label class="label">Público</label><input id="intelAudience" /></div>
+        <div class="field"><label class="label">Objetivo</label><input id="intelGoal" /></div>
+        <div class="field"><label class="label">Tom de voz</label><input id="intelTone" /></div>
+        <div class="field"><label class="label">Localização da empresa</label><input id="intelLocation" /></div>
+        <div class="field"><label class="label">Contexto extra</label><textarea id="intelExtra"></textarea></div>
         <button class="btn" id="intelBtn" onclick="runIntelligence()">Gerar diagnóstico por IA</button>
         <div class="loader" id="intelLoader">Analisando perfil com IA...</div>
       </div>
@@ -188,42 +161,13 @@
     <div class="grid">
       <div class="card span-4">
         <div class="title">Análise de concorrência</div>
-
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="compNiche" placeholder="Ex: moda feminina, saúde, construção..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="compAudience" placeholder="Ex: classe A/B, famílias, lojistas..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="compLocation" placeholder="Ex: Linhares ES, Colatina, Espírito Santo..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Objetivo da marca</label>
-          <input id="compGoal" placeholder="Ex: vender mais, reforçar autoridade, virar referência..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom desejado</label>
-          <input id="compTone" placeholder="Ex: premium, técnico, próximo, sofisticado..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Concorrentes / referências</label>
-          <textarea id="compList" placeholder="@concorrente1&#10;@concorrente2&#10;marca referência 3"></textarea>
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="compExtra" placeholder="Observações sobre o mercado, sobre a cidade, comportamento local..."></textarea>
-        </div>
-
+        <div class="field"><label class="label">Nicho</label><input id="compNiche" /></div>
+        <div class="field"><label class="label">Público</label><input id="compAudience" /></div>
+        <div class="field"><label class="label">Localização</label><input id="compLocation" /></div>
+        <div class="field"><label class="label">Objetivo da marca</label><input id="compGoal" /></div>
+        <div class="field"><label class="label">Tom desejado</label><input id="compTone" /></div>
+        <div class="field"><label class="label">Concorrentes / referências</label><textarea id="compList"></textarea></div>
+        <div class="field"><label class="label">Contexto extra</label><textarea id="compExtra"></textarea></div>
         <button class="btn" id="compBtn" onclick="runCompetitors()">Analisar concorrência</button>
         <div class="loader" id="compLoader">Lendo mercado e referências...</div>
       </div>
@@ -239,54 +183,18 @@
     <div class="grid">
       <div class="card span-4">
         <div class="title">Configuração do plano</div>
-
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="planNiche" placeholder="Ex: hospital-dia, drogaria, loja premium..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="planAudience" placeholder="Ex: pacientes 40+, confeiteiras, casais..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Objetivo do mês</label>
-          <input id="planGoal" placeholder="Ex: vender mais, posicionar, aumentar procura..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom de voz</label>
-          <input id="planTone" placeholder="Ex: elegante, direto, acolhedor..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="planLocation" placeholder="Ex: Linhares ES, Colatina, Vitória..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="planExtra" placeholder="Datas do mês, campanha, diferenciais, foco comercial..."></textarea>
-        </div>
+        <div class="field"><label class="label">Nicho</label><input id="planNiche" /></div>
+        <div class="field"><label class="label">Público</label><input id="planAudience" /></div>
+        <div class="field"><label class="label">Objetivo do mês</label><input id="planGoal" /></div>
+        <div class="field"><label class="label">Tom de voz</label><input id="planTone" /></div>
+        <div class="field"><label class="label">Localização</label><input id="planLocation" /></div>
+        <div class="field"><label class="label">Contexto extra</label><textarea id="planExtra"></textarea></div>
 
         <div class="small-grid">
-          <div class="field">
-            <label class="label">Total de posts</label>
-            <input id="planTotal" type="number" value="16" />
-          </div>
-          <div class="field">
-            <label class="label">Reels</label>
-            <input id="planReels" type="number" value="6" />
-          </div>
-          <div class="field">
-            <label class="label">Carrosséis</label>
-            <input id="planCarousels" type="number" value="6" />
-          </div>
-          <div class="field">
-            <label class="label">Estáticos</label>
-            <input id="planSingles" type="number" value="4" />
-          </div>
+          <div class="field"><label class="label">Total de posts</label><input id="planTotal" type="number" value="16" /></div>
+          <div class="field"><label class="label">Reels</label><input id="planReels" type="number" value="6" /></div>
+          <div class="field"><label class="label">Carrosséis</label><input id="planCarousels" type="number" value="6" /></div>
+          <div class="field"><label class="label">Estáticos</label><input id="planSingles" type="number" value="4" /></div>
         </div>
 
         <button class="btn" id="planBtn" onclick="generatePlanner()">Gerar planner completo</button>
@@ -296,16 +204,13 @@
 
       <div class="card span-8">
         <div class="title">Planejamento do mês</div>
-
         <div class="toolbar" id="plannerFilters" style="display:none">
           <button class="on" onclick="setPostFilter('ALL', this)">Todos</button>
           <button onclick="setPostFilter('Reels', this)">Reels</button>
           <button onclick="setPostFilter('Carrossel', this)">Carrossel</button>
           <button onclick="setPostFilter('Post', this)">Post</button>
-          <button onclick="setPostFilter('Static', this)">Static</button>
         </div>
-
-        <div id="planResult" class="notice">Gere um plano para visualizar calendário, posts, stories e hashtags.</div>
+        <div id="planResult" class="notice">Gere um plano para visualizar as peças completas.</div>
       </div>
     </div>
   </section>
@@ -331,9 +236,6 @@
           <input id="manualToken" placeholder="Cole aqui um token do Instagram Graph API" />
           <button class="btn" style="width:auto" onclick="testToken()">Conectar</button>
         </div>
-        <div class="notice" style="margin-top:12px">
-          Use isso quando quiser testar outra conta sem mexer imediatamente no .env.
-        </div>
       </div>
 
       <div class="card span-6">
@@ -348,14 +250,14 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v52_history";
+    const HISTORY_KEY = "ig_planner_agency_v54_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
     let DASHBOARD = null;
     let PLAN_DATA = null;
-    let formatChart = null;
     let CURRENT_POST_FILTER = "ALL";
+    let formatChart = null;
 
     function toast(msg) {
       const el = document.getElementById("toast");
@@ -416,7 +318,6 @@
 
     async function loadDashboard() {
       if (!CURRENT) return;
-
       const data = await fetch(`/api/dashboard/${CURRENT.id}`).then(r => r.json());
       DASHBOARD = data;
 
@@ -425,7 +326,7 @@
       document.getElementById("mEngagement").textContent = formatNumber(data.metrics.avg_engagement || 0);
       document.getElementById("mRate").textContent = (data.metrics.engagement_rate || 0) + "%";
       document.getElementById("scoreValue").textContent = data.strategic_score || 0;
-      document.getElementById("scoreLabel").textContent = `Leitura atual: ${data.strategic_score_label || "-"}. Use isso como base para decidir o quanto o perfil precisa de correção estratégica.`;
+      document.getElementById("scoreLabel").textContent = `Leitura atual: ${data.strategic_score_label || "-"}.`;
 
       document.getElementById("quickRead").innerHTML = `
         <div class="list-item">Bio atual: ${escapeHtml(data.account.biography || "Sem bio")}</div>
@@ -460,9 +361,7 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: {
-              labels: { color: "rgba(255,255,255,.7)" }
-            }
+            legend: { labels: { color: "rgba(255,255,255,.7)" } }
           }
         }
       });
@@ -470,17 +369,6 @@
 
     async function runIntelligence() {
       if (!CURRENT) return toast("Selecione uma conta.");
-
-      const payload = {
-        igId: CURRENT.id,
-        niche: document.getElementById("intelNiche").value,
-        audience: document.getElementById("intelAudience").value,
-        goal: document.getElementById("intelGoal").value,
-        tone: document.getElementById("intelTone").value,
-        location: document.getElementById("intelLocation").value,
-        extra: document.getElementById("intelExtra").value
-      };
-
       setLoading("intel", true);
       document.getElementById("intelResult").innerHTML = "Analisando perfil...";
 
@@ -488,7 +376,15 @@
         const data = await fetch("/api/intelligence", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            igId: CURRENT.id,
+            niche: document.getElementById("intelNiche").value,
+            audience: document.getElementById("intelAudience").value,
+            goal: document.getElementById("intelGoal").value,
+            tone: document.getElementById("intelTone").value,
+            location: document.getElementById("intelLocation").value,
+            extra: document.getElementById("intelExtra").value
+          })
         }).then(r => r.json());
 
         if (data.error) throw new Error(data.error);
@@ -518,14 +414,6 @@
           <div style="height:14px"></div>
           <div class="result-title">Ações prioritárias</div>
           <div class="list">${(data.priority_actions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Ângulos de conteúdo</div>
-          <div class="tag-list">${(data.content_angles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Sugestões de bio</div>
-          <div class="list">${(data.bio_suggestions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
         `;
       } catch (error) {
         document.getElementById("intelResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
@@ -536,14 +424,10 @@
 
     async function runCompetitors() {
       if (!CURRENT) return toast("Selecione uma conta.");
-
-      const competitors = document.getElementById("compList").value
-        .split("\n")
-        .map(v => v.trim())
-        .filter(Boolean);
-
       setLoading("comp", true);
       document.getElementById("compResult").innerHTML = "Analisando concorrência...";
+
+      const competitors = document.getElementById("compList").value.split("\n").map(v => v.trim()).filter(Boolean);
 
       try {
         const data = await fetch("/api/competitors", {
@@ -580,16 +464,8 @@
           <div class="list">${(data.competitor_patterns || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
 
           <div style="height:14px"></div>
-          <div class="result-title">O que eles fazem bem</div>
-          <div class="tag-list">${(data.what_they_do_well || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
           <div class="result-title">Gaps para explorar</div>
           <div class="list">${(data.gaps_to_exploit || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Diferenciais de posicionamento</div>
-          <div class="tag-list">${(data.positioning_differentiators || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
 
           <div style="height:14px"></div>
           <div class="result-title">Oportunidades de conteúdo</div>
@@ -606,7 +482,7 @@
       if (!CURRENT) return toast("Selecione uma conta.");
 
       setLoading("plan", true);
-      document.getElementById("planResult").innerHTML = "Gerando planejamento...";
+      document.getElementById("planResult").innerHTML = "Gerando planner em nível agência...";
 
       try {
         const data = await fetch("/api/generate", {
@@ -634,7 +510,7 @@
         document.getElementById("plannerFilters").style.display = "flex";
         renderPlanner();
         savePlannerToHistory();
-        toast("Planner gerado e salvo no histórico!");
+        toast("Planner agência gerado!");
       } catch (error) {
         document.getElementById("planResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
       } finally {
@@ -671,24 +547,45 @@
           ${(PLAN_DATA.posts || []).map(p => `
             <div class="day">
               <strong>#${p.n} • ${escapeHtml(p.day_suggestion || "Dia")}</strong>
-              <div class="muted">${escapeHtml(p.format || "")} • ${escapeHtml(p.pillar || "")}</div>
+              <div class="muted">${escapeHtml(p.format || "")} • ${escapeHtml(p.intent || "")}</div>
               <div style="margin-top:8px;font-size:13px;line-height:1.5">${escapeHtml(p.title || "")}</div>
             </div>
           `).join("")}
         </div>
 
         <div style="height:14px"></div>
-        <div class="result-title">Posts (${filteredPosts.length})</div>
+        <div class="result-title">Peças completas (${filteredPosts.length})</div>
         <div class="list">
           ${filteredPosts.map(p => `
             <div class="list-item">
-              <div class="format">${escapeHtml(p.format || "")}</div>
-              <div style="font-weight:700;margin-bottom:6px">${escapeHtml(p.title || "")}</div>
+              <div class="format">${escapeHtml(p.format || "")} • ${escapeHtml(p.intent || "")}</div>
+              <div style="font-weight:700;font-size:18px;margin-bottom:8px">${escapeHtml(p.title || "")}</div>
               <div class="muted" style="margin-bottom:8px">Objetivo: ${escapeHtml(p.objective || "")}</div>
-              <div class="copy-box"><strong>Gancho:</strong>\n${escapeHtml(p.hook || "")}\n\n<strong>Legenda:</strong>\n${escapeHtml(p.copy || "")}\n\n<strong>CTA:</strong>\n${escapeHtml(p.cta || "")}</div>
-              <button class="copy-btn" onclick='copyText(${JSON.stringify(buildPostCopy(p))})'>Copiar post completo</button>
-              ${p.script ? `<button class="copy-btn" onclick='copyText(${JSON.stringify(p.script)})'>Copiar roteiro do reels</button>` : ""}
-              ${Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `<button class="copy-btn" onclick='copyText(${JSON.stringify(p.carousel_slides.join("\\n"))})'>Copiar slides do carrossel</button>` : ""}
+
+              <div class="result-title" style="font-size:14px">Gancho</div>
+              <div class="copy-box">${escapeHtml(p.hook || "")}</div>
+
+              <div style="height:12px"></div>
+              <div class="result-title" style="font-size:14px">Legenda</div>
+              <div class="copy-box">${escapeHtml(p.copy || "")}</div>
+
+              ${p.script ? `
+                <div style="height:12px"></div>
+                <div class="result-title" style="font-size:14px">Roteiro do reels</div>
+                <div class="copy-box">${escapeHtml(p.script || "")}</div>
+              ` : ""}
+
+              ${Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `
+                <div style="height:12px"></div>
+                <div class="result-title" style="font-size:14px">Slides do carrossel</div>
+                <div class="copy-box">${escapeHtml(p.carousel_slides.map((s, i) => `${i + 1}. ${s}`).join("\n\n"))}</div>
+              ` : ""}
+
+              <div style="height:12px"></div>
+              <div class="result-title" style="font-size:14px">CTA</div>
+              <div class="copy-box">${escapeHtml(p.cta || "")}</div>
+
+              <button class="copy-btn" onclick='copyText(${JSON.stringify(buildPostCopy(p))})'>Copiar peça completa</button>
             </div>
           `).join("")}
         </div>
@@ -723,19 +620,20 @@
       return [
         `POST #${p.n || ""}`,
         `Formato: ${p.format || ""}`,
+        `Intenção: ${p.intent || ""}`,
         `Título: ${p.title || ""}`,
         `Objetivo: ${p.objective || ""}`,
         ``,
-        `Gancho:`,
+        `GANCHO`,
         `${p.hook || ""}`,
         ``,
-        `Legenda:`,
+        `LEGENDA`,
         `${p.copy || ""}`,
         ``,
-        `CTA:`,
-        `${p.cta || ""}`,
-        p.script ? `\nRoteiro:\n${p.script}` : "",
-        Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `\nSlides:\n${p.carousel_slides.join("\n")}` : ""
+        p.script ? `ROTEIRO\n${p.script}\n` : "",
+        Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `SLIDES\n${p.carousel_slides.join("\n")}\n` : "",
+        `CTA`,
+        `${p.cta || ""}`
       ].join("\n");
     }
 
@@ -747,9 +645,7 @@
     }
 
     async function exportPlannerPDF() {
-      if (!PLAN_DATA || !CURRENT) {
-        return toast("Gere um planner antes.");
-      }
+      if (!PLAN_DATA || !CURRENT) return toast("Gere um planner antes.");
 
       const res = await fetch("/api/export-pdf", {
         method: "POST",
@@ -769,8 +665,8 @@
     function savePlannerToHistory() {
       if (!PLAN_DATA || !CURRENT) return;
 
-      const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      currentHistory.unshift({
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      history.unshift({
         id: Date.now(),
         username: CURRENT.username,
         accountId: CURRENT.id,
@@ -778,7 +674,7 @@
         plan: PLAN_DATA
       });
 
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(currentHistory.slice(0, 20)));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
       renderHistory();
     }
 
@@ -812,9 +708,7 @@
 
       const plannerTab = [...document.querySelectorAll(".tab")].find(t => t.textContent.includes("Planner"));
       switchPage("planner", plannerTab);
-      document.querySelectorAll("#plannerFilters button").forEach((b, idx) => {
-        b.classList.toggle("on", idx === 0);
-      });
+      document.querySelectorAll("#plannerFilters button").forEach((b, idx) => b.classList.toggle("on", idx === 0));
       toast("Planner carregado do histórico.");
     }
 
@@ -834,9 +728,7 @@
         body: JSON.stringify({ token })
       }).then(r => r.json());
 
-      if (!data.success) {
-        return toast(data.error || "Erro no token.");
-      }
+      if (!data.success) return toast(data.error || "Erro no token.");
 
       data.accounts.forEach(acc => {
         const exists = ACCOUNTS.find(a => a.id === acc.id);
@@ -861,24 +753,15 @@
         <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
         <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
         <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
+        <div class="list-item">Modelo: <strong>${escapeHtml(data.model || "")}</strong></div>
       `;
     }
 
     function setLoading(type, isLoading) {
-      const btnMap = {
-        intel: "intelBtn",
-        comp: "compBtn",
-        plan: "planBtn"
-      };
-      const loaderMap = {
-        intel: "intelLoader",
-        comp: "compLoader",
-        plan: "planLoader"
-      };
-
+      const btnMap = { intel: "intelBtn", comp: "compBtn", plan: "planBtn" };
+      const loaderMap = { intel: "intelLoader", comp: "compLoader", plan: "planLoader" };
       const btn = document.getElementById(btnMap[type]);
       const loader = document.getElementById(loaderMap[type]);
-
       if (btn) btn.disabled = isLoading;
       if (loader) loader.classList.toggle("on", isLoading);
     }
