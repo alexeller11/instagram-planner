@@ -29,6 +29,7 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .manual-input-wrap input{flex:1;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;color:#fff;outline:none}
 .btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
 
+/* REST OF STYLES... (Recuperados do original) */
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1rem}
 .metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
 .metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
@@ -37,6 +38,27 @@ input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px
 .gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:30px;font-size:12px;z-index:1000;display:none}
 #toast.show{display:block}
+
+/* Estilos de Planner (Reels, Stories, etc) */
+.post-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--brand2);margin-bottom:4px}
+.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
+.fmt-r{background:rgba(255,107,53,.15);color:#ff6b35}
+.fmt-c{background:rgba(55,138,221,.15);color:#378add}
+.fmt-f{background:rgba(99,153,34,.15);color:#639922}
+.script-box{background:rgba(255,107,53,.05);border:.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
+.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
+.script-text{font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;white-space:pre-wrap}
+.carousel-box{background:rgba(55,138,221,.05);border:.5px solid rgba(55,138,221,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
+.carousel-label{font-size:10px;font-weight:600;color:rgba(55,138,221,.9);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.03em}
+.carousel-slides{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
+.cs{flex-shrink:0;width:88px;min-height:100px;border-radius:10px;background:linear-gradient(160deg,#1a1a3e,#0d0d2e);border:.5px solid rgba(55,138,221,.25);padding:.6rem .5rem;font-size:10px;color:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4}
+.story-card{background:rgba(255,255,255,.03);border:.5px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.75rem}
+.sc-head{display:flex;align-items:center;gap:8px;margin-bottom:.75rem}
+.sc-num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ff6b35,#ffd166);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0}
+.sc-slides{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.slide{flex-shrink:0;width:100px;min-height:140px;border-radius:12px;background:rgba(255,255,255,0.05);border:.5px solid var(--border);padding:10px;font-size:10px;text-align:center;display:flex;align-items:center;justify-content:center}
+.btn-copy{background:rgba(255,255,255,0.05);border:.5px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-top:5px}
+.btn-copy:hover{background:var(--brand);color:#fff}
 </style>
 </head>
 <body>
@@ -112,6 +134,7 @@ input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px
 <script>
 let accounts = [];
 let currentAccount = null;
+let rawPlan = null;
 
 async function init() {
   const res = await fetch('/api/me');
@@ -159,22 +182,34 @@ function updateMetrics() {
 
 async function getIntelligence() {
   if (!currentAccount) return alert('Selecione uma conta!');
-  const res = await fetch('/api/intelligence', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ igId: currentAccount.id, niche: 'Geral' })
-  });
-  const data = await res.json();
   const div = document.getElementById('intel-result');
   div.style.display = 'block';
-  div.innerHTML = `<div class="card" style="background:rgba(255,255,255,0.05)">${JSON.stringify(data, null, 2)}</div>`;
+  div.innerHTML = 'Carregando análise...';
+  
+  try {
+    const res = await fetch('/api/intelligence', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ igId: currentAccount.id, niche: 'Geral' })
+    });
+    const data = await res.json();
+    div.innerHTML = `
+      <div class="card" style="background:rgba(255,255,255,0.05)">
+        <h3 style="color:var(--brand);margin-bottom:10px">Análise de Nicho: ${data.niche}</h3>
+        <p style="font-size:13px;margin-bottom:10px"><strong>Público:</strong> ${data.audience}</p>
+        <p style="font-size:13px;margin-bottom:10px"><strong>Insights:</strong> ${data.insights}</p>
+      </div>
+    `;
+  } catch (e) {
+    div.innerHTML = 'Erro ao carregar inteligência.';
+  }
 }
 
 async function generatePlan() {
   if (!currentAccount) return alert('Selecione uma conta!');
   const btn = document.getElementById('btn-gen');
   btn.disabled = true;
-  btn.textContent = '⏳ Gerando Plano...';
+  btn.textContent = '⏳ Gerando Plano de 30 Dias...';
   
   try {
     const res = await fetch('/api/generate', {
@@ -187,16 +222,52 @@ async function generatePlan() {
       })
     });
     const data = await res.json();
-    const div = document.getElementById('plan-result');
-    div.style.display = 'block';
-    div.innerHTML = `<div class="card" style="background:rgba(255,255,255,0.05)">${JSON.stringify(data, null, 2)}</div>`;
-    toast('Plano gerado com sucesso!');
+    rawPlan = data;
+    renderPlan(data);
+    toast('Plano de 30 dias gerado com sucesso!');
   } catch (e) {
-    alert('Erro ao gerar plano.');
+    alert('Erro ao gerar plano. Verifique seus créditos da OpenAI.');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Gerar Plano Estratégico com GPT-4o';
   }
+}
+
+function renderPlan(plan) {
+  const div = document.getElementById('plan-result');
+  div.style.display = 'block';
+  
+  let html = `
+    <div class="card" style="background:var(--surface)">
+      <h3 style="color:var(--brand);margin-bottom:1rem">📅 Calendário de 30 Dias</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:15px">
+  `;
+  
+  plan.posts.forEach(post => {
+    html += `
+      <div class="card" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+        <div class="post-title">DIA ${post.n} - ${post.title}</div>
+        <div class="fmt ${post.format === 'Reels' ? 'fmt-r' : 'fmt-c'}">${post.format}</div>
+        <p style="font-size:11px;margin:10px 0;color:var(--muted)"><strong>Gancho:</strong> ${post.hook}</p>
+        <div class="script-box">
+          <div class="script-label">Legenda</div>
+          <div class="script-text">${post.copy}</div>
+          <button class="btn-copy" onclick="copyText(this, '${post.copy.replace(/'/g, "\\'").replace(/\n/g, ' ')}')">Copiar Legenda</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += `</div></div>`;
+  div.innerHTML = html;
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text);
+  const oldText = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => btn.textContent = oldText, 2000);
+  toast('Texto copiado!');
 }
 
 document.getElementById('btn-test-token').addEventListener('click', async () => {
