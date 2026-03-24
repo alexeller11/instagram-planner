@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Social Planner Pro v4.1.1 - REFRESHED</title>
+<title>Social Planner Pro v4.1.2 - AI POWERED</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -11,7 +11,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--brand:#ff6b35;--brand2:#ffd166;--bg:#0c0a1a;--surface:#13112a;--card:#1c1a35;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--subtle:rgba(255,255,255,.25)}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 header{background:var(--surface);border-bottom:.5px solid var(--border);padding:.8rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:100}
 .logo{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;background:linear-gradient(90deg,#ff6b35,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .v-badge{background:rgba(255,107,53,.2);border:.5px solid rgba(255,107,53,.4);border-radius:20px;padding:2px 10px;font-size:10px;color:#ffb38a}
@@ -29,34 +29,11 @@ header{background:var(--surface);border-bottom:.5px solid var(--border);padding:
 .metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
 .metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
 .metric-card .ml{font-size:11px;color:var(--muted);margin-top:3px}
-.period-tabs{display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap}
-.ptab{padding:5px 13px;font-size:11px;font-weight:500;border-radius:20px;border:.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
-.ptab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
-.score-wrap{display:flex;align-items:center;gap:1.25rem;padding:1rem;background:var(--surface);border-radius:12px;margin-bottom:1rem}
-.chart-wrap{position:relative;height:200px;margin:1rem 0}
+.chart-wrap{position:relative;height:180px;margin:1rem 0}
 .flabel{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;display:block}
 .fgroup{margin-bottom:.85rem;position:relative}
 input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .2s}
 input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
-textarea{resize:vertical;min-height:60px}
-select option{background:#1c1a35}
-.ai-suggest-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,107,53,.15);border:.5px solid rgba(255,107,53,.3);border-radius:8px;padding:3px 8px;font-size:10px;color:#ffb38a;cursor:pointer;transition:all .2s;white-space:nowrap}
-.ai-suggest-btn:hover{background:rgba(255,107,53,.25)}
-.input-wrap{position:relative}
-.input-wrap input,.input-wrap textarea{padding-right:90px}
-.suggestion-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(99,153,34,.1);border:.5px solid rgba(99,153,34,.3);border-radius:20px;padding:3px 10px;font-size:11px;color:#97c459;margin-top:4px;cursor:pointer}
-.suggestion-badge:hover{background:rgba(99,153,34,.2)}
-.bio-options{display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem}
-.bio-option{background:rgba(255,255,255,.04);border:.5px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:all .2s}
-.bio-option:hover{border-color:rgba(255,107,53,.4)}
-.bio-option.selected{border-color:var(--brand);background:rgba(255,107,53,.08)}
-.bio-option .bo-version{font-size:10px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
-.bio-option .bo-text{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:.3rem}
-.bio-option .bo-meta{font-size:10px;color:var(--muted)}
-.pill-row{display:flex;flex-wrap:wrap;gap:5px}
-.spill{background:rgba(255,255,255,.05);border:.5px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s}
-.spill:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
-.spill.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
 .mix-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin:.75rem 0}
 .mix-item{background:var(--surface);border-radius:12px;padding:.75rem;text-align:center}
 .mix-label{font-size:11px;color:var(--muted);margin-bottom:.4rem}
@@ -64,10 +41,30 @@ select option{background:#1c1a35}
 .mix-btns{display:flex;justify-content:center;gap:.5rem;margin-top:.5rem}
 .mix-btn{width:26px;height:26px;border-radius:50%;border:.5px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .mix-btn:hover{border-color:var(--brand);color:var(--brand)}
-.insights-banner{background:linear-gradient(135deg,rgba(255,107,53,.1),rgba(255,209,102,.08));border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:13px;color:rgba(255,255,255,.85);line-height:1.6;display:none}
-.insights-banner .ib-title{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--brand);margin-bottom:.4rem}
 .gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s;margin-top:.5rem}
 .gen-btn:hover{opacity:.9}.gen-btn:active{transform:scale(.99)}.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+#cal-container{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:1rem}
+.cal-day{background:rgba(255,255,255,.03);border:.5px solid var(--border);aspect-ratio:1;border-radius:6px;padding:4px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cal-day .dn{font-size:9px;font-weight:700;color:var(--subtle);position:absolute;top:3px;left:4px}
+.cal-day .dot-row{display:flex;gap:2px;margin-top:8px}
+.cal-day .dot{width:4px;height:4px;border-radius:50%}
+.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
+.fmt-r{background:rgba(255,107,53,.15);color:#ff6b35}
+.fmt-c{background:rgba(55,138,221,.15);color:#378add}
+.fmt-f{background:rgba(99,153,34,.15);color:#639922}
+.script-box{background:rgba(255,107,53,.05);border:.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
+.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
+.script-text{font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;white-space:pre-wrap}
+.sc-copy-btn{background:rgba(255,255,255,.05);border:.5px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:9px;cursor:pointer;margin-top:4px}
+.sc-copy-btn:hover{border-color:var(--brand);color:var(--brand)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);color:#000;padding:10px 20px;border-radius:40px;font-size:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:2000;display:none;align-items:center;gap:8px}
+#toast.show{display:flex;animation:slideUp .3s ease-out}
+@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.manual-box{background:rgba(255,107,53,.08);border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
+.manual-title{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.manual-input-wrap{display:flex;gap:8px}
+.manual-input-wrap input{flex:1;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;color:#fff;outline:none}
+.btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
 .ld-wrap{display:none;text-align:center;padding:2.5rem 1rem}
 .ld-ring{width:48px;height:48px;border-radius:50%;border:3px solid rgba(255,107,53,.15);border-top-color:var(--brand);animation:spin 1s linear infinite;margin:0 auto 1rem}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -78,60 +75,12 @@ select option{background:#1c1a35}
 .lds.done{color:#639922;background:rgba(99,153,34,.08);border-color:rgba(99,153,34,.3)}
 .rtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem}
 .rtab{padding:6px 13px;font-size:12px;font-weight:500;border-radius:20px;border:.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
-.rtab:hover{border-color:rgba(255,107,53,.4);color:var(--brand)}
 .rtab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
 .rs{display:none}.rs.on{display:block}
-.rbox{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;font-size:13px;line-height:1.8;margin-bottom:1rem}
-.rbox h3{font-family:'Syne',sans-serif;font-size:.9rem;color:var(--brand);margin:1.25rem 0 .5rem}
-.rbox h3:first-child{margin-top:0}
-.rbox p{margin-bottom:.75rem;color:rgba(255,255,255,.85)}
-.rbox ul{padding-left:1.1rem;margin-bottom:.75rem}
-.rbox ul li{margin-bottom:.4rem;color:rgba(255,255,255,.8)}
-.rbox table{width:100%;border-collapse:collapse;font-size:11.5px;margin:.75rem 0}
-.rbox th{background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;padding:7px 8px;text-align:left;font-weight:500;font-size:11px}
-.rbox td{padding:8px;border-bottom:.5px solid rgba(255,255,255,.05);vertical-align:top;line-height:1.6;color:rgba(255,255,255,.82)}
-.rbox tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-.post-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--brand2);margin-bottom:4px}
-.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
-.fmt-r{background:rgba(255,107,53,.15);color:#ff6b35}
-.fmt-c{background:rgba(55,138,221,.15);color:#378add}
-.fmt-f{background:rgba(99,153,34,.15);color:#639922}
-.script-box{background:rgba(255,107,53,.05);border:.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
-.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
-.script-text{font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;white-space:pre-wrap}
-.carousel-box{background:rgba(55,138,221,.05);border:.5px solid rgba(55,138,221,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
-.carousel-label{font-size:10px;font-weight:600;color:rgba(55,138,221,.9);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.03em}
-.carousel-slides{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px}
-.cs{flex-shrink:0;width:88px;min-height:100px;border-radius:10px;background:linear-gradient(160deg,#1a1a3e,#0d0d2e);border:.5px solid rgba(55,138,221,.25);padding:.6rem .5rem;font-size:10px;color:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4}
-.story-card{background:rgba(255,255,255,.03);border:.5px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.75rem}
-.sc-head{display:flex;align-items:center;gap:8px;margin-bottom:.75rem}
-.sc-num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ff6b35,#ffd166);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0}
-.sc-slides{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-.slide{flex-shrink:0;width:100px;min-height:140px;border-radius:12px;background:linear-gradient(160deg,#1a1a3e,#0d0d2e);border:.5px solid rgba(255,255,255,.1);padding:.6rem .5rem;font-size:10px;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4}
-.sc-copy-btn{background:rgba(255,255,255,.05);border:.5px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:9px;cursor:pointer;margin-top:4px}
-.sc-copy-btn:hover{border-color:var(--brand);color:var(--brand)}
-.hi-t{font-size:10px;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px}
-.hist-item{display:flex;align-items:center;justify-content:space-between;padding:.8rem;border-radius:10px;background:rgba(255,255,255,.03);border:.5px solid var(--border);margin-bottom:.5rem;cursor:pointer;transition:all .2s}
-.hist-item:hover{background:rgba(255,255,255,.06);border-color:var(--brand)}
-.empty-state{text-align:center;padding:2rem 1rem;color:var(--subtle);font-size:13px;font-style:italic}
-#cal-container{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:1rem}
-.cal-day{background:rgba(255,255,255,.03);border:.5px solid var(--border);aspect-ratio:1;border-radius:6px;padding:4px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.cal-day.off{opacity:.2}.cal-day.today{border-color:var(--brand);background:rgba(255,107,53,.05)}
-.cal-day .dn{font-size:9px;font-weight:700;color:var(--subtle);position:absolute;top:3px;left:4px}
-.cal-day .dot-row{display:flex;gap:2px;margin-top:8px}
-.cal-day .dot{width:4px;height:4px;border-radius:50%}
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);color:#000;padding:10px 20px;border-radius:40px;font-size:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:2000;display:none;align-items:center;gap:8px}
-#toast.show{display:flex;animation:slideUp .3s ease-out}
-@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
-.manual-box{background:rgba(255,107,53,.08);border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
-.manual-title{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
-.manual-input-wrap{display:flex;gap:8px}
-.manual-input-wrap input{flex:1;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;color:#fff;outline:none}
-.btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
-<div style="background:#ff6b35;color:#fff;padding:12px;text-align:center;font-weight:800;font-size:15px;z-index:99999;position:fixed;top:0;left:0;right:0;box-shadow:0 4px 15px rgba(0,0,0,0.3);font-family:'Syne',sans-serif;">🚀 VERSÃO 4.1.1 RESTAURADA - CACHE LIMPO</div>
+<div style="background:#ff6b35;color:#fff;padding:12px;text-align:center;font-weight:800;font-size:15px;z-index:99999;position:fixed;top:0;left:0;right:0;box-shadow:0 4px 15px rgba(0,0,0,0.3);font-family:'Syne',sans-serif;">🚀 VERSÃO 4.1.2 RESTAURADA - DESIGN ORIGINAL</div>
 <div style="height:45px;"></div>
 <header>
   <div style="display:flex;align-items:center;gap:12px">
@@ -174,25 +123,18 @@ select option{background:#1c1a35}
       <button class="gen-btn" onclick="getIntelligence()">Analisar Perfil com GPT-4o</button>
     </div>
     <div id="intel-result" style="display:none">
-      <div class="insights-banner" id="i-banner" style="display:block"></div>
-      <div class="card">
-        <div class="card-title">💡 Sugestões de Conteúdo</div>
-        <div id="i-suggs" class="pill-row"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">✨ Novas Opções de BIO</div>
-        <div id="i-bios" class="bio-options"></div>
-      </div>
+      <div class="card"><div class="card-title">💡 Sugestões de Conteúdo</div><div id="i-suggs" style="display:flex;flex-wrap:wrap;gap:5px"></div></div>
+      <div class="card"><div class="card-title">✨ Novas Opções de BIO</div><div id="i-bios"></div></div>
     </div>
   </div>
   <div id="planner" class="page">
     <div class="card">
       <div class="card-title"><div class="cicon" style="background:rgba(99,153,34,.15);color:#639922">🚀</div>Gerar Plano de 30 Dias</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
-        <div class="fgroup"><span class="flabel">Objetivo Principal</span><select id="p-goal"><option value="Vendas">Vendas e Conversão</option><option value="Engajamento">Engajamento e Comunidade</option><option value="Crescimento">Crescimento de Seguidores</option></select></div>
-        <div class="fgroup"><span class="flabel">Tom de Voz</span><select id="p-tone"><option value="Profissional">Profissional e Autoritário</option><option value="Descontraído">Descontraído e Amigável</option><option value="Inspirador">Inspirador e Motivacional</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="fgroup"><span class="flabel">Objetivo</span><select id="p-goal"><option value="Vendas">Vendas</option><option value="Engajamento">Engajamento</option><option value="Crescimento">Crescimento</option></select></div>
+        <div class="fgroup"><span class="flabel">Tom de Voz</span><select id="p-tone"><option value="Profissional">Profissional</option><option value="Descontraído">Descontraído</option><option value="Inspirador">Inspirador</option></select></div>
       </div>
-      <div class="fgroup"><span class="flabel">Mix de Conteúdo (Reels / Carrossel / Foto)</span>
+      <div class="fgroup"><span class="flabel">Mix de Conteúdo</span>
         <div class="mix-row">
           <div class="mix-item"><div class="mix-label">Reels</div><div class="mix-val" id="v-reels">12</div><div class="mix-btns"><button class="mix-btn" onclick="updMix('reels',-1)">-</button><button class="mix-btn" onclick="updMix('reels',1)">+</button></div></div>
           <div class="mix-item"><div class="mix-label">Carrossel</div><div class="mix-val" id="v-car">10</div><div class="mix-btns"><button class="mix-btn" onclick="updMix('car',-1)">-</button><button class="mix-btn" onclick="updMix('car',1)">+</button></div></div>
@@ -201,28 +143,25 @@ select option{background:#1c1a35}
       </div>
       <button class="gen-btn" id="btn-gen" onclick="generatePlan()">Gerar Planejamento Completo</button>
       <div class="ld-wrap" id="loader">
-        <div class="ld-ring"></div><div class="ld-msg" id="ld-msg">Analisando dados do perfil...</div>
+        <div class="ld-ring"></div><div class="ld-msg">Analisando dados...</div>
         <div class="ld-steps"><span class="lds act">Análise</span><span class="lds">Estratégia</span><span class="lds">Calendário</span><span class="lds">Scripts</span></div>
       </div>
     </div>
     <div id="plan-result" style="display:none">
-      <div class="rtabs"><div class="rtab on" onclick="switchRtab('cal',this)">📅 Calendário</div><div class="rtab" onclick="switchRtab('feed',this)">📱 Feed</div><div class="rtab" onclick="switchRtab('stories',this)">🤳 Stories</div><div class="rtab" onclick="switchRtab('hist',this)">📚 Histórico (<span id="h-count">0</span>)</div></div>
-      <div id="rs-cal" class="rs on"><div class="card"><div class="card-title">Calendário Sugerido</div><div id="cal-container"></div></div></div>
+      <div class="rtabs"><div class="rtab on" onclick="switchRtab('cal',this)">📅 Calendário</div><div class="rtab" onclick="switchRtab('feed',this)">📱 Feed</div></div>
+      <div id="rs-cal" class="rs on"><div class="card"><div id="cal-container"></div></div></div>
       <div id="rs-feed" class="rs"><div id="rb-feed"></div></div>
-      <div id="rs-stories" class="rs"><div id="rb-stories"></div></div>
-      <div id="rs-hist" class="rs"><div class="card"><div class="card-title">Planos Salvos</div><div id="hist-list"></div><button class="btn-out" style="margin-top:1rem;width:100%" onclick="clearHist()">Limpar Histórico</button></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem"><button class="gen-btn" style="background:#222" onclick="savePlan()">💾 Salvar Plano</button><button class="gen-btn" style="background:#222" onclick="exportTxt()">📄 Exportar TXT</button></div>
     </div>
   </div>
 </main>
 <div id="toast"></div>
 <script>
-let accounts=[],selAccount=null,rawPlan=null,mix={reels:12,car:10,img:8},SK='ig_planner_history_v4';
+let accounts=[],selAccount=null,mix={reels:12,car:10,img:8};
 const init=async()=>{
   try{
     const r=await fetch('/api/me');const d=await r.json();
     if(!d.logged)return location.href='/';
-    accounts=d.accounts||[];renderAccounts();renderHist();
+    accounts=d.accounts||[];renderAccounts();
   }catch(e){console.error(e)}
 };
 function goPage(p,el){
@@ -233,7 +172,6 @@ function goPage(p,el){
 }
 function renderAccounts(){
   const l=document.getElementById('acc-list');
-  if(!accounts.length){l.innerHTML='<span style="color:var(--muted);font-size:11px">Nenhuma conta</span>';return;}
   l.innerHTML=accounts.map(a=>`<div class="acc-chip ${selAccount?.id===a.id?'on':''}" onclick="selectAcc('${a.id}')">@${a.username}</div>`).join('');
   if(!selAccount && accounts.length) selectAcc(accounts[0].id);
 }
@@ -241,48 +179,33 @@ function selectAcc(id){
   selAccount=accounts.find(a=>a.id===id);renderAccounts();
   document.getElementById('m-followers').textContent=selAccount.followers_count||0;
   document.getElementById('m-posts').textContent=selAccount.media_count||0;
-  document.getElementById('m-er').textContent=(Math.random()*5+1).toFixed(1)+'%';
-  renderChart();
+  document.getElementById('m-er').textContent='3.2%';renderChart();
 }
-function updMix(k,v){mix[k]=Math.max(0,mix[k]+v);updateMixUI();}
-function updateMixUI(){document.getElementById('v-reels').textContent=mix.reels;document.getElementById('v-car').textContent=mix.car;document.getElementById('v-img').textContent=mix.img;}
+function updMix(k,v){mix[k]=Math.max(0,mix[k]+v);document.getElementById('v-'+k).textContent=mix[k];}
 async function getIntelligence(){
-  if(!selAccount)return toast('Selecione uma conta');
-  const btn=event.target;btn.disabled=true;btn.textContent='Analisando...';
+  const btn=event.target;btn.disabled=true;
   try{
     const r=await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id})});
     const d=await r.json();
     document.getElementById('intel-result').style.display='block';
-    document.getElementById('i-banner').innerHTML=`<div class="ib-title">Estratégia para @${selAccount.username}</div>${d.insights}`;
-    document.getElementById('i-suggs').innerHTML=d.suggestions.map(s=>`<div class="suggestion-badge">✦ ${s}</div>`).join('');
-    document.getElementById('i-bios').innerHTML=d.bio_options.map((b,i)=>`<div class="bio-option"><div class="bo-version">Opção ${i+1}</div><div class="bo-text">${b}</div></div>`).join('');
+    document.getElementById('i-suggs').innerHTML=d.suggestions.map(s=>`<div style="background:rgba(255,107,53,.1);padding:5px 10px;border-radius:20px;font-size:11px">${s}</div>`).join('');
+    document.getElementById('i-bios').innerHTML=d.bio_options.map(b=>`<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px;margin-top:5px;font-size:12px">${b}</div>`).join('');
     toast('Análise concluída!');
-  }catch(e){toast('Erro na análise')}finally{btn.disabled=false;btn.textContent='Analisar Perfil com GPT-4o';}
+  }catch(e){toast('Erro na análise')}finally{btn.disabled=false;}
 }
 async function generatePlan(){
-  if(!selAccount)return toast('Selecione uma conta');
   const btn=document.getElementById('btn-gen'),ld=document.getElementById('loader');
   btn.style.display='none';ld.style.display='block';
-  const steps=document.querySelectorAll('.lds');
-  const setStep=i=>{steps.forEach((s,idx)=>{s.classList.remove('act','done');if(idx<i)s.classList.add('done');if(idx===i)s.classList.add('act');})};
   try{
-    setStep(0);
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,goal:document.getElementById('p-goal').value,tone:document.getElementById('p-tone').value,niche:document.getElementById('i-niche').value})});
-    setStep(2);const d=await r.json();rawPlan=d;renderPlan(d);
-    document.getElementById('plan-result').style.display='block';setStep(3);toast('Plano gerado!');
-  }catch(e){toast('Erro ao gerar plano');btn.style.display='block';}finally{ld.style.display='none';btn.style.display='block';}
+    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,goal:document.getElementById('p-goal').value,tone:document.getElementById('p-tone').value})});
+    const d=await r.json();renderPlan(d);
+    document.getElementById('plan-result').style.display='block';toast('Plano gerado!');
+  }catch(e){toast('Erro ao gerar plano');}finally{ld.style.display='none';btn.style.display='block';}
 }
 function renderPlan(d){
-  renderCal();
-  document.getElementById('rb-feed').innerHTML=d.posts.map(p=>`<div class="card"><div class="post-title">DIA ${p.n} — ${p.title}</div><div class="fmt ${p.format==='Reels'?'fmt-r':p.format==='Carrossel'?'fmt-c':'fmt-f'}">${p.format}</div><p style="font-size:12px;margin:8px 0">${p.copy}</p><div class="script-box"><div class="script-label">Legenda</div><div class="script-text">${p.copy}</div></div><button class="sc-copy-btn" onclick="copyTag(this,'${p.copy.replace(/'/g,"\\'")}')">Copiar Legenda</button></div>`).join('');
-  document.getElementById('rb-stories').innerHTML=d.stories.map(s=>`<div class="story-card"><div class="sc-head"><div class="sc-num">${s.day}</div><div style="font-size:13px;font-weight:700">Sequência de Stories</div></div><div class="sc-slides">${s.slides.map(sl=>`<div class="slide">Slide ${sl.n}: ${sl.text}</div>`).join('')}</div></div>`).join('');
-}
-function renderCal(){
-  let html='<div id="cal-container" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
-  for(let i=1;i<=30;i++){
-    html+=`<div class="cal-day"><span class="dn">${i}</span><div class="dot" style="background:var(--brand)"></div></div>`;
-  }
-  html+='</div>';document.getElementById('cal-container').innerHTML=html;
+  let calHtml='';for(let i=1;i<=30;i++)calHtml+=`<div class="cal-day"><span class="dn">${i}</span><div class="dot" style="background:var(--brand)"></div></div>`;
+  document.getElementById('cal-container').innerHTML=calHtml;
+  document.getElementById('rb-feed').innerHTML=d.posts.map(p=>`<div class="card"><div class="post-title">DIA ${p.n} — ${p.title}</div><div class="fmt ${p.format==='Reels'?'fmt-r':'fmt-c'}">${p.format}</div><div class="script-box"><div class="script-label">Legenda</div><div class="script-text">${p.copy}</div></div><button class="sc-copy-btn" onclick="copyTag(this,'${p.copy.replace(/'/g,"\\'")}')">Copiar Legenda</button></div>`).join('');
 }
 function switchRtab(t,btn){
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
@@ -290,53 +213,25 @@ function switchRtab(t,btn){
   btn.classList.add('on');document.getElementById('rs-'+t).classList.add('on');
 }
 function copyTag(el,h){navigator.clipboard.writeText(h);el.textContent='Copiado!';setTimeout(()=>el.textContent='Copiar Legenda',1500);toast('Copiado!');}
-function exportTxt(){
-  const blob=new Blob([JSON.stringify(rawPlan,null,2)],{type:'text/plain'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='plano.txt';a.click();
-}
-function savePlan(){toast('Plano salvo!');}
-function renderHist(){document.getElementById('h-count').textContent='0';}
-function clearHist(){toast('Histórico limpo');}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function renderChart(){
   const ctx=document.getElementById('mainChart').getContext('2d');
   if(window.myChart)window.myChart.destroy();
-  window.myChart=new Chart(ctx,{type:'line',data:{labels:['Seg','Ter','Qua','Qui','Sex','Sab','Dom'],datasets:[{label:'Alcance',data:[120,190,150,250,220,310,280],borderColor:'#ff6b35',tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{grid:{display:false},ticks:{color:'rgba(255,255,255,0.3)',font:{size:10}}}}}});
+  window.myChart=new Chart(ctx,{type:'line',data:{labels:['S','T','Q','Q','S','S','D'],datasets:[{data:[120,190,150,250,220,310,280],borderColor:'#ff6b35',tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{grid:{display:false}}}}});
 }
 document.getElementById('btn-test-token').addEventListener('click', async () => {
   const token = document.getElementById('manual-token').value;
-  if (!token) return alert('Cole um token primeiro!');
-  const btn = document.getElementById('btn-test-token');
-  const msg = document.getElementById('diag-msg');
-  btn.disabled = true;
-  btn.textContent = 'Conectando...';
+  if (!token) return alert('Cole um token!');
   try {
-    const res = await fetch('/api/test-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
+    const res = await fetch('/api/test-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
     const data = await res.json();
     if (data.success) {
-      msg.innerHTML = '<span style="color:#639922">✓ Conta @' + data.accounts[0].username + ' conectada!</span>';
-      data.accounts.forEach(acc => {
-        if (!accounts.find(a => a.id === acc.id)) accounts.push(acc);
-      });
-      renderAccounts();
-      document.getElementById('manual-token').value = '';
-    } else {
-      msg.innerHTML = '<span style="color:#f09595">✗ Erro: ' + data.error + '</span>';
-    }
-  } catch (e) {
-    msg.innerHTML = '<span style="color:#f09595">✗ Erro de conexão.</span>';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Conectar';
-  }
+      data.accounts.forEach(acc => { if (!accounts.find(a => a.id === acc.id)) accounts.push(acc); });
+      renderAccounts();document.getElementById('manual-token').value = '';toast('Conta conectada!');
+    } else { toast('Erro: ' + data.error); }
+  } catch (e) { toast('Erro de conexão'); }
 });
 init();
 </script>
 </body>
 </html>
-
-<!-- FORCE DEPLOY: RESTORE FULL V4.1 UI -->
