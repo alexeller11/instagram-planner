@@ -784,6 +784,26 @@ REGRAS IMPORTANTÍSSIMAS:
 - não faça o planner parecer blog genérico
 - títulos precisam ser mais magnéticos, mais humanos e mais específicos
 - pense em conteúdo que alguém realmente pararia para ver
+
+REGRAS DE COERÊNCIA ENTRE TÍTULO, GANCHO E LEGENDA:
+- a legenda precisa cumprir a promessa do título e do gancho
+- se o título prometer explicar algo, a legenda deve realmente explicar
+- se o título levantar uma dúvida, a legenda deve responder essa dúvida
+- se o título abordar um erro, a legenda deve mostrar esse erro com clareza
+- se o título abordar um risco, a legenda deve explicar o risco e a consequência
+- a legenda não pode ser apenas institucional ou promocional
+- a legenda deve entregar valor antes de vender
+- evitar legendas vagas como:
+  "nossa equipe explica", "entenda mais", "saiba tudo", "conheça nossos serviços"
+- o conteúdo do post deve parecer útil mesmo se o CTA for removido
+
+REGRAS POR TIPO DE POST:
+- se o post for explicativo, a legenda deve ensinar de forma simples e direta
+- se o post for de dor, a legenda deve mostrar o problema de forma concreta
+- se o post for de objeção, a legenda deve quebrar a objeção com lógica
+- se o post for de prova, a legenda deve mostrar evidência, caso, processo ou resultado
+- se o post for de autoridade, a legenda deve demonstrar conhecimento real, e não apenas dizer que a empresa entende do assunto
+- se o post for comercial, a legenda pode vender mais diretamente, mas ainda precisa ter substância
 `;
 
   try {
