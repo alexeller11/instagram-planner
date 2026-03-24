@@ -4,7 +4,6 @@ const express = require("express");
 const session = require("express-session");
 const axios = require("axios");
 const path = require("path");
-const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const Groq = require("groq-sdk");
 
@@ -43,9 +42,7 @@ app.use(
 
 function ensureGroq(res) {
   if (!groq) {
-    res.status(500).json({
-      error: "GROQ_API_KEY não configurada."
-    });
+    res.status(500).json({ error: "GROQ_API_KEY não configurada." });
     return false;
   }
   return true;
@@ -160,6 +157,41 @@ function getAccountFromSession(req, igId) {
   return accounts.find((a) => a.id === igId);
 }
 
+function calculateStrategicScore(account, media, metrics, formatMix) {
+  let score = 0;
+
+  if (account.biography) score += 20;
+  if (account.website) score += 10;
+  if (media.length >= 12) score += 20;
+  else if (media.length >= 6) score += 12;
+  else score += 6;
+
+  const formats = Object.keys(formatMix || {});
+  if (formats.length >= 3) score += 15;
+  else if (formats.length === 2) score += 10;
+  else score += 4;
+
+  const engagementRate = Number(metrics.engagement_rate || 0);
+  if (engagementRate >= 3) score += 20;
+  else if (engagementRate >= 1.5) score += 14;
+  else if (engagementRate >= 0.8) score += 8;
+  else score += 4;
+
+  const freq = metrics.posting_frequency_days;
+  if (freq && freq <= 3) score += 15;
+  else if (freq && freq <= 7) score += 10;
+  else if (freq) score += 5;
+
+  return Math.min(100, Math.round(score));
+}
+
+function scoreLabel(score) {
+  if (score >= 80) return "Muito forte";
+  if (score >= 60) return "Bom";
+  if (score >= 40) return "Regular";
+  return "Fraco";
+}
+
 function buildDashboard(media, account) {
   const likes = media.map((m) => Number(m.like_count || 0));
   const comments = media.map((m) => Number(m.comments_count || 0));
@@ -196,6 +228,16 @@ function buildDashboard(media, account) {
     return Math.round(totalDiff / (ordered.length - 1) / (1000 * 60 * 60 * 24));
   })();
 
+  const metrics = {
+    avg_likes: Math.round(avg(likes)),
+    avg_comments: Math.round(avg(comments)),
+    avg_engagement: Math.round(engagementAverage),
+    engagement_rate: Number(engagementRate),
+    posting_frequency_days: recentFrequencyDays
+  };
+
+  const strategic_score = calculateStrategicScore(account, media, metrics, byFormat);
+
   return {
     account: {
       id: account.id,
@@ -206,13 +248,9 @@ function buildDashboard(media, account) {
       followers_count: Number(account.followers_count || 0),
       media_count: Number(account.media_count || 0)
     },
-    metrics: {
-      avg_likes: Math.round(avg(likes)),
-      avg_comments: Math.round(avg(comments)),
-      avg_engagement: Math.round(engagementAverage),
-      engagement_rate: Number(engagementRate),
-      posting_frequency_days: recentFrequencyDays
-    },
+    metrics,
+    strategic_score,
+    strategic_score_label: scoreLabel(strategic_score),
     format_mix: byFormat,
     top_posts: topPosts
   };
@@ -691,7 +729,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Instagram Planner Agency rodando em ${BASE_URL}`);
+  console.log(`🚀 Instagram Planner Agency 5.1 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
 });
