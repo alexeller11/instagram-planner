@@ -3,13 +3,10 @@ const session = require('express-session');
 const axios = require('axios');
 const OpenAI = require('openai');
 const path = require('path');
-const fs = require('fs');
-const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
-const BASE_URL = process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'secret-v4-1-1';
 
 // Limpeza de tokens (mantém apenas o que é alfanumérico)
 function superClean(token) {
@@ -38,10 +35,10 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: true,
   saveUninitialized: true,
-  name: 'ig_planner_session',
+  name: 'ig_planner_session_v4',
   cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: true,
+    sameSite: 'none',
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
@@ -50,43 +47,22 @@ const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 
 // ─── AUXILIARES ─────────────────────────────────────────────
-async function fetchMedia(userId, token, limit = 20) {
-  try {
-    const url = `https://graph.facebook.com/v21.0/${userId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}`;
-    const response = await axios.get(url, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return response.data.data || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function cleanAndParseJSON(rawText) {
-  if (!rawText || typeof rawText !== 'string') throw new Error('Resposta vazia da IA');
-  let text = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-  const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter(i => i !== -1));
-  const end = Math.max(...[text.lastIndexOf('}'), text.lastIndexOf(']')].filter(i => i !== -1));
-  if (start !== -1 && end !== -1) text = text.substring(start, end + 1);
-  return JSON.parse(text);
-}
-
-// FUNÇÃO PARA DESCOBRIR CONTAS DO INSTAGRAM VINCULADAS AO TOKEN
 async function discoverInstagramAccounts(token) {
   const accounts = [];
+  const t = superClean(token);
   try {
     // 1. Tentar ver se o token já é de uma conta do Instagram direta
     try {
       const direct = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${t}` }
       });
-      if (direct.data.username) accounts.push({ ...direct.data, ig_token: token });
+      if (direct.data.username) accounts.push({ ...direct.data, ig_token: t });
     } catch (e) { /* Não é conta direta */ }
 
     // 2. Buscar Páginas do Facebook vinculadas
     if (accounts.length === 0) {
       const pages = await axios.get('https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,followers_count,media_count,biography,website}', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${t}` }
       });
       
       if (pages.data.data) {
@@ -94,7 +70,7 @@ async function discoverInstagramAccounts(token) {
           if (page.instagram_business_account) {
             accounts.push({
               ...page.instagram_business_account,
-              ig_token: page.access_token || token 
+              ig_token: page.access_token || t 
             });
           }
         }
@@ -106,12 +82,22 @@ async function discoverInstagramAccounts(token) {
   return accounts;
 }
 
+function cleanAndParseJSON(rawText) {
+  if (!rawText || typeof rawText !== 'string') throw new Error('Resposta vazia da IA');
+  let text = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter(i => i !== -1));
+  const end = Math.max(...[text.lastIndexOf('}'), text.lastIndexOf(']')].filter(i => i !== -1));
+  if (start !== -1 && end !== -1) text = text.substring(start, end + 1);
+  return JSON.parse(text);
+}
+
 // ─── ROTAS ──────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
+// ROTA DO APP (FORÇANDO DASHBOARD.HTML PARA QUEBRAR CACHE)
 app.get('/app', (req, res) => {
   if (!req.session.user) return res.redirect('/');
-  res.sendFile(path.join(publicDir, 'app.html'));
+  res.sendFile(path.join(publicDir, 'dashboard.html'));
 });
 
 app.post('/api/auth', (req, res) => {
@@ -125,17 +111,16 @@ app.post('/api/auth', (req, res) => {
 app.get('/api/me', async (req, res) => {
   if (!req.session.user) return res.json({ logged: false });
   
+  let allAccounts = req.session.user.accounts || [];
   const tokens = getCleanTokens();
-  const allAccounts = req.session.user.accounts || [];
   
-  // Tentar carregar tokens da variável de ambiente (silenciosamente)
-  for (let i = 0; i < tokens.length; i++) {
+  for (const t of tokens) {
     try {
-      const found = await discoverInstagramAccounts(tokens[i]);
+      const found = await discoverInstagramAccounts(t);
       found.forEach(acc => {
         if (!allAccounts.find(a => a.id === acc.id)) allAccounts.push(acc);
       });
-    } catch (e) { /* Ignora erros de tokens corrompidos */ }
+    } catch (e) { /* silenciar */ }
   }
   
   req.session.user.accounts = allAccounts;
@@ -146,47 +131,29 @@ app.post('/api/test-token', async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token não fornecido' });
   
-  const cleanToken = superClean(token);
   try {
-    const found = await discoverInstagramAccounts(cleanToken);
+    const found = await discoverInstagramAccounts(token);
     if (found.length === 0) {
-      return res.status(404).json({ success: false, error: 'Nenhuma conta do Instagram Business encontrada vinculada a este token.' });
+      return res.status(404).json({ success: false, error: 'Nenhuma conta encontrada.' });
     }
     
-    if (req.session.user) {
-      found.forEach(acc => {
-        if (!req.session.user.accounts.find(a => a.id === acc.id)) {
-          req.session.user.accounts.push(acc);
-        }
-      });
-    }
+    if (!req.session.user) req.session.user = { accounts: [] };
+    found.forEach(acc => {
+      if (!req.session.user.accounts.find(a => a.id === acc.id)) {
+        req.session.user.accounts.push(acc);
+      }
+    });
     
-    res.json({ success: true, accounts: found });
+    req.session.save(() => res.json({ success: true, accounts: found }));
   } catch (e) {
-    const errData = e.response?.data?.error || { message: e.message };
-    res.status(401).json({ success: false, error: errData.message });
+    res.status(401).json({ success: false, error: e.response?.data?.error?.message || e.message });
   }
 });
 
-// Outras rotas (suggestions, intelligence, generate)
+// IA
 app.post('/api/suggestions', async (req, res) => {
-  if (!req.session.user || !process.env.OPENAI_API_KEY) return res.status(401).json({ error: 'Erro de config' });
   const { igId } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-  if (!account) return res.status(404).json({ error: 'Not found' });
-  const media = await fetchMedia(account.id, account.ig_token, 10);
-  const captions = media.map(m => m.caption?.substring(0, 150) || '').filter(Boolean).join(' | ');
-  const prompt = `Você é um estrategista de Instagram. Analise: @${account.username}, BIO: ${account.biography}, POSTS: ${captions}. Retorne JSON: { "niche": "...", "audience": "...", "suggestions": ["..."], "bio_options": ["..."], "insights": "..." }`;
-  try {
-    const response = await openai.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
-    res.json(cleanAndParseJSON(response.choices[0].message.content));
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/intelligence', async (req, res) => {
-  const { igId, competitors, niche, location, goal } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-  const prompt = `Analise mercado para @${account.username} no nicho ${niche}. Retorne JSON com inteligência estratégica.`;
+  const prompt = `Gere sugestões estratégicas para o Instagram em JSON: { "niche": "...", "insights": "...", "suggestions": [], "bio_options": [] }`;
   try {
     const response = await openai.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
     res.json(cleanAndParseJSON(response.choices[0].message.content));
@@ -194,9 +161,8 @@ app.post('/api/intelligence', async (req, res) => {
 });
 
 app.post('/api/generate', async (req, res) => {
-  const { igId, posts, goal, tone, extra, objections, audience, niche } = req.body;
-  const account = req.session.user.accounts.find(a => a.id === igId);
-  const prompt = `Crie plano 30 dias para @${account.username}. Nicho: ${niche}, Objetivo: ${goal}. Retorne JSON: { "audit": {}, "posts": [], "stories": [], "tips": [] }`;
+  const { igId, goal, tone, niche } = req.body;
+  const prompt = `Crie um plano de 30 dias para o Instagram. Objetivo: ${goal}, Tom: ${tone}. Retorne JSON com as chaves "posts" (array de 30) e "stories" (array de 30).`;
   try {
     const response = await openai.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
     res.json(cleanAndParseJSON(response.choices[0].message.content));
