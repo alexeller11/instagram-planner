@@ -6,21 +6,20 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'secret-v4-1-1-final';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'secret-v4-1-final-reset';
 
-// Configuração OpenAI
-const openai = new OpenAI({
-  apiKey: (process.env.OPENAI_API_KEY || '').trim()
-});
+// OpenAI
+const openai = new OpenAI({ apiKey: (process.env.OPENAI_API_KEY || '').trim() });
 
-// Configuração para Railway/Proxy
+// Railway/Proxy
 app.set('trust proxy', 1);
 
-// Middleware para MATAR O CACHE em todas as requisições
+// KILL ALL CACHE HEADERS
 app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
   next();
 });
 
@@ -30,7 +29,7 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: true,
   saveUninitialized: true,
-  name: 'ig_planner_session_v411',
+  name: 'ig_planner_session_final_v41',
   cookie: { 
     secure: true,
     sameSite: 'none',
@@ -41,27 +40,20 @@ app.use(session({
 const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir, { etag: false, lastModified: false }));
 
-// ─── AUXILIARES ─────────────────────────────────────────────
-function superClean(token) {
-  if (!token) return '';
-  return token.replace(/[^a-zA-Z0-9]/g, '').trim();
-}
+// AUX
+function superClean(token) { return (token || '').replace(/[^a-zA-Z0-9]/g, '').trim(); }
 
 async function discoverInstagramAccounts(token) {
   const accounts = [];
   const t = superClean(token);
   try {
     try {
-      const direct = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', {
-        headers: { 'Authorization': `Bearer ${t}` }
-      });
+      const direct = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', { headers: { 'Authorization': `Bearer ${t}` } });
       if (direct.data.username) accounts.push({ ...direct.data, ig_token: t });
     } catch (e) { }
 
     if (accounts.length === 0) {
-      const pages = await axios.get('https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,followers_count,media_count,biography,website}', {
-        headers: { 'Authorization': `Bearer ${t}` }
-      });
+      const pages = await axios.get('https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,followers_count,media_count,biography,website}', { headers: { 'Authorization': `Bearer ${t}` } });
       if (pages.data.data) {
         for (const page of pages.data.data) {
           if (page.instagram_business_account) {
@@ -75,25 +67,25 @@ async function discoverInstagramAccounts(token) {
 }
 
 function cleanAndParseJSON(rawText) {
-  if (!rawText || typeof rawText !== 'string') throw new Error('Resposta vazia');
-  let text = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  let text = (rawText || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
   const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter(i => i !== -1));
   const end = Math.max(...[text.lastIndexOf('}'), text.lastIndexOf(']')].filter(i => i !== -1));
   if (start !== -1 && end !== -1) text = text.substring(start, end + 1);
   return JSON.parse(text);
 }
 
-// ─── ROTAS ──────────────────────────────────────────────────
+// ROUTES
 app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
-// NOVA ROTA ÚNICA PARA FORÇAR O CARREGAMENTO DO DASHBOARD
-app.get('/dashboard-v41', (req, res) => {
+// ROTA FINAL PARA FORÇAR CARREGAMENTO DO DASHBOARD
+app.get('/dashboard-final', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   res.sendFile(path.join(publicDir, 'dashboard.html'));
 });
 
-// Manter /app redirecionando para a nova rota
-app.get('/app', (req, res) => res.redirect('/dashboard-v41'));
+// REDIRECTS
+app.get('/app', (req, res) => res.redirect('/dashboard-final'));
+app.get('/dashboard-v41', (req, res) => res.redirect('/dashboard-final'));
 
 app.post('/api/auth', (req, res) => {
   req.session.user = { accounts: [] };
@@ -110,13 +102,9 @@ app.post('/api/test-token', async (req, res) => {
   try {
     const found = await discoverInstagramAccounts(token);
     if (!req.session.user) req.session.user = { accounts: [] };
-    found.forEach(acc => {
-      if (!req.session.user.accounts.find(a => a.id === acc.id)) req.session.user.accounts.push(acc);
-    });
+    found.forEach(acc => { if (!req.session.user.accounts.find(a => a.id === acc.id)) req.session.user.accounts.push(acc); });
     req.session.save(() => res.json({ success: true, accounts: found }));
-  } catch (e) {
-    res.status(401).json({ success: false, error: e.response?.data?.error?.message || e.message });
-  }
+  } catch (e) { res.status(401).json({ success: false, error: e.response?.data?.error?.message || e.message }); }
 });
 
 app.post('/api/suggestions', async (req, res) => {
@@ -136,4 +124,4 @@ app.post('/api/generate', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Servidor v4.1.1 rodando na porta ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Servidor FINAL v4.1.2 rodando na porta ${PORT}`));

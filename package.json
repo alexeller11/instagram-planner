@@ -1,18 +1,10 @@
 {
-  "name": "instagram-marketing-planner",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/alexeller11/instagram-planner.git"
-  },
-  "version": "4.0.0",
-  "description": "Instagram Marketing Planner com IA GPT-4o + Meta API",
+  "name": "social-planner-pro-v4-1-final",
+  "version": "4.1.2",
+  "description": "Instagram Planner Pro v4.1 AI - Full UI Restoration",
   "main": "server.js",
-  "author": "Instagram Planner Team",
-  "license": "MIT",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "install-deps": "npm install"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.2",
@@ -24,13 +16,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "keywords": [
-    "instagram",
-    "marketing",
-    "planner",
-    "gpt-4o",
-    "ai",
-    "social-media"
-  ]
+  }
 }
