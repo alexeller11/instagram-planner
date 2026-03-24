@@ -1,127 +1,697 @@
-const express = require('express');
-const session = require('express-session');
-const axios = require('axios');
-const OpenAI = require('openai');
-const path = require('path');
+require("dotenv").config();
+
+const express = require("express");
+const session = require("express-session");
+const axios = require("axios");
+const path = require("path");
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
+const Groq = require("groq-sdk");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'secret-v4-1-final-reset';
 
-// OpenAI
-const openai = new OpenAI({ apiKey: (process.env.OPENAI_API_KEY || '').trim() });
+const PORT = Number(process.env.PORT || 3000);
+const NODE_ENV = process.env.NODE_ENV || "development";
+const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-in-production";
+const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const IG_TOKENS = (process.env.IG_TOKENS || "")
+  .split(",")
+  .map((t) => t.trim())
+  .filter(Boolean);
 
-// Railway/Proxy
-app.set('trust proxy', 1);
+const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 
-// KILL ALL CACHE HEADERS
-app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.set('Surrogate-Control', 'no-store');
-  next();
-});
-
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: true,
-  saveUninitialized: true,
-  name: 'ig_planner_session_final_v41',
-  cookie: { 
-    secure: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000
-  }
-}));
+app.use(express.static(path.join(__dirname, "public")));
 
-const publicDir = path.join(__dirname, 'public');
-app.use(express.static(publicDir, { etag: false, lastModified: false }));
-
-// AUX
-function superClean(token) { return (token || '').replace(/[^a-zA-Z0-9]/g, '').trim(); }
-
-async function discoverInstagramAccounts(token) {
-  const accounts = [];
-  const t = superClean(token);
-  try {
-    try {
-      const direct = await axios.get('https://graph.facebook.com/v21.0/me?fields=id,username,name,followers_count,media_count,biography,website', { headers: { 'Authorization': `Bearer ${t}` } });
-      if (direct.data.username) accounts.push({ ...direct.data, ig_token: t });
-    } catch (e) { }
-
-    if (accounts.length === 0) {
-      const pages = await axios.get('https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,followers_count,media_count,biography,website}', { headers: { 'Authorization': `Bearer ${t}` } });
-      if (pages.data.data) {
-        for (const page of pages.data.data) {
-          if (page.instagram_business_account) {
-            accounts.push({ ...page.instagram_business_account, ig_token: page.access_token || t });
-          }
-        }
-      }
+app.set("trust proxy", 1);
+app.use(
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000
     }
-  } catch (e) { throw e; }
+  })
+);
+
+function ensureGroq(res) {
+  if (!groq) {
+    res.status(500).json({
+      error: "GROQ_API_KEY não configurada."
+    });
+    return false;
+  }
+  return true;
+}
+
+function safeJsonParse(text) {
+  if (!text || typeof text !== "string") return null;
+
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+function compactText(value, max = 300) {
+  if (!value) return "";
+  return String(value).replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function summarizePosts(media = []) {
+  return media
+    .slice(0, 12)
+    .map((m, i) => {
+      const caption = compactText(m.caption || "Sem legenda", 180);
+      return `${i + 1}. [${m.media_type}] ${caption} | likes=${m.like_count || 0} | comments=${m.comments_count || 0}`;
+    })
+    .join("\n");
+}
+
+function avg(values) {
+  if (!values.length) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+async function fetchIGProfiles(tokens) {
+  const accounts = [];
+
+  for (const token of tokens) {
+    try {
+      const res = await axios.get("https://graph.instagram.com/v21.0/me", {
+        params: {
+          fields:
+            "id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type",
+          access_token: token
+        }
+      });
+
+      accounts.push({
+        ...res.data,
+        ig_token: token
+      });
+    } catch (error) {
+      console.error("[IG_PROFILE_ERROR]", error.response?.data || error.message);
+    }
+  }
+
   return accounts;
 }
 
-function cleanAndParseJSON(rawText) {
-  let text = (rawText || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-  const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter(i => i !== -1));
-  const end = Math.max(...[text.lastIndexOf('}'), text.lastIndexOf(']')].filter(i => i !== -1));
-  if (start !== -1 && end !== -1) text = text.substring(start, end + 1);
-  return JSON.parse(text);
+async function fetchMedia(igId, token, limit = 30) {
+  try {
+    const res = await axios.get(`https://graph.instagram.com/v21.0/${igId}/media`, {
+      params: {
+        fields: "id,caption,media_type,timestamp,like_count,comments_count,permalink",
+        limit,
+        access_token: token
+      }
+    });
+
+    return res.data.data || [];
+  } catch (error) {
+    console.error("[IG_MEDIA_ERROR]", error.response?.data || error.message);
+    return [];
+  }
 }
 
-// ROUTES
-app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+async function callGroqJSON({ system, user, maxTokens = 4096, temperature = 0.6 }) {
+  if (!groq) throw new Error("GROQ_API_KEY não configurada");
 
-// ROTA FINAL PARA FORÇAR CARREGAMENTO DO DASHBOARD
-app.get('/dashboard-final', (req, res) => {
-  if (!req.session.user) return res.redirect('/');
-  res.sendFile(path.join(publicDir, 'dashboard.html'));
-});
+  const completion = await groq.chat.completions.create({
+    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    temperature,
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
 
-// REDIRECTS
-app.get('/app', (req, res) => res.redirect('/dashboard-final'));
-app.get('/dashboard-v41', (req, res) => res.redirect('/dashboard-final'));
+  const text = completion.choices?.[0]?.message?.content || "";
+  const parsed = safeJsonParse(text);
 
-app.post('/api/auth', (req, res) => {
-  req.session.user = { accounts: [] };
-  req.session.save(() => res.json({ success: true }));
-});
+  if (!parsed) {
+    throw new Error("A IA retornou JSON inválido.");
+  }
 
-app.get('/api/me', async (req, res) => {
-  if (!req.session.user) return res.json({ logged: false });
-  res.json({ logged: true, accounts: req.session.user.accounts || [] });
-});
+  return parsed;
+}
 
-app.post('/api/test-token', async (req, res) => {
-  const { token } = req.body;
+function getAccountFromSession(req, igId) {
+  const accounts = req.session?.user?.accounts || [];
+  return accounts.find((a) => a.id === igId);
+}
+
+function buildDashboard(media, account) {
+  const likes = media.map((m) => Number(m.like_count || 0));
+  const comments = media.map((m) => Number(m.comments_count || 0));
+  const engagementAverage = avg(media.map((m) => Number(m.like_count || 0) + Number(m.comments_count || 0)));
+  const followerBase = Number(account.followers_count || 0) || 1;
+  const engagementRate = ((engagementAverage / followerBase) * 100).toFixed(2);
+
+  const byFormat = media.reduce((acc, item) => {
+    const key = item.media_type || "UNKNOWN";
+    if (!acc[key]) acc[key] = { count: 0, likes: 0, comments: 0 };
+    acc[key].count += 1;
+    acc[key].likes += Number(item.like_count || 0);
+    acc[key].comments += Number(item.comments_count || 0);
+    return acc;
+  }, {});
+
+  const topPosts = [...media]
+    .sort((a, b) => {
+      const aScore = Number(a.like_count || 0) + Number(a.comments_count || 0);
+      const bScore = Number(b.like_count || 0) + Number(b.comments_count || 0);
+      return bScore - aScore;
+    })
+    .slice(0, 5);
+
+  const recentFrequencyDays = (() => {
+    if (media.length < 2) return null;
+    const ordered = [...media].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    let totalDiff = 0;
+    for (let i = 1; i < ordered.length; i++) {
+      const prev = new Date(ordered[i - 1].timestamp).getTime();
+      const curr = new Date(ordered[i].timestamp).getTime();
+      totalDiff += Math.abs(curr - prev);
+    }
+    return Math.round(totalDiff / (ordered.length - 1) / (1000 * 60 * 60 * 24));
+  })();
+
+  return {
+    account: {
+      id: account.id,
+      username: account.username,
+      name: account.name,
+      biography: account.biography || "",
+      website: account.website || "",
+      followers_count: Number(account.followers_count || 0),
+      media_count: Number(account.media_count || 0)
+    },
+    metrics: {
+      avg_likes: Math.round(avg(likes)),
+      avg_comments: Math.round(avg(comments)),
+      avg_engagement: Math.round(engagementAverage),
+      engagement_rate: Number(engagementRate),
+      posting_frequency_days: recentFrequencyDays
+    },
+    format_mix: byFormat,
+    top_posts: topPosts
+  };
+}
+
+function plannerSystemPrompt() {
+  return `
+Você é um estrategista sênior de marketing para Instagram, especializado em contas reais de clientes de agência.
+Seu trabalho não é enfeitar respostas.
+Seu trabalho é identificar oportunidades, construir posicionamento, gerar conteúdo relevante e orientar para crescimento, autoridade e conversão.
+
+Regras:
+- responda sempre em português do Brasil
+- evite respostas genéricas
+- use linguagem natural e direta
+- pense em funil
+- gere ideias que uma agência realmente usaria
+- traga análise estratégica + execução
+- retorne SOMENTE JSON válido
+`;
+}
+
+app.post("/api/auth", async (req, res) => {
+  if (!IG_TOKENS.length) {
+    return res.status(400).json({
+      success: false,
+      error: "Nenhum token configurado em IG_TOKENS."
+    });
+  }
+
   try {
-    const found = await discoverInstagramAccounts(token);
+    const accounts = await fetchIGProfiles(IG_TOKENS);
+
+    if (!accounts.length) {
+      return res.status(400).json({
+        success: false,
+        error: "Nenhuma conta foi carregada com os tokens atuais."
+      });
+    }
+
+    req.session.user = { accounts };
+
+    return res.json({
+      success: true,
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        username: a.username,
+        followers_count: a.followers_count
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get("/api/me", (req, res) => {
+  if (!req.session.user) {
+    return res.json({ logged: false, accounts: [] });
+  }
+
+  return res.json({
+    logged: true,
+    accounts: req.session.user.accounts || []
+  });
+});
+
+app.get("/auth/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/");
+  });
+});
+
+app.post("/api/test-token", async (req, res) => {
+  const token = (req.body?.token || "").trim();
+  if (!token) {
+    return res.status(400).json({ success: false, error: "Token vazio." });
+  }
+
+  try {
+    const accounts = await fetchIGProfiles([token]);
+    if (!accounts.length) {
+      return res.status(400).json({ success: false, error: "Token inválido ou sem acesso." });
+    }
+
     if (!req.session.user) req.session.user = { accounts: [] };
-    found.forEach(acc => { if (!req.session.user.accounts.find(a => a.id === acc.id)) req.session.user.accounts.push(acc); });
-    req.session.save(() => res.json({ success: true, accounts: found }));
-  } catch (e) { res.status(401).json({ success: false, error: e.response?.data?.error?.message || e.message }); }
+
+    for (const acc of accounts) {
+      const exists = req.session.user.accounts.find((a) => a.id === acc.id);
+      if (!exists) req.session.user.accounts.push(acc);
+    }
+
+    return res.json({ success: true, accounts });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-app.post('/api/suggestions', async (req, res) => {
-  const prompt = `Gere sugestões estratégicas para Instagram em JSON.`;
+app.get("/api/dashboard/:igId", async (req, res) => {
+  const account = getAccountFromSession(req, req.params.igId);
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada na sessão." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 30);
+  const dashboard = buildDashboard(media, account);
+
+  return res.json({
+    ...dashboard,
+    media_sample: media.slice(0, 12)
+  });
+});
+
+app.post("/api/intelligence", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const { igId, niche = "", audience = "", goal = "", tone = "", extra = "" } = req.body || {};
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 20);
+  const dashboard = buildDashboard(media, account);
+
+  const userPrompt = `
+Analise este perfil de Instagram e devolva um diagnóstico estratégico.
+
+PERFIL:
+- @${account.username}
+- Nome: ${account.name || ""}
+- Seguidores: ${account.followers_count || 0}
+- Bio: ${account.biography || ""}
+- Website: ${account.website || ""}
+- Nicho informado: ${niche}
+- Público: ${audience}
+- Objetivo do momento: ${goal}
+- Tom de voz desejado: ${tone}
+- Contexto extra: ${extra}
+
+DADOS DO DASHBOARD:
+${JSON.stringify(dashboard, null, 2)}
+
+ÚLTIMOS POSTS:
+${summarizePosts(media)}
+
+Retorne exatamente neste formato JSON:
+{
+  "executive_summary": "resumo estratégico em 3 a 5 frases",
+  "diagnosis": {
+    "positioning": "leitura do posicionamento",
+    "content_strength": "o que está funcionando",
+    "content_gap": "o que está faltando",
+    "engagement_read": "interpretação do engajamento",
+    "funnel_read": "leitura do funil"
+  },
+  "opportunities": [
+    "oportunidade 1",
+    "oportunidade 2",
+    "oportunidade 3",
+    "oportunidade 4"
+  ],
+  "priority_actions": [
+    "ação prática 1",
+    "ação prática 2",
+    "ação prática 3",
+    "ação prática 4"
+  ],
+  "content_angles": [
+    "ângulo 1",
+    "ângulo 2",
+    "ângulo 3",
+    "ângulo 4",
+    "ângulo 5"
+  ],
+  "bio_suggestions": [
+    "bio 1",
+    "bio 2",
+    "bio 3"
+  ]
+}
+`;
+
   try {
-    const response = await openai.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
-    res.json(cleanAndParseJSON(response.choices[0].message.content));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 3000
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
-app.post('/api/generate', async (req, res) => {
-  const { goal, tone } = req.body;
-  const prompt = `Crie um plano de 30 dias para Instagram. Objetivo: ${goal}, Tom: ${tone}. Retorne JSON.`;
+app.post("/api/competitors", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const { igId, niche = "", audience = "", competitors = [] } = req.body || {};
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 15);
+
+  const competitorsText = Array.isArray(competitors) && competitors.length
+    ? competitors.map((c, i) => `${i + 1}. ${c}`).join("\n")
+    : "Nenhum concorrente específico informado.";
+
+  const userPrompt = `
+Faça uma análise estratégica de concorrência para este perfil.
+
+MEU PERFIL:
+- @${account.username}
+- Nicho: ${niche}
+- Público: ${audience}
+- Bio: ${account.biography || ""}
+- Posts recentes:
+${summarizePosts(media)}
+
+CONCORRENTES/REFERÊNCIAS:
+${competitorsText}
+
+Importante:
+- não invente dados numéricos exatos dos concorrentes
+- trate os concorrentes como referência estratégica
+- compare posicionamento, temas, tom e oportunidades
+- responda como consultor de agência
+
+Retorne exatamente neste JSON:
+{
+  "market_read": "leitura geral do cenário competitivo",
+  "competitor_patterns": [
+    "padrão 1",
+    "padrão 2",
+    "padrão 3",
+    "padrão 4"
+  ],
+  "what_they_do_well": [
+    "ponto 1",
+    "ponto 2",
+    "ponto 3"
+  ],
+  "gaps_to_exploit": [
+    "gap 1",
+    "gap 2",
+    "gap 3",
+    "gap 4"
+  ],
+  "positioning_differentiators": [
+    "diferencial 1",
+    "diferencial 2",
+    "diferencial 3"
+  ],
+  "content_opportunities": [
+    "conteúdo 1",
+    "conteúdo 2",
+    "conteúdo 3",
+    "conteúdo 4",
+    "conteúdo 5"
+  ]
+}
+`;
+
   try {
-    const response = await openai.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
-    res.json(cleanAndParseJSON(response.choices[0].message.content));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 2800
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Servidor FINAL v4.1.2 rodando na porta ${PORT}`));
+app.post("/api/generate", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const {
+    igId,
+    niche = "",
+    audience = "",
+    goal = "",
+    tone = "",
+    extra = "",
+    totalPosts = 16,
+    reels = 6,
+    carousels = 6,
+    singlePosts = 4
+  } = req.body || {};
+
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 20);
+
+  const userPrompt = `
+Crie um planejamento mensal completo para Instagram com foco profissional de agência.
+
+DADOS:
+- Perfil: @${account.username}
+- Nome: ${account.name || ""}
+- Nicho: ${niche}
+- Público: ${audience}
+- Objetivo: ${goal}
+- Tom de voz: ${tone}
+- Contexto extra: ${extra}
+- Total de posts: ${totalPosts}
+- Reels: ${reels}
+- Carrosséis: ${carousels}
+- Posts estáticos: ${singlePosts}
+- Bio atual: ${account.biography || ""}
+
+POSTS RECENTES:
+${summarizePosts(media)}
+
+Retorne exatamente neste JSON:
+{
+  "audit": {
+    "summary": "resumo do plano",
+    "month_strategy": "estratégia central do mês",
+    "funnel_logic": "como o mês foi distribuído"
+  },
+  "posts": [
+    {
+      "n": 1,
+      "week": 1,
+      "day_suggestion": "Segunda",
+      "format": "Reels",
+      "pillar": "Autoridade",
+      "title": "título",
+      "objective": "objetivo do post",
+      "hook": "gancho inicial",
+      "copy": "legenda completa",
+      "cta": "cta",
+      "script": "roteiro completo se for reels",
+      "carousel_slides": ["slide 1", "slide 2", "slide 3"]
+    }
+  ],
+  "stories": [
+    {
+      "day": "Dia 1",
+      "theme": "tema",
+      "objective": "objetivo",
+      "slides": [
+        { "n": 1, "text": "texto do slide 1", "action": "ação" },
+        { "n": 2, "text": "texto do slide 2", "action": "ação" },
+        { "n": 3, "text": "texto do slide 3", "action": "ação" }
+      ]
+    }
+  ],
+  "hashtags": {
+    "niche": ["#hashtag1", "#hashtag2", "#hashtag3"],
+    "local": ["#local1", "#local2"],
+    "broad": ["#ampla1", "#ampla2", "#ampla3"],
+    "strategy": "estratégia de hashtags"
+  },
+  "content_pillars": [
+    "pilar 1",
+    "pilar 2",
+    "pilar 3"
+  ],
+  "priority_ctas": [
+    "cta 1",
+    "cta 2",
+    "cta 3"
+  ]
+}
+
+Regras:
+- o número de posts precisa bater com o mix solicitado
+- reels precisam ter script
+- carrosséis precisam ter slides
+- stories precisam ser úteis e práticos
+- nada de respostas genéricas
+`;
+
+  try {
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 7000,
+      temperature: 0.7
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/export-pdf", (req, res) => {
+  const { plan, username = "perfil" } = req.body || {};
+
+  try {
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const filename = `plano_${username}_${Date.now()}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    doc.fontSize(20).text("Plano Estratégico de Instagram", { align: "center" });
+    doc.moveDown(0.3);
+    doc.fontSize(12).text(`@${username}`, { align: "center" });
+    doc.moveDown(1);
+
+    if (plan?.audit) {
+      doc.fontSize(15).text("Resumo Estratégico");
+      doc.moveDown(0.3);
+      doc.fontSize(10).text(`Resumo: ${plan.audit.summary || ""}`);
+      doc.moveDown(0.2);
+      doc.text(`Estratégia do mês: ${plan.audit.month_strategy || ""}`);
+      doc.moveDown(0.2);
+      doc.text(`Lógica do funil: ${plan.audit.funnel_logic || ""}`);
+      doc.moveDown(1);
+    }
+
+    if (Array.isArray(plan?.posts)) {
+      doc.fontSize(15).text("Posts do Mês");
+      doc.moveDown(0.5);
+
+      plan.posts.slice(0, 12).forEach((post) => {
+        doc.fontSize(11).text(`#${post.n} • ${post.format} • ${post.title}`, { underline: true });
+        doc.fontSize(9).text(`Objetivo: ${post.objective || ""}`);
+        doc.text(`Gancho: ${post.hook || ""}`);
+        doc.text(`CTA: ${post.cta || ""}`);
+        doc.moveDown(0.4);
+      });
+    }
+
+    doc.end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/status", (req, res) => {
+  res.json({
+    ok: true,
+    groq: Boolean(GROQ_API_KEY),
+    tokens_configured: IG_TOKENS.length,
+    base_url: BASE_URL
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/app", (req, res) => {
+  if (!req.session.user) {
+    return res.redirect("/");
+  }
+  res.sendFile(path.join(__dirname, "public", "app.html"));
+});
+
+app.get("/privacy.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "privacy.html"));
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Instagram Planner Agency rodando em ${BASE_URL}`);
+  console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
+  console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
+});
