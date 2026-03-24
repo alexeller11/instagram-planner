@@ -1,906 +1,786 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • Painel 5.2</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --bg:#0c0a1a;
-      --surface:#13112a;
-      --card:#1a1733;
-      --border:rgba(255,255,255,.08);
-      --text:#fff;
-      --muted:rgba(255,255,255,.58);
-      --subtle:rgba(255,255,255,.26);
-      --brand:#ff6b35;
-      --brand2:#ffd166;
+require("dotenv").config();
+
+const express = require("express");
+const session = require("express-session");
+const axios = require("axios");
+const path = require("path");
+const PDFDocument = require("pdfkit");
+const Groq = require("groq-sdk");
+
+const app = express();
+
+const PORT = Number(process.env.PORT || 3000);
+const NODE_ENV = process.env.NODE_ENV || "development";
+const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-in-production";
+const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const IG_TOKENS = (process.env.IG_TOKENS || "")
+  .split(",")
+  .map((t) => t.trim())
+  .filter(Boolean);
+
+const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
+
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
+app.set("trust proxy", 1);
+app.use(
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000
     }
-    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-    header{position:sticky;top:0;z-index:99;background:rgba(19,17,42,.96);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;backdrop-filter:blur(10px)}
-    .logo{font-family:'Syne',sans-serif;font-weight:800;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:1rem}
-    .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .chip{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer}
-    .chip.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
-    .btn-out{color:var(--muted);text-decoration:none;border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px}
-    .tabs{display:flex;gap:8px;padding:16px 20px 0;flex-wrap:wrap}
-    .tab{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:13px}
-    .tab.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
-    .page{display:none;padding:20px;max-width:1280px;margin:0 auto}
-    .page.on{display:block}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px}
-    .span-12{grid-column:span 12}
-    .span-8{grid-column:span 8}
-    .span-6{grid-column:span 6}
-    .span-4{grid-column:span 4}
-    .title{font-family:'Syne',sans-serif;font-size:1rem;margin-bottom:14px}
-    .sub{color:var(--muted);font-size:13px;line-height:1.6}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .metric{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
-    .metric .label{color:var(--muted);font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
-    .metric .value{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
-    .score-box{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:linear-gradient(135deg,rgba(255,107,53,.12),rgba(255,209,102,.08));border:1px solid rgba(255,107,53,.2);margin-bottom:16px}
-    .score-value{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);flex-shrink:0}
-    .chart-wrap{height:260px}
-    input,textarea,select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;color:#fff;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none}
-    textarea{resize:vertical;min-height:90px}
-    .field{margin-bottom:14px}
-    .label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-    .btn{border:none;border-radius:14px;padding:14px 16px;background:linear-gradient(135deg,var(--brand),#f7931e);color:#fff;font-family:'Syne',sans-serif;font-size:14px;cursor:pointer;width:100%}
-    .btn.secondary{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .tag-list{display:flex;gap:8px;flex-wrap:wrap}
-    .tag{padding:7px 10px;border-radius:999px;background:rgba(255,107,53,.12);border:1px solid rgba(255,107,53,.26);color:#ffb38a;font-size:12px}
-    .list{display:grid;gap:10px}
-    .list-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);line-height:1.6;font-size:14px;color:rgba(255,255,255,.88)}
-    .top-post{display:grid;gap:4px;padding:12px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
-    .post-title{font-size:13px;color:#fff;font-weight:700}
-    .muted{color:var(--muted);font-size:12px}
-    .result-title{font-family:'Syne',sans-serif;font-size:1.15rem;margin-bottom:8px}
-    .format{display:inline-block;font-size:10px;padding:4px 8px;border-radius:999px;margin-bottom:8px;background:rgba(255,255,255,.08);color:#fff}
-    .copy-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px;white-space:pre-wrap;line-height:1.7;font-size:14px}
-    .calendar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    .day{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px;min-height:110px}
-    .day strong{display:block;margin-bottom:8px;color:#ffb38a;font-size:12px}
-    .story-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px}
-    .copy-btn{margin-top:10px;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:#fff;cursor:pointer;font-size:12px}
-    .small-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .notice{color:var(--muted);font-size:13px;line-height:1.6}
-    .token-row{display:flex;gap:10px}
-    .history-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);cursor:pointer}
-    .history-item:hover{border-color:rgba(255,107,53,.3)}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-    .toolbar button{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:#fff;cursor:pointer;font-size:12px}
-    .toolbar button.on{background:rgba(255,107,53,.12);border-color:rgba(255,107,53,.3);color:#ffb38a}
-    .loader{display:none;padding:14px 0;color:#ffb38a;font-size:13px}
-    .loader.on{display:block}
-    .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#fff;color:#000;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:700;display:none;z-index:999}
-    .toast.show{display:block}
-    @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:640px){.metrics,.small-grid,.calendar{grid-template-columns:1fr}.token-row{flex-direction:column}}
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo">✦ Instagram Planner Agency 5.2</div>
-    <div class="row" id="accountsRow"></div>
-    <a class="btn-out" href="/auth/logout">Sair</a>
-  </header>
+  })
+);
 
-  <div class="tabs">
-    <div class="tab on" onclick="switchPage('dashboard', this)">📊 Dashboard</div>
-    <div class="tab" onclick="switchPage('intelligence', this)">🧠 Inteligência</div>
-    <div class="tab" onclick="switchPage('competitors', this)">🥊 Concorrência</div>
-    <div class="tab" onclick="switchPage('planner', this)">📅 Planner</div>
-    <div class="tab" onclick="switchPage('history', this)">💾 Histórico</div>
-    <div class="tab" onclick="switchPage('settings', this)">🔧 Tokens</div>
-  </div>
+function ensureGroq(res) {
+  if (!groq) {
+    res.status(500).json({ error: "GROQ_API_KEY não configurada." });
+    return false;
+  }
+  return true;
+}
 
-  <section class="page on" id="page-dashboard">
-    <div class="grid">
-      <div class="card span-12">
-        <div class="score-box">
-          <div class="score-value" id="scoreValue">-</div>
-          <div>
-            <div class="title" style="margin-bottom:6px">Score estratégico do perfil</div>
-            <div class="sub" id="scoreLabel">Selecione uma conta para calcular a força atual do perfil.</div>
-          </div>
-        </div>
+function safeJsonParse(text) {
+  if (!text || typeof text !== "string") return null;
 
-        <div class="metrics">
-          <div class="metric"><div class="label">Seguidores</div><div class="value" id="mFollowers">-</div></div>
-          <div class="metric"><div class="label">Posts</div><div class="value" id="mPosts">-</div></div>
-          <div class="metric"><div class="label">Engajamento médio</div><div class="value" id="mEngagement">-</div></div>
-          <div class="metric"><div class="label">Taxa de engajamento</div><div class="value" id="mRate">-</div></div>
-        </div>
-      </div>
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
 
-      <div class="card span-8">
-        <div class="title">Mix de formatos</div>
-        <div class="chart-wrap"><canvas id="formatChart"></canvas></div>
-      </div>
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
 
-      <div class="card span-4">
-        <div class="title">Leitura rápida</div>
-        <div class="list" id="quickRead">
-          <div class="list-item">Selecione uma conta para carregar o dashboard.</div>
-        </div>
-      </div>
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
 
-      <div class="card span-12">
-        <div class="title">Top posts recentes</div>
-        <div class="small-grid" id="topPosts"></div>
-      </div>
-    </div>
-  </section>
+function compactText(value, max = 300) {
+  if (!value) return "";
+  return String(value).replace(/\s+/g, " ").trim().slice(0, max);
+}
 
-  <section class="page" id="page-intelligence">
-    <div class="grid">
-      <div class="card span-4">
-        <div class="title">Parâmetros da análise</div>
+function summarizePosts(media = []) {
+  return media
+    .slice(0, 12)
+    .map((m, i) => {
+      const caption = compactText(m.caption || "Sem legenda", 180);
+      return `${i + 1}. [${m.media_type}] ${caption} | likes=${m.like_count || 0} | comments=${m.comments_count || 0}`;
+    })
+    .join("\n");
+}
 
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="intelNiche" placeholder="Ex: clínica oftalmológica, pizzaria, esquadrias..." />
-        </div>
+function avg(values) {
+  if (!values.length) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
 
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="intelAudience" placeholder="Ex: mulheres 28 a 45, empresários, famílias..." />
-        </div>
+async function fetchIGProfiles(tokens) {
+  const accounts = [];
 
-        <div class="field">
-          <label class="label">Objetivo</label>
-          <input id="intelGoal" placeholder="Ex: autoridade, gerar leads, vender mais..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom de voz</label>
-          <input id="intelTone" placeholder="Ex: profissional, humanizado, premium..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="intelLocation" placeholder="Ex: Linhares ES, Vitória ES, Vila Velha..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="intelExtra" placeholder="Diferenciais, momento da empresa, campanha, foco do mês..."></textarea>
-        </div>
-
-        <button class="btn" id="intelBtn" onclick="runIntelligence()">Gerar diagnóstico por IA</button>
-        <div class="loader" id="intelLoader">Analisando perfil com IA...</div>
-      </div>
-
-      <div class="card span-8">
-        <div class="title">Diagnóstico estratégico</div>
-        <div id="intelResult" class="notice">Preencha os campos e rode a análise.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="page" id="page-competitors">
-    <div class="grid">
-      <div class="card span-4">
-        <div class="title">Análise de concorrência</div>
-
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="compNiche" placeholder="Ex: moda feminina, saúde, construção..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="compAudience" placeholder="Ex: classe A/B, famílias, lojistas..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="compLocation" placeholder="Ex: Linhares ES, Colatina, Espírito Santo..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Objetivo da marca</label>
-          <input id="compGoal" placeholder="Ex: vender mais, reforçar autoridade, virar referência..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom desejado</label>
-          <input id="compTone" placeholder="Ex: premium, técnico, próximo, sofisticado..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Concorrentes / referências</label>
-          <textarea id="compList" placeholder="@concorrente1&#10;@concorrente2&#10;marca referência 3"></textarea>
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="compExtra" placeholder="Observações sobre o mercado, sobre a cidade, comportamento local..."></textarea>
-        </div>
-
-        <button class="btn" id="compBtn" onclick="runCompetitors()">Analisar concorrência</button>
-        <div class="loader" id="compLoader">Lendo mercado e referências...</div>
-      </div>
-
-      <div class="card span-8">
-        <div class="title">Leitura competitiva</div>
-        <div id="compResult" class="notice">Informe as referências para a IA montar o mapa competitivo.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="page" id="page-planner">
-    <div class="grid">
-      <div class="card span-4">
-        <div class="title">Configuração do plano</div>
-
-        <div class="field">
-          <label class="label">Nicho</label>
-          <input id="planNiche" placeholder="Ex: hospital-dia, drogaria, loja premium..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Público</label>
-          <input id="planAudience" placeholder="Ex: pacientes 40+, confeiteiras, casais..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Objetivo do mês</label>
-          <input id="planGoal" placeholder="Ex: vender mais, posicionar, aumentar procura..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Tom de voz</label>
-          <input id="planTone" placeholder="Ex: elegante, direto, acolhedor..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Localização da empresa</label>
-          <input id="planLocation" placeholder="Ex: Linhares ES, Colatina, Vitória..." />
-        </div>
-
-        <div class="field">
-          <label class="label">Contexto extra</label>
-          <textarea id="planExtra" placeholder="Datas do mês, campanha, diferenciais, foco comercial..."></textarea>
-        </div>
-
-        <div class="small-grid">
-          <div class="field">
-            <label class="label">Total de posts</label>
-            <input id="planTotal" type="number" value="16" />
-          </div>
-          <div class="field">
-            <label class="label">Reels</label>
-            <input id="planReels" type="number" value="6" />
-          </div>
-          <div class="field">
-            <label class="label">Carrosséis</label>
-            <input id="planCarousels" type="number" value="6" />
-          </div>
-          <div class="field">
-            <label class="label">Estáticos</label>
-            <input id="planSingles" type="number" value="4" />
-          </div>
-        </div>
-
-        <button class="btn" id="planBtn" onclick="generatePlanner()">Gerar planner completo</button>
-        <button class="btn secondary" style="margin-top:10px" onclick="exportPlannerPDF()">Exportar PDF</button>
-        <div class="loader" id="planLoader">Gerando planejamento do mês...</div>
-      </div>
-
-      <div class="card span-8">
-        <div class="title">Planejamento do mês</div>
-
-        <div class="toolbar" id="plannerFilters" style="display:none">
-          <button class="on" onclick="setPostFilter('ALL', this)">Todos</button>
-          <button onclick="setPostFilter('Reels', this)">Reels</button>
-          <button onclick="setPostFilter('Carrossel', this)">Carrossel</button>
-          <button onclick="setPostFilter('Post', this)">Post</button>
-          <button onclick="setPostFilter('Static', this)">Static</button>
-        </div>
-
-        <div id="planResult" class="notice">Gere um plano para visualizar calendário, posts, stories e hashtags.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="page" id="page-history">
-    <div class="grid">
-      <div class="card span-12">
-        <div class="title">Histórico local de planners</div>
-        <div class="toolbar">
-          <button onclick="renderHistory()">Atualizar</button>
-          <button onclick="clearHistory()">Limpar tudo</button>
-        </div>
-        <div id="historyList" class="notice">Nenhum planner salvo ainda.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="page" id="page-settings">
-    <div class="grid">
-      <div class="card span-6">
-        <div class="title">Adicionar conta com token manual</div>
-        <div class="token-row">
-          <input id="manualToken" placeholder="Cole aqui um token do Instagram Graph API" />
-          <button class="btn" style="width:auto" onclick="testToken()">Conectar</button>
-        </div>
-        <div class="notice" style="margin-top:12px">
-          Use isso quando quiser testar outra conta sem mexer imediatamente no .env.
-        </div>
-      </div>
-
-      <div class="card span-6">
-        <div class="title">Status do sistema</div>
-        <div class="list" id="statusBox">
-          <div class="list-item">Carregando status...</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="toast" id="toast"></div>
-
-  <script>
-    const HISTORY_KEY = "ig_planner_agency_v52_history";
-
-    let ACCOUNTS = [];
-    let CURRENT = null;
-    let DASHBOARD = null;
-    let PLAN_DATA = null;
-    let formatChart = null;
-    let CURRENT_POST_FILTER = "ALL";
-
-    function toast(msg) {
-      const el = document.getElementById("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      setTimeout(() => el.classList.remove("show"), 2200);
-    }
-
-    function switchPage(page, el) {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("on"));
-      document.querySelectorAll(".page").forEach(p => p.classList.remove("on"));
-      el.classList.add("on");
-      document.getElementById("page-" + page).classList.add("on");
-      if (page === "history") renderHistory();
-    }
-
-    async function init() {
-      const me = await fetch("/api/me").then(r => r.json()).catch(() => ({ logged: false, accounts: [] }));
-      if (!me.logged) {
-        window.location.href = "/";
-        return;
-      }
-
-      ACCOUNTS = me.accounts || [];
-      renderAccounts();
-
-      if (ACCOUNTS.length) {
-        selectAccount(ACCOUNTS[0].id);
-      }
-
-      loadStatus();
-      renderHistory();
-    }
-
-    function renderAccounts() {
-      const row = document.getElementById("accountsRow");
-      row.innerHTML = "";
-
-      if (!ACCOUNTS.length) {
-        row.innerHTML = `<div class="chip">Nenhuma conta</div>`;
-        return;
-      }
-
-      ACCOUNTS.forEach(acc => {
-        const el = document.createElement("div");
-        el.className = "chip" + (CURRENT && CURRENT.id === acc.id ? " on" : "");
-        el.textContent = "@" + acc.username;
-        el.onclick = () => selectAccount(acc.id);
-        row.appendChild(el);
-      });
-    }
-
-    async function selectAccount(id) {
-      CURRENT = ACCOUNTS.find(a => a.id === id);
-      renderAccounts();
-      await loadDashboard();
-    }
-
-    async function loadDashboard() {
-      if (!CURRENT) return;
-
-      const data = await fetch(`/api/dashboard/${CURRENT.id}`).then(r => r.json());
-      DASHBOARD = data;
-
-      document.getElementById("mFollowers").textContent = formatNumber(data.account.followers_count || 0);
-      document.getElementById("mPosts").textContent = formatNumber(data.account.media_count || 0);
-      document.getElementById("mEngagement").textContent = formatNumber(data.metrics.avg_engagement || 0);
-      document.getElementById("mRate").textContent = (data.metrics.engagement_rate || 0) + "%";
-      document.getElementById("scoreValue").textContent = data.strategic_score || 0;
-      document.getElementById("scoreLabel").textContent = `Leitura atual: ${data.strategic_score_label || "-"}. Use isso como base para decidir o quanto o perfil precisa de correção estratégica.`;
-
-      document.getElementById("quickRead").innerHTML = `
-        <div class="list-item">Bio atual: ${escapeHtml(data.account.biography || "Sem bio")}</div>
-        <div class="list-item">Website: ${escapeHtml(data.account.website || "Não informado")}</div>
-        <div class="list-item">Frequência média: ${data.metrics.posting_frequency_days ? `${data.metrics.posting_frequency_days} dias entre posts` : "dados insuficientes"}</div>
-      `;
-
-      document.getElementById("topPosts").innerHTML = (data.top_posts || []).map(p => `
-        <div class="top-post">
-          <div class="post-title">${escapeHtml((p.caption || "Sem legenda").slice(0, 90))}</div>
-          <div class="muted">${p.media_type || "POST"} • ❤️ ${p.like_count || 0} • 💬 ${p.comments_count || 0}</div>
-        </div>
-      `).join("");
-
-      renderFormatChart(data.format_mix || {});
-    }
-
-    function renderFormatChart(formatMix) {
-      const ctx = document.getElementById("formatChart").getContext("2d");
-      const labels = Object.keys(formatMix);
-      const values = labels.map(l => formatMix[l].count);
-
-      if (formatChart) formatChart.destroy();
-
-      formatChart = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels,
-          datasets: [{ data: values }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: "rgba(255,255,255,.7)" }
-            }
-          }
+  for (const token of tokens) {
+    try {
+      const res = await axios.get("https://graph.instagram.com/v21.0/me", {
+        params: {
+          fields:
+            "id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type",
+          access_token: token
         }
       });
-    }
 
-    async function runIntelligence() {
-      if (!CURRENT) return toast("Selecione uma conta.");
-
-      const payload = {
-        igId: CURRENT.id,
-        niche: document.getElementById("intelNiche").value,
-        audience: document.getElementById("intelAudience").value,
-        goal: document.getElementById("intelGoal").value,
-        tone: document.getElementById("intelTone").value,
-        location: document.getElementById("intelLocation").value,
-        extra: document.getElementById("intelExtra").value
-      };
-
-      setLoading("intel", true);
-      document.getElementById("intelResult").innerHTML = "Analisando perfil...";
-
-      try {
-        const data = await fetch("/api/intelligence", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
-
-        document.getElementById("intelResult").innerHTML = `
-          <div class="result-title">Resumo executivo</div>
-          <div class="copy-box">${escapeHtml(data.executive_summary || "")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Diagnóstico</div>
-          <div class="list">
-            <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(data.diagnosis?.positioning || "")}</div>
-            <div class="list-item"><strong>Força atual:</strong><br>${escapeHtml(data.diagnosis?.content_strength || "")}</div>
-            <div class="list-item"><strong>Gap:</strong><br>${escapeHtml(data.diagnosis?.content_gap || "")}</div>
-            <div class="list-item"><strong>Engajamento:</strong><br>${escapeHtml(data.diagnosis?.engagement_read || "")}</div>
-            <div class="list-item"><strong>Funil:</strong><br>${escapeHtml(data.diagnosis?.funnel_read || "")}</div>
-          </div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Leitura local</div>
-          <div class="copy-box">${escapeHtml(data.local_market_read || "")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Oportunidades</div>
-          <div class="tag-list">${(data.opportunities || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Ações prioritárias</div>
-          <div class="list">${(data.priority_actions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Ângulos de conteúdo</div>
-          <div class="tag-list">${(data.content_angles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Sugestões de bio</div>
-          <div class="list">${(data.bio_suggestions || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-        `;
-      } catch (error) {
-        document.getElementById("intelResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
-      } finally {
-        setLoading("intel", false);
-      }
-    }
-
-    async function runCompetitors() {
-      if (!CURRENT) return toast("Selecione uma conta.");
-
-      const competitors = document.getElementById("compList").value
-        .split("\n")
-        .map(v => v.trim())
-        .filter(Boolean);
-
-      setLoading("comp", true);
-      document.getElementById("compResult").innerHTML = "Analisando concorrência...";
-
-      try {
-        const data = await fetch("/api/competitors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            igId: CURRENT.id,
-            niche: document.getElementById("compNiche").value,
-            audience: document.getElementById("compAudience").value,
-            location: document.getElementById("compLocation").value,
-            goal: document.getElementById("compGoal").value,
-            tone: document.getElementById("compTone").value,
-            extra: document.getElementById("compExtra").value,
-            competitors
-          })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
-
-        document.getElementById("compResult").innerHTML = `
-          <div class="result-title">Leitura do mercado</div>
-          <div class="copy-box">${escapeHtml(data.market_read || "")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Contexto competitivo local</div>
-          <div class="copy-box">${escapeHtml(data.local_competitive_context || "")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Perfis de referência sugeridos</div>
-          <div class="tag-list">${(data.suggested_reference_profiles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Padrões competitivos</div>
-          <div class="list">${(data.competitor_patterns || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">O que eles fazem bem</div>
-          <div class="tag-list">${(data.what_they_do_well || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Gaps para explorar</div>
-          <div class="list">${(data.gaps_to_exploit || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Diferenciais de posicionamento</div>
-          <div class="tag-list">${(data.positioning_differentiators || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-          <div style="height:14px"></div>
-          <div class="result-title">Oportunidades de conteúdo</div>
-          <div class="list">${(data.content_opportunities || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}</div>
-        `;
-      } catch (error) {
-        document.getElementById("compResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
-      } finally {
-        setLoading("comp", false);
-      }
-    }
-
-    async function generatePlanner() {
-      if (!CURRENT) return toast("Selecione uma conta.");
-
-      setLoading("plan", true);
-      document.getElementById("planResult").innerHTML = "Gerando planejamento...";
-
-      try {
-        const data = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            igId: CURRENT.id,
-            niche: document.getElementById("planNiche").value,
-            audience: document.getElementById("planAudience").value,
-            goal: document.getElementById("planGoal").value,
-            tone: document.getElementById("planTone").value,
-            location: document.getElementById("planLocation").value,
-            extra: document.getElementById("planExtra").value,
-            totalPosts: Number(document.getElementById("planTotal").value || 16),
-            reels: Number(document.getElementById("planReels").value || 6),
-            carousels: Number(document.getElementById("planCarousels").value || 6),
-            singlePosts: Number(document.getElementById("planSingles").value || 4)
-          })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
-
-        PLAN_DATA = data;
-        CURRENT_POST_FILTER = "ALL";
-        document.getElementById("plannerFilters").style.display = "flex";
-        renderPlanner();
-        savePlannerToHistory();
-        toast("Planner gerado e salvo no histórico!");
-      } catch (error) {
-        document.getElementById("planResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
-      } finally {
-        setLoading("plan", false);
-      }
-    }
-
-    function renderPlanner() {
-      if (!PLAN_DATA) return;
-
-      const filteredPosts = (PLAN_DATA.posts || []).filter(p => {
-        if (CURRENT_POST_FILTER === "ALL") return true;
-        return String(p.format || "").toLowerCase() === CURRENT_POST_FILTER.toLowerCase();
+      accounts.push({
+        ...res.data,
+        ig_token: token
       });
-
-      document.getElementById("planResult").innerHTML = `
-        <div class="result-title">Resumo do mês</div>
-        <div class="copy-box">${escapeHtml(PLAN_DATA.audit?.summary || "")}</div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Estratégia central</div>
-        <div class="list">
-          <div class="list-item"><strong>Estratégia:</strong><br>${escapeHtml(PLAN_DATA.audit?.month_strategy || "")}</div>
-          <div class="list-item"><strong>Funil:</strong><br>${escapeHtml(PLAN_DATA.audit?.funnel_logic || "")}</div>
-        </div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Pilares</div>
-        <div class="tag-list">${(PLAN_DATA.content_pillars || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Calendário resumido</div>
-        <div class="calendar">
-          ${(PLAN_DATA.posts || []).map(p => `
-            <div class="day">
-              <strong>#${p.n} • ${escapeHtml(p.day_suggestion || "Dia")}</strong>
-              <div class="muted">${escapeHtml(p.format || "")} • ${escapeHtml(p.pillar || "")}</div>
-              <div style="margin-top:8px;font-size:13px;line-height:1.5">${escapeHtml(p.title || "")}</div>
-            </div>
-          `).join("")}
-        </div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Posts (${filteredPosts.length})</div>
-        <div class="list">
-          ${filteredPosts.map(p => `
-            <div class="list-item">
-              <div class="format">${escapeHtml(p.format || "")}</div>
-              <div style="font-weight:700;margin-bottom:6px">${escapeHtml(p.title || "")}</div>
-              <div class="muted" style="margin-bottom:8px">Objetivo: ${escapeHtml(p.objective || "")}</div>
-              <div class="copy-box"><strong>Gancho:</strong>\n${escapeHtml(p.hook || "")}\n\n<strong>Legenda:</strong>\n${escapeHtml(p.copy || "")}\n\n<strong>CTA:</strong>\n${escapeHtml(p.cta || "")}</div>
-              <button class="copy-btn" onclick='copyText(${JSON.stringify(buildPostCopy(p))})'>Copiar post completo</button>
-              ${p.script ? `<button class="copy-btn" onclick='copyText(${JSON.stringify(p.script)})'>Copiar roteiro do reels</button>` : ""}
-              ${Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `<button class="copy-btn" onclick='copyText(${JSON.stringify(p.carousel_slides.join("\\n"))})'>Copiar slides do carrossel</button>` : ""}
-            </div>
-          `).join("")}
-        </div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Stories</div>
-        <div class="list">
-          ${(PLAN_DATA.stories || []).map(s => {
-            const storyText = (s.slides || []).map(sl => `Slide ${sl.n}: ${sl.text} (${sl.action || "ação"})`).join("\n\n");
-            return `
-              <div class="story-box">
-                <div style="font-weight:700;margin-bottom:8px">${escapeHtml(s.day || "")} • ${escapeHtml(s.theme || "")}</div>
-                <div class="muted" style="margin-bottom:10px">${escapeHtml(s.objective || "")}</div>
-                <div class="copy-box">${escapeHtml(storyText)}</div>
-                <button class="copy-btn" onclick='copyText(${JSON.stringify(storyText)})'>Copiar sequência</button>
-              </div>
-            `;
-          }).join("")}
-        </div>
-
-        <div style="height:14px"></div>
-        <div class="result-title">Hashtags</div>
-        <div class="tag-list">
-          ${[...(PLAN_DATA.hashtags?.niche || []), ...(PLAN_DATA.hashtags?.local || []), ...(PLAN_DATA.hashtags?.broad || [])]
-            .map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}
-        </div>
-        <div class="notice" style="margin-top:10px">${escapeHtml(PLAN_DATA.hashtags?.strategy || "")}</div>
-      `;
+    } catch (error) {
+      console.error("[IG_PROFILE_ERROR]", error.response?.data || error.message);
     }
+  }
 
-    function buildPostCopy(p) {
-      return [
-        `POST #${p.n || ""}`,
-        `Formato: ${p.format || ""}`,
-        `Título: ${p.title || ""}`,
-        `Objetivo: ${p.objective || ""}`,
-        ``,
-        `Gancho:`,
-        `${p.hook || ""}`,
-        ``,
-        `Legenda:`,
-        `${p.copy || ""}`,
-        ``,
-        `CTA:`,
-        `${p.cta || ""}`,
-        p.script ? `\nRoteiro:\n${p.script}` : "",
-        Array.isArray(p.carousel_slides) && p.carousel_slides.length ? `\nSlides:\n${p.carousel_slides.join("\n")}` : ""
-      ].join("\n");
-    }
+  return accounts;
+}
 
-    function setPostFilter(filter, btn) {
-      CURRENT_POST_FILTER = filter;
-      document.querySelectorAll("#plannerFilters button").forEach(b => b.classList.remove("on"));
-      btn.classList.add("on");
-      renderPlanner();
-    }
-
-    async function exportPlannerPDF() {
-      if (!PLAN_DATA || !CURRENT) {
-        return toast("Gere um planner antes.");
+async function fetchMedia(igId, token, limit = 30) {
+  try {
+    const res = await axios.get(`https://graph.instagram.com/v21.0/${igId}/media`, {
+      params: {
+        fields: "id,caption,media_type,timestamp,like_count,comments_count,permalink",
+        limit,
+        access_token: token
       }
+    });
 
-      const res = await fetch("/api/export-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: PLAN_DATA, username: CURRENT.username })
+    return res.data.data || [];
+  } catch (error) {
+    console.error("[IG_MEDIA_ERROR]", error.response?.data || error.message);
+    return [];
+  }
+}
+
+async function callGroqJSON({ system, user, maxTokens = 4096, temperature = 0.7 }) {
+  if (!groq) throw new Error("GROQ_API_KEY não configurada");
+
+  const completion = await groq.chat.completions.create({
+    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    temperature,
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  const text = completion.choices?.[0]?.message?.content || "";
+  const parsed = safeJsonParse(text);
+
+  if (!parsed) {
+    throw new Error("A IA retornou JSON inválido.");
+  }
+
+  return parsed;
+}
+
+function getAccountFromSession(req, igId) {
+  const accounts = req.session?.user?.accounts || [];
+  return accounts.find((a) => a.id === igId);
+}
+
+function calculateStrategicScore(account, media, metrics, formatMix) {
+  let score = 0;
+
+  if (account.biography) score += 20;
+  if (account.website) score += 10;
+  if (media.length >= 12) score += 20;
+  else if (media.length >= 6) score += 12;
+  else score += 6;
+
+  const formats = Object.keys(formatMix || {});
+  if (formats.length >= 3) score += 15;
+  else if (formats.length === 2) score += 10;
+  else score += 4;
+
+  const engagementRate = Number(metrics.engagement_rate || 0);
+  if (engagementRate >= 3) score += 20;
+  else if (engagementRate >= 1.5) score += 14;
+  else if (engagementRate >= 0.8) score += 8;
+  else score += 4;
+
+  const freq = metrics.posting_frequency_days;
+  if (freq && freq <= 3) score += 15;
+  else if (freq && freq <= 7) score += 10;
+  else if (freq) score += 5;
+
+  return Math.min(100, Math.round(score));
+}
+
+function scoreLabel(score) {
+  if (score >= 80) return "Muito forte";
+  if (score >= 60) return "Bom";
+  if (score >= 40) return "Regular";
+  return "Fraco";
+}
+
+function buildDashboard(media, account) {
+  const likes = media.map((m) => Number(m.like_count || 0));
+  const comments = media.map((m) => Number(m.comments_count || 0));
+  const engagementAverage = avg(media.map((m) => Number(m.like_count || 0) + Number(m.comments_count || 0)));
+  const followerBase = Number(account.followers_count || 0) || 1;
+  const engagementRate = ((engagementAverage / followerBase) * 100).toFixed(2);
+
+  const byFormat = media.reduce((acc, item) => {
+    const key = item.media_type || "UNKNOWN";
+    if (!acc[key]) acc[key] = { count: 0, likes: 0, comments: 0 };
+    acc[key].count += 1;
+    acc[key].likes += Number(item.like_count || 0);
+    acc[key].comments += Number(item.comments_count || 0);
+    return acc;
+  }, {});
+
+  const topPosts = [...media]
+    .sort((a, b) => {
+      const aScore = Number(a.like_count || 0) + Number(a.comments_count || 0);
+      const bScore = Number(b.like_count || 0) + Number(b.comments_count || 0);
+      return bScore - aScore;
+    })
+    .slice(0, 5);
+
+  const recentFrequencyDays = (() => {
+    if (media.length < 2) return null;
+    const ordered = [...media].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    let totalDiff = 0;
+    for (let i = 1; i < ordered.length; i++) {
+      const prev = new Date(ordered[i - 1].timestamp).getTime();
+      const curr = new Date(ordered[i].timestamp).getTime();
+      totalDiff += Math.abs(curr - prev);
+    }
+    return Math.round(totalDiff / (ordered.length - 1) / (1000 * 60 * 60 * 24));
+  })();
+
+  const metrics = {
+    avg_likes: Math.round(avg(likes)),
+    avg_comments: Math.round(avg(comments)),
+    avg_engagement: Math.round(engagementAverage),
+    engagement_rate: Number(engagementRate),
+    posting_frequency_days: recentFrequencyDays
+  };
+
+  const strategic_score = calculateStrategicScore(account, media, metrics, byFormat);
+
+  return {
+    account: {
+      id: account.id,
+      username: account.username,
+      name: account.name,
+      biography: account.biography || "",
+      website: account.website || "",
+      followers_count: Number(account.followers_count || 0),
+      media_count: Number(account.media_count || 0)
+    },
+    metrics,
+    strategic_score,
+    strategic_score_label: scoreLabel(strategic_score),
+    format_mix: byFormat,
+    top_posts: topPosts
+  };
+}
+
+function plannerSystemPrompt() {
+  return `
+Você é um estrategista sênior de conteúdo e posicionamento para Instagram, com mentalidade de agência.
+Você trabalha com contas reais de empresas de nichos diversos.
+
+Seu papel é pensar como estrategista, não como redator genérico.
+Você deve analisar posicionamento, mercado, concorrência, público, localização e objetivo comercial.
+
+REGRAS OBRIGATÓRIAS:
+- escreva sempre em português do Brasil
+- retorne SOMENTE JSON válido
+- seja específico, prático e estratégico
+- evite frases genéricas e previsíveis
+- NÃO use repetidamente ganchos como "você sabia", "arraste para o lado", "sabia que", "confira", "descubra"
+- varie os ângulos de conteúdo
+- pense em funil e intenção do post
+- crie ideias que uma agência realmente apresentaria para cliente
+- considere contexto local quando a localização for informada
+- quando falar de concorrência, use raciocínio estratégico e não invente métricas exatas
+`;
+}
+
+function buildContextBlock({
+  account,
+  niche = "",
+  audience = "",
+  goal = "",
+  tone = "",
+  extra = "",
+  location = ""
+}) {
+  return `
+CONTEXTO DA EMPRESA:
+- Perfil: @${account.username}
+- Nome: ${account.name || ""}
+- Nicho: ${niche}
+- Público: ${audience}
+- Objetivo: ${goal}
+- Tom de voz: ${tone}
+- Localização: ${location}
+- Contexto extra: ${extra}
+- Bio atual: ${account.biography || ""}
+- Website: ${account.website || ""}
+
+IMPORTANTE:
+Use a localização e o nicho para tornar a análise e as sugestões mais aderentes ao contexto real da empresa.
+`;
+}
+
+app.post("/api/auth", async (req, res) => {
+  if (!IG_TOKENS.length) {
+    return res.status(400).json({
+      success: false,
+      error: "Nenhum token configurado em IG_TOKENS."
+    });
+  }
+
+  try {
+    const accounts = await fetchIGProfiles(IG_TOKENS);
+
+    if (!accounts.length) {
+      return res.status(400).json({
+        success: false,
+        error: "Nenhuma conta foi carregada com os tokens atuais."
       });
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `plano_${CURRENT.username}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
     }
 
-    function savePlannerToHistory() {
-      if (!PLAN_DATA || !CURRENT) return;
+    req.session.user = { accounts };
 
-      const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      currentHistory.unshift({
-        id: Date.now(),
-        username: CURRENT.username,
-        accountId: CURRENT.id,
-        createdAt: new Date().toISOString(),
-        plan: PLAN_DATA
+    return res.json({
+      success: true,
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        username: a.username,
+        followers_count: a.followers_count
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get("/api/me", (req, res) => {
+  if (!req.session.user) {
+    return res.json({ logged: false, accounts: [] });
+  }
+
+  return res.json({
+    logged: true,
+    accounts: req.session.user.accounts || []
+  });
+});
+
+app.get("/auth/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/");
+  });
+});
+
+app.post("/api/test-token", async (req, res) => {
+  const token = (req.body?.token || "").trim();
+  if (!token) {
+    return res.status(400).json({ success: false, error: "Token vazio." });
+  }
+
+  try {
+    const accounts = await fetchIGProfiles([token]);
+    if (!accounts.length) {
+      return res.status(400).json({ success: false, error: "Token inválido ou sem acesso." });
+    }
+
+    if (!req.session.user) req.session.user = { accounts: [] };
+
+    for (const acc of accounts) {
+      const exists = req.session.user.accounts.find((a) => a.id === acc.id);
+      if (!exists) req.session.user.accounts.push(acc);
+    }
+
+    return res.json({ success: true, accounts });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/api/dashboard/:igId", async (req, res) => {
+  const account = getAccountFromSession(req, req.params.igId);
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada na sessão." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 30);
+  const dashboard = buildDashboard(media, account);
+
+  return res.json({
+    ...dashboard,
+    media_sample: media.slice(0, 12)
+  });
+});
+
+app.post("/api/intelligence", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const {
+    igId,
+    niche = "",
+    audience = "",
+    goal = "",
+    tone = "",
+    extra = "",
+    location = ""
+  } = req.body || {};
+
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 20);
+  const dashboard = buildDashboard(media, account);
+
+  const userPrompt = `
+Analise este perfil de Instagram e devolva um diagnóstico estratégico real, útil e específico.
+
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+
+DADOS DO DASHBOARD:
+${JSON.stringify(dashboard, null, 2)}
+
+ÚLTIMOS POSTS:
+${summarizePosts(media)}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
+  "executive_summary": "resumo estratégico em 3 a 5 frases",
+  "diagnosis": {
+    "positioning": "leitura do posicionamento",
+    "content_strength": "o que está funcionando",
+    "content_gap": "o que está faltando",
+    "engagement_read": "interpretação do engajamento",
+    "funnel_read": "leitura do funil"
+  },
+  "local_market_read": "como a localização e o contexto local impactam o perfil",
+  "opportunities": [
+    "oportunidade 1",
+    "oportunidade 2",
+    "oportunidade 3",
+    "oportunidade 4"
+  ],
+  "priority_actions": [
+    "ação prática 1",
+    "ação prática 2",
+    "ação prática 3",
+    "ação prática 4"
+  ],
+  "content_angles": [
+    "ângulo 1",
+    "ângulo 2",
+    "ângulo 3",
+    "ângulo 4",
+    "ângulo 5"
+  ],
+  "bio_suggestions": [
+    "bio 1",
+    "bio 2",
+    "bio 3"
+  ]
+}
+
+REGRAS:
+- não dê resposta genérica
+- use a localização para enriquecer o raciocínio
+- não repita ângulos superficiais
+`;
+
+  try {
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 3200
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/competitors", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const {
+    igId,
+    niche = "",
+    audience = "",
+    competitors = [],
+    location = "",
+    goal = "",
+    tone = "",
+    extra = ""
+  } = req.body || {};
+
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 15);
+
+  const competitorsText =
+    Array.isArray(competitors) && competitors.length
+      ? competitors.map((c, i) => `${i + 1}. ${c}`).join("\n")
+      : "Nenhum concorrente específico informado.";
+
+  const userPrompt = `
+Faça uma análise estratégica de concorrência para este perfil.
+
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+
+POSTS RECENTES DO PERFIL:
+${summarizePosts(media)}
+
+CONCORRENTES/REFERÊNCIAS INFORMADAS:
+${competitorsText}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
+  "market_read": "leitura geral do cenário competitivo",
+  "local_competitive_context": "como localização e nicho afetam a concorrência",
+  "suggested_reference_profiles": [
+    "tipo de perfil/referência 1",
+    "tipo de perfil/referência 2",
+    "tipo de perfil/referência 3"
+  ],
+  "competitor_patterns": [
+    "padrão 1",
+    "padrão 2",
+    "padrão 3",
+    "padrão 4"
+  ],
+  "what_they_do_well": [
+    "ponto 1",
+    "ponto 2",
+    "ponto 3"
+  ],
+  "gaps_to_exploit": [
+    "gap 1",
+    "gap 2",
+    "gap 3",
+    "gap 4"
+  ],
+  "positioning_differentiators": [
+    "diferencial 1",
+    "diferencial 2",
+    "diferencial 3"
+  ],
+  "content_opportunities": [
+    "conteúdo 1",
+    "conteúdo 2",
+    "conteúdo 3",
+    "conteúdo 4",
+    "conteúdo 5"
+  ]
+}
+
+REGRAS:
+- se não houver concorrentes manuais, sugira referências com base em nicho e localização
+- pense como agência, não como texto genérico
+- não invente números exatos dos concorrentes
+`;
+
+  try {
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 3200
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/generate", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const {
+    igId,
+    niche = "",
+    audience = "",
+    goal = "",
+    tone = "",
+    extra = "",
+    location = "",
+    totalPosts = 16,
+    reels = 6,
+    carousels = 6,
+    singlePosts = 4
+  } = req.body || {};
+
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 20);
+
+  const userPrompt = `
+Crie um planejamento mensal completo para Instagram com foco profissional de agência.
+
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+
+MIX SOLICITADO:
+- Total de posts: ${totalPosts}
+- Reels: ${reels}
+- Carrosséis: ${carousels}
+- Posts estáticos: ${singlePosts}
+
+POSTS RECENTES:
+${summarizePosts(media)}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
+  "audit": {
+    "summary": "resumo do plano",
+    "month_strategy": "estratégia central do mês",
+    "funnel_logic": "como o mês foi distribuído"
+  },
+  "posts": [
+    {
+      "n": 1,
+      "week": 1,
+      "day_suggestion": "Segunda",
+      "format": "Reels",
+      "pillar": "Autoridade",
+      "title": "título",
+      "objective": "objetivo do post",
+      "hook": "gancho inicial",
+      "copy": "legenda completa",
+      "cta": "cta",
+      "script": "roteiro completo se for reels",
+      "carousel_slides": ["slide 1", "slide 2", "slide 3"]
+    }
+  ],
+  "stories": [
+    {
+      "day": "Dia 1",
+      "theme": "tema",
+      "objective": "objetivo",
+      "slides": [
+        { "n": 1, "text": "texto do slide 1", "action": "ação" },
+        { "n": 2, "text": "texto do slide 2", "action": "ação" },
+        { "n": 3, "text": "texto do slide 3", "action": "ação" }
+      ]
+    }
+  ],
+  "hashtags": {
+    "niche": ["#hashtag1", "#hashtag2", "#hashtag3"],
+    "local": ["#local1", "#local2"],
+    "broad": ["#ampla1", "#ampla2", "#ampla3"],
+    "strategy": "estratégia de hashtags"
+  },
+  "content_pillars": [
+    "pilar 1",
+    "pilar 2",
+    "pilar 3"
+  ],
+  "priority_ctas": [
+    "cta 1",
+    "cta 2",
+    "cta 3"
+  ]
+}
+
+REGRAS IMPORTANTÍSSIMAS:
+- o número de posts precisa bater com o mix solicitado
+- reels precisam ter script
+- carrosséis precisam ter slides
+- stories precisam ser úteis e práticos
+- use a localização e o nicho para tornar o plano mais aderente ao mercado da empresa
+- NÃO use ganchos repetitivos tipo "você sabia" em vários posts
+- varie os inícios dos conteúdos
+- alterne posts de dor, desejo, objeção, bastidor, autoridade, prova, comparação, percepção de erro, contexto local, oportunidade comercial
+- evite planner com cara de IA
+- títulos e ângulos precisam soar estratégicos, naturais e menos previsíveis
+- não faça todos os posts começarem iguais
+`;
+
+  try {
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 7600,
+      temperature: 0.8
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/export-pdf", (req, res) => {
+  const { plan, username = "perfil" } = req.body || {};
+
+  try {
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const filename = `plano_${username}_${Date.now()}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    doc.fontSize(20).text("Plano Estratégico de Instagram", { align: "center" });
+    doc.moveDown(0.3);
+    doc.fontSize(12).text(`@${username}`, { align: "center" });
+    doc.moveDown(1);
+
+    if (plan?.audit) {
+      doc.fontSize(15).text("Resumo Estratégico");
+      doc.moveDown(0.3);
+      doc.fontSize(10).text(`Resumo: ${plan.audit.summary || ""}`);
+      doc.moveDown(0.2);
+      doc.text(`Estratégia do mês: ${plan.audit.month_strategy || ""}`);
+      doc.moveDown(0.2);
+      doc.text(`Lógica do funil: ${plan.audit.funnel_logic || ""}`);
+      doc.moveDown(1);
+    }
+
+    if (Array.isArray(plan?.posts)) {
+      doc.fontSize(15).text("Posts do Mês");
+      doc.moveDown(0.5);
+
+      plan.posts.slice(0, 12).forEach((post) => {
+        doc.fontSize(11).text(`#${post.n} • ${post.format} • ${post.title}`, { underline: true });
+        doc.fontSize(9).text(`Objetivo: ${post.objective || ""}`);
+        doc.text(`Gancho: ${post.hook || ""}`);
+        doc.text(`CTA: ${post.cta || ""}`);
+        doc.moveDown(0.4);
       });
-
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(currentHistory.slice(0, 20)));
-      renderHistory();
     }
 
-    function renderHistory() {
-      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      const box = document.getElementById("historyList");
+    doc.end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-      if (!history.length) {
-        box.innerHTML = `<div class="notice">Nenhum planner salvo ainda.</div>`;
-        return;
-      }
+app.get("/api/status", (req, res) => {
+  res.json({
+    ok: true,
+    groq: Boolean(GROQ_API_KEY),
+    tokens_configured: IG_TOKENS.length,
+    base_url: BASE_URL
+  });
+});
 
-      box.innerHTML = history.map(item => `
-        <div class="history-item" onclick="loadHistoryItem(${item.id})">
-          <div style="font-weight:700;margin-bottom:6px">@${escapeHtml(item.username)}</div>
-          <div class="muted">${new Date(item.createdAt).toLocaleString("pt-BR")}</div>
-          <div style="margin-top:8px;font-size:13px;line-height:1.5">${escapeHtml(item.plan?.audit?.month_strategy || "Sem estratégia")}</div>
-        </div>
-      `).join("");
-    }
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
-    function loadHistoryItem(id) {
-      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      const item = history.find(h => h.id === id);
-      if (!item) return;
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-      PLAN_DATA = item.plan;
-      CURRENT_POST_FILTER = "ALL";
-      document.getElementById("plannerFilters").style.display = "flex";
-      renderPlanner();
+app.get("/app", (req, res) => {
+  if (!req.session.user) {
+    return res.redirect("/");
+  }
+  res.sendFile(path.join(__dirname, "public", "app.html"));
+});
 
-      const plannerTab = [...document.querySelectorAll(".tab")].find(t => t.textContent.includes("Planner"));
-      switchPage("planner", plannerTab);
-      document.querySelectorAll("#plannerFilters button").forEach((b, idx) => {
-        b.classList.toggle("on", idx === 0);
-      });
-      toast("Planner carregado do histórico.");
-    }
+app.get("/privacy.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "privacy.html"));
+});
 
-    function clearHistory() {
-      localStorage.removeItem(HISTORY_KEY);
-      renderHistory();
-      toast("Histórico limpo.");
-    }
-
-    async function testToken() {
-      const token = document.getElementById("manualToken").value.trim();
-      if (!token) return toast("Cole um token.");
-
-      const data = await fetch("/api/test-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      }).then(r => r.json());
-
-      if (!data.success) {
-        return toast(data.error || "Erro no token.");
-      }
-
-      data.accounts.forEach(acc => {
-        const exists = ACCOUNTS.find(a => a.id === acc.id);
-        if (!exists) ACCOUNTS.push(acc);
-      });
-
-      document.getElementById("manualToken").value = "";
-      renderAccounts();
-      toast("Conta conectada.");
-    }
-
-    async function loadStatus() {
-      const data = await fetch("/api/status").then(r => r.json()).catch(() => null);
-      const box = document.getElementById("statusBox");
-
-      if (!data) {
-        box.innerHTML = `<div class="list-item">Erro ao carregar status.</div>`;
-        return;
-      }
-
-      box.innerHTML = `
-        <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
-        <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
-        <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
-      `;
-    }
-
-    function setLoading(type, isLoading) {
-      const btnMap = {
-        intel: "intelBtn",
-        comp: "compBtn",
-        plan: "planBtn"
-      };
-      const loaderMap = {
-        intel: "intelLoader",
-        comp: "compLoader",
-        plan: "planLoader"
-      };
-
-      const btn = document.getElementById(btnMap[type]);
-      const loader = document.getElementById(loaderMap[type]);
-
-      if (btn) btn.disabled = isLoading;
-      if (loader) loader.classList.toggle("on", isLoading);
-    }
-
-    function copyText(text) {
-      navigator.clipboard.writeText(text || "");
-      toast("Copiado!");
-    }
-
-    function formatNumber(value) {
-      return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
-    }
-
-    function escapeHtml(str) {
-      return String(str || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    init();
-  </script>
-</body>
-</html>
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Instagram Planner Agency 5.2 rodando em ${BASE_URL}`);
+  console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
+  console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
+});
