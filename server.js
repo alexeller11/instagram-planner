@@ -79,9 +79,9 @@ function compactText(value, max = 300) {
 
 function summarizePosts(media = []) {
   return media
-    .slice(0, 12)
+    .slice(0, 15)
     .map((m, i) => {
-      const caption = compactText(m.caption || "Sem legenda", 160);
+      const caption = compactText(m.caption || "Sem legenda", 180);
       return `${i + 1}. [${m.media_type}] ${caption} | likes=${m.like_count || 0} | comments=${m.comments_count || 0}`;
     })
     .join("\n");
@@ -145,9 +145,11 @@ async function callGroqJSON({ system, user, maxTokens = 4096, temperature = 0.7 
 
   const text = completion.choices?.[0]?.message?.content || "";
   const parsed = safeJsonParse(text);
+
   if (!parsed) {
     throw new Error("A IA retornou JSON inválido.");
   }
+
   return parsed;
 }
 
@@ -329,6 +331,14 @@ Use nicho, público, objetivo e localização para tornar tudo mais aderente ao 
 `;
 }
 
+function normalizeFormat(value) {
+  const raw = String(value || "").toLowerCase();
+  if (raw.includes("reel")) return "Reels";
+  if (raw.includes("carross")) return "Carrossel";
+  if (raw.includes("carousel")) return "Carrossel";
+  return "Post";
+}
+
 function buildPlannerMetaPrompt({ account, niche, audience, goal, tone, extra, location, totalPosts, reels, carousels, singlePosts, media }) {
   return `
 Você vai montar a ESTRATÉGIA do mês antes de escrever as peças.
@@ -338,7 +348,7 @@ ${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
 POSTS RECENTES:
 ${summarizePosts(media)}
 
-MIX SOLICITADO:
+MIX OBRIGATÓRIO:
 - Total de posts: ${totalPosts}
 - Reels: ${reels}
 - Carrosséis: ${carousels}
@@ -384,10 +394,12 @@ RETORNE EXATAMENTE NESTE JSON:
 }
 
 REGRAS:
-- distribuir intenções de forma estratégica
+- criar EXATAMENTE ${totalPosts} blueprints
+- criar EXATAMENTE ${reels} blueprints com format "Reels"
+- criar EXATAMENTE ${carousels} blueprints com format "Carrossel"
+- criar EXATAMENTE ${singlePosts} blueprints com format "Post"
+- não repetir ângulo
 - variar entre dor, erro, objeção, prova, bastidor, desejo, percepção, contexto local e venda
-- evitar repetição de ângulo
-- não montar plano morno
 `;
 }
 
@@ -436,6 +448,8 @@ RETORNE EXATAMENTE NESTE JSON:
 }
 
 REGRAS DE ESCRITA:
+- escrever EXATAMENTE a mesma quantidade de posts dos blueprints
+- manter os formatos dos blueprints
 - toda legenda deve ter substância real
 - toda legenda deve cumprir a promessa do título
 - se for explicativo, precisa explicar
@@ -444,10 +458,10 @@ REGRAS DE ESCRITA:
 - se for comercial, pode vender, mas com argumento
 - reels precisam ter script com cena, fala, progressão e fechamento
 - carrosséis precisam ter slides com progressão lógica
+- posts estáticos não precisam de carousel_slides
 - não usar textos vazios como:
   "nossa equipe explica", "podemos ajudar", "veja como", "entenda melhor", "saiba mais"
 - não gerar legendas curtas demais
-- o conteúdo precisa ser forte o bastante para valer sozinho, mesmo sem o CTA
 `;
 }
 
@@ -472,6 +486,8 @@ RETORNE NO MESMO FORMATO JSON, COMPLETO:
 ${JSON.stringify(draftPlan, null, 2)}
 
 REGRAS:
+- não alterar a quantidade de posts
+- não alterar a distribuição de formatos
 - legenda precisa soar útil
 - título precisa ser magnético
 - reels precisam ter script forte
@@ -479,6 +495,64 @@ REGRAS:
 - não pode haver frase vaga
 - se o conteúdo prometer explicar algo, ele deve explicar
 `;
+}
+
+function forcePlannerMix(plan, { totalPosts, reels, carousels, singlePosts }) {
+  if (!plan || !Array.isArray(plan.posts)) return plan;
+
+  let posts = plan.posts.map((post, idx) => ({
+    ...post,
+    n: idx + 1,
+    format: normalizeFormat(post.format)
+  }));
+
+  const desiredFormats = [
+    ...Array(reels).fill("Reels"),
+    ...Array(carousels).fill("Carrossel"),
+    ...Array(singlePosts).fill("Post")
+  ];
+
+  if (desiredFormats.length !== totalPosts) {
+    throw new Error("O mix solicitado não bate com o total de posts.");
+  }
+
+  if (posts.length < totalPosts) {
+    const last = posts[posts.length - 1] || {
+      week: 1,
+      day_suggestion: "Segunda",
+      pillar: "Autoridade",
+      intent: "Autoridade",
+      title: "Post a complementar",
+      objective: "complementar o plano",
+      hook: "Hook a complementar",
+      copy: "Conteúdo complementar a aprofundar.",
+      cta: "Fale conosco"
+    };
+
+    while (posts.length < totalPosts) {
+      posts.push({
+        ...last,
+        n: posts.length + 1,
+        title: `${last.title} ${posts.length + 1}`,
+        format: "Post"
+      });
+    }
+  }
+
+  if (posts.length > totalPosts) {
+    posts = posts.slice(0, totalPosts);
+  }
+
+  posts = posts.map((post, idx) => ({
+    ...post,
+    n: idx + 1,
+    format: desiredFormats[idx]
+  }));
+
+  return {
+    ...plan,
+    posts
+  };
 }
 
 function enforcePlannerQuality(plan) {
@@ -499,29 +573,37 @@ function enforcePlannerQuality(plan) {
     let copy = String(post.copy || "").trim();
     let script = String(post.script || "").trim();
 
-    if (copy && copy.length < 220) {
-      copy += "\n\nEsse conteúdo ainda precisa ser aprofundado para entregar valor de verdade ao leitor.";
+    if (copy.length < 260) {
+      copy += "\n\nAprofunde este conteúdo com explicação prática, consequência real e orientação clara para o leitor.";
     }
 
     for (const fragment of bannedFragments) {
       if (copy.toLowerCase().includes(fragment)) {
-        copy += "\n\nAprofunde esta ideia com explicação concreta, consequência real e orientação prática.";
+        copy += "\n\nSubstitua discurso institucional por explicação concreta, argumento ou orientação prática.";
         break;
       }
     }
 
-    if (String(post.format || "").toLowerCase() === "reels" && script.length < 180) {
-      script += "\n\nCena 1: abertura visual forte.\nCena 2: explicação prática do problema.\nCena 3: consequência ou virada.\nCena 4: fechamento com orientação.";
+    if (post.format === "Reels" && script.length < 260) {
+      script += "\n\nCena 1: abertura visual forte.\nCena 2: contexto do problema.\nCena 3: explicação prática.\nCena 4: consequência ou virada.\nCena 5: fechamento com CTA.";
     }
 
-    if (String(post.format || "").toLowerCase().includes("carross") && (!Array.isArray(post.carousel_slides) || post.carousel_slides.length < 4)) {
-      post.carousel_slides = [
-        post.title || "Tema do carrossel",
-        "Contextualize o problema ou a dúvida.",
-        "Aprofunde com explicação prática.",
-        "Mostre o risco, erro ou oportunidade.",
-        "Feche com direção clara para o leitor."
-      ];
+    if (post.format === "Carrossel") {
+      if (!Array.isArray(post.carousel_slides) || post.carousel_slides.length < 5) {
+        post.carousel_slides = [
+          post.title || "Tema do carrossel",
+          "Abra o assunto com contexto real.",
+          "Explique o ponto central com clareza.",
+          "Mostre consequência, erro ou oportunidade.",
+          "Feche com orientação prática."
+        ];
+      }
+    } else {
+      post.carousel_slides = [];
+    }
+
+    if (post.format !== "Reels") {
+      post.script = "";
     }
 
     return {
@@ -553,43 +635,127 @@ async function generateAgencyLevelPlanner({ account, niche, audience, goal, tone
       singlePosts,
       media
     }),
-    maxTokens: 4200,
+    maxTokens: 4500,
     temperature: 0.75
   });
 
   const draftPlan = await callGroqJSON({
     system,
     user: buildPlannerWritingPrompt(metaPlan),
-    maxTokens: 7800,
+    maxTokens: 8000,
     temperature: 0.85
   });
 
   const reviewedPlan = await callGroqJSON({
     system,
     user: buildPlannerReviewPrompt(draftPlan),
-    maxTokens: 7800,
-    temperature: 0.75
+    maxTokens: 8000,
+    temperature: 0.72
   });
 
-  return enforcePlannerQuality(reviewedPlan);
+  const mixed = forcePlannerMix(reviewedPlan, { totalPosts, reels, carousels, singlePosts });
+  return enforcePlannerQuality(mixed);
 }
+
+function renderPostToPdf(doc, post) {
+  doc.font("Helvetica-Bold").fontSize(16).fillColor("#111111").text(`#${post.n} • ${post.format} • ${post.title}`);
+  doc.moveDown(0.3);
+
+  doc.font("Helvetica").fontSize(10).fillColor("#555555");
+  doc.text(`Objetivo: ${post.objective || ""}`);
+  doc.text(`Pilar: ${post.pillar || ""} | Intenção: ${post.intent || ""} | Sugestão de dia: ${post.day_suggestion || ""}`);
+  doc.moveDown(0.5);
+
+  doc.font("Helvetica-Bold").fontSize(11).fillColor("#111111").text("Gancho");
+  doc.font("Helvetica").fontSize(10).text(post.hook || "");
+  doc.moveDown(0.5);
+
+  doc.font("Helvetica-Bold").fontSize(11).text("Legenda");
+  doc.font("Helvetica").fontSize(10).text(post.copy || "");
+  doc.moveDown(0.5);
+
+  if (post.format === "Reels" && post.script) {
+    doc.font("Helvetica-Bold").fontSize(11).text("Roteiro do reels");
+    doc.font("Helvetica").fontSize(10).text(post.script);
+    doc.moveDown(0.5);
+  }
+
+  if (post.format === "Carrossel" && Array.isArray(post.carousel_slides) && post.carousel_slides.length) {
+    doc.font("Helvetica-Bold").fontSize(11).text("Slides do carrossel");
+    doc.font("Helvetica").fontSize(10);
+    post.carousel_slides.forEach((slide, idx) => doc.text(`${idx + 1}. ${slide}`));
+    doc.moveDown(0.5);
+  }
+
+  doc.font("Helvetica-Bold").fontSize(11).text("CTA");
+  doc.font("Helvetica").fontSize(10).text(post.cta || "");
+}
+
+app.post("/api/suggest", async (req, res) => {
+  if (!ensureGroq(res)) return;
+
+  const { igId } = req.body || {};
+  const account = getAccountFromSession(req, igId);
+
+  if (!account) {
+    return res.status(404).json({ error: "Conta não encontrada." });
+  }
+
+  const media = await fetchMedia(account.id, account.ig_token, 18);
+
+  const prompt = `
+Faça um auto preenchimento estratégico para esta conta de Instagram.
+
+PERFIL:
+- @${account.username}
+- Nome: ${account.name || ""}
+- Bio: ${account.biography || ""}
+- Website: ${account.website || ""}
+- Seguidores: ${account.followers_count || 0}
+
+POSTS RECENTES:
+${summarizePosts(media)}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
+  "niche": "nicho sugerido",
+  "audience": "público sugerido",
+  "goal": "objetivo sugerido",
+  "tone": "tom de voz sugerido",
+  "location": "localização provável ou sugerida",
+  "extra": "contexto estratégico curto"
+}
+
+REGRAS:
+- seja específico
+- use o nome, bio e posts para inferir
+- se não souber a localização com precisão, dê uma sugestão plausível curta, ou deixe vazio
+`;
+
+  try {
+    const data = await callGroqJSON({
+      system: plannerSystemPrompt(),
+      user: prompt,
+      maxTokens: 1200,
+      temperature: 0.4
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 app.post("/api/auth", async (req, res) => {
   if (!IG_TOKENS.length) {
-    return res.status(400).json({
-      success: false,
-      error: "Nenhum token configurado em IG_TOKENS."
-    });
+    return res.status(400).json({ success: false, error: "Nenhum token configurado em IG_TOKENS." });
   }
 
   try {
     const accounts = await fetchIGProfiles(IG_TOKENS);
 
     if (!accounts.length) {
-      return res.status(400).json({
-        success: false,
-        error: "Nenhuma conta foi carregada com os tokens atuais."
-      });
+      return res.status(400).json({ success: false, error: "Nenhuma conta foi carregada com os tokens atuais." });
     }
 
     req.session.user = { accounts };
@@ -608,27 +774,17 @@ app.post("/api/auth", async (req, res) => {
 });
 
 app.get("/api/me", (req, res) => {
-  if (!req.session.user) {
-    return res.json({ logged: false, accounts: [] });
-  }
-
-  return res.json({
-    logged: true,
-    accounts: req.session.user.accounts || []
-  });
+  if (!req.session.user) return res.json({ logged: false, accounts: [] });
+  return res.json({ logged: true, accounts: req.session.user.accounts || [] });
 });
 
 app.get("/auth/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.redirect("/");
-  });
+  req.session.destroy(() => res.redirect("/"));
 });
 
 app.post("/api/test-token", async (req, res) => {
   const token = (req.body?.token || "").trim();
-  if (!token) {
-    return res.status(400).json({ success: false, error: "Token vazio." });
-  }
+  if (!token) return res.status(400).json({ success: false, error: "Token vazio." });
 
   try {
     const accounts = await fetchIGProfiles([token]);
@@ -651,9 +807,7 @@ app.post("/api/test-token", async (req, res) => {
 
 app.get("/api/dashboard/:igId", async (req, res) => {
   const account = getAccountFromSession(req, req.params.igId);
-  if (!account) {
-    return res.status(404).json({ error: "Conta não encontrada na sessão." });
-  }
+  if (!account) return res.status(404).json({ error: "Conta não encontrada na sessão." });
 
   const media = await fetchMedia(account.id, account.ig_token, 30);
   const dashboard = buildDashboard(media, account);
@@ -667,20 +821,9 @@ app.get("/api/dashboard/:igId", async (req, res) => {
 app.post("/api/intelligence", async (req, res) => {
   if (!ensureGroq(res)) return;
 
-  const {
-    igId,
-    niche = "",
-    audience = "",
-    goal = "",
-    tone = "",
-    extra = "",
-    location = ""
-  } = req.body || {};
-
+  const { igId, niche = "", audience = "", goal = "", tone = "", extra = "", location = "" } = req.body || {};
   const account = getAccountFromSession(req, igId);
-  if (!account) {
-    return res.status(404).json({ error: "Conta não encontrada." });
-  }
+  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
   const media = await fetchMedia(account.id, account.ig_token, 20);
   const dashboard = buildDashboard(media, account);
@@ -712,11 +855,6 @@ RETORNE EXATAMENTE NESTE JSON:
   "content_angles": ["ângulo forte 1", "ângulo forte 2", "ângulo forte 3", "ângulo forte 4", "ângulo forte 5"],
   "bio_suggestions": ["bio 1", "bio 2", "bio 3"]
 }
-
-REGRAS:
-- seja consultivo e direto
-- não escreva de forma escolar
-- seja específico
 `;
 
   try {
@@ -748,9 +886,7 @@ app.post("/api/competitors", async (req, res) => {
   } = req.body || {};
 
   const account = getAccountFromSession(req, igId);
-  if (!account) {
-    return res.status(404).json({ error: "Conta não encontrada." });
-  }
+  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
   const media = await fetchMedia(account.id, account.ig_token, 15);
 
@@ -781,11 +917,6 @@ RETORNE EXATAMENTE NESTE JSON:
   "positioning_differentiators": ["diferencial 1", "diferencial 2", "diferencial 3"],
   "content_opportunities": ["conteúdo 1", "conteúdo 2", "conteúdo 3", "conteúdo 4", "conteúdo 5"]
 }
-
-REGRAS:
-- não invente números exatos
-- use nicho + localização
-- seja estratégico
 `;
 
   try {
@@ -820,13 +951,17 @@ app.post("/api/generate", async (req, res) => {
   } = req.body || {};
 
   const account = getAccountFromSession(req, igId);
-  if (!account) {
-    return res.status(404).json({ error: "Conta não encontrada." });
-  }
-
-  const media = await fetchMedia(account.id, account.ig_token, 20);
+  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
   try {
+    if (Number(totalPosts) !== Number(reels) + Number(carousels) + Number(singlePosts)) {
+      return res.status(400).json({
+        error: "O total de posts precisa ser exatamente a soma de reels + carrosséis + estáticos."
+      });
+    }
+
+    const media = await fetchMedia(account.id, account.ig_token, 20);
+
     const plan = await generateAgencyLevelPlanner({
       account,
       niche,
@@ -835,10 +970,10 @@ app.post("/api/generate", async (req, res) => {
       tone,
       extra,
       location,
-      totalPosts,
-      reels,
-      carousels,
-      singlePosts,
+      totalPosts: Number(totalPosts),
+      reels: Number(reels),
+      carousels: Number(carousels),
+      singlePosts: Number(singlePosts),
       media
     });
 
@@ -847,42 +982,6 @@ app.post("/api/generate", async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 });
-
-function renderPostToPdf(doc, post) {
-  doc.font("Helvetica-Bold").fontSize(16).fillColor("#111111").text(`#${post.n} • ${post.format} • ${post.title}`);
-  doc.moveDown(0.3);
-
-  doc.font("Helvetica").fontSize(10).fillColor("#555555");
-  doc.text(`Objetivo: ${post.objective || ""}`);
-  doc.text(`Pilar: ${post.pillar || ""} | Intenção: ${post.intent || ""} | Sugestão de dia: ${post.day_suggestion || ""}`);
-  doc.moveDown(0.5);
-
-  doc.font("Helvetica-Bold").fontSize(11).fillColor("#111111").text("Gancho");
-  doc.font("Helvetica").fontSize(10).text(post.hook || "");
-  doc.moveDown(0.5);
-
-  doc.font("Helvetica-Bold").fontSize(11).text("Legenda");
-  doc.font("Helvetica").fontSize(10).text(post.copy || "");
-  doc.moveDown(0.5);
-
-  if (String(post.format || "").toLowerCase() === "reels" && post.script) {
-    doc.font("Helvetica-Bold").fontSize(11).text("Roteiro do reels");
-    doc.font("Helvetica").fontSize(10).text(post.script);
-    doc.moveDown(0.5);
-  }
-
-  if (Array.isArray(post.carousel_slides) && post.carousel_slides.length) {
-    doc.font("Helvetica-Bold").fontSize(11).text("Slides do carrossel");
-    doc.font("Helvetica").fontSize(10);
-    post.carousel_slides.forEach((slide, idx) => {
-      doc.text(`${idx + 1}. ${slide}`);
-    });
-    doc.moveDown(0.5);
-  }
-
-  doc.font("Helvetica-Bold").fontSize(11).text("CTA");
-  doc.font("Helvetica").fontSize(10).text(post.cta || "");
-}
 
 app.post("/api/export-pdf", (req, res) => {
   const { plan, username = "perfil" } = req.body || {};
@@ -896,7 +995,6 @@ app.post("/api/export-pdf", (req, res) => {
 
     doc.pipe(res);
 
-    // capa
     doc.rect(0, 0, doc.page.width, 170).fill("#19152f");
     doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(24).text("PLANO ESTRATÉGICO DE INSTAGRAM", 40, 50, {
       width: doc.page.width - 80,
@@ -937,7 +1035,6 @@ app.post("/api/export-pdf", (req, res) => {
       doc.moveDown(0.8);
     }
 
-    // calendário resumido
     if (Array.isArray(plan?.posts) && plan.posts.length) {
       doc.addPage();
       doc.font("Helvetica-Bold").fontSize(18).text("Calendário resumido");
@@ -950,7 +1047,6 @@ app.post("/api/export-pdf", (req, res) => {
       });
     }
 
-    // posts completos
     if (Array.isArray(plan?.posts)) {
       plan.posts.forEach((post) => {
         doc.addPage();
@@ -958,7 +1054,6 @@ app.post("/api/export-pdf", (req, res) => {
       });
     }
 
-    // stories
     if (Array.isArray(plan?.stories) && plan.stories.length) {
       doc.addPage();
       doc.font("Helvetica-Bold").fontSize(18).text("Sequências de stories");
@@ -977,7 +1072,6 @@ app.post("/api/export-pdf", (req, res) => {
       });
     }
 
-    // hashtags
     if (plan?.hashtags) {
       doc.addPage();
       doc.font("Helvetica-Bold").fontSize(18).text("Hashtags e observações");
@@ -1024,9 +1118,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/app", (req, res) => {
-  if (!req.session.user) {
-    return res.redirect("/");
-  }
+  if (!req.session.user) return res.redirect("/");
   res.sendFile(path.join(__dirname, "public", "app.html"));
 });
 
@@ -1035,7 +1127,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 5.4 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 5.5 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
 });
