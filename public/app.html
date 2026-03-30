@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • 5.5</title>
+  <title>Instagram Planner Agency • 6.0</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -28,7 +28,7 @@
     .tabs{display:flex;gap:8px;padding:16px 20px 0;flex-wrap:wrap}
     .tab{padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:13px}
     .tab.on{background:rgba(255,107,53,.14);border-color:rgba(255,107,53,.35);color:#ffb38a}
-    .page{display:none;padding:20px;max-width:1340px;margin:0 auto}
+    .page{display:none;padding:20px;max-width:1380px;margin:0 auto}
     .page.on{display:block}
     .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px}
@@ -79,13 +79,14 @@
     .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#fff;color:#000;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:700;display:none;z-index:999}
     .toast.show{display:block}
     .two-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .three-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
     @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
+    @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions,.three-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 5.5</div>
+    <div class="logo">✦ Instagram Planner Agency 6.0</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -95,6 +96,7 @@
     <div class="tab" onclick="switchPage('intelligence', this)">🧠 Inteligência</div>
     <div class="tab" onclick="switchPage('competitors', this)">🥊 Concorrência</div>
     <div class="tab" onclick="switchPage('planner', this)">📅 Planner</div>
+    <div class="tab" onclick="switchPage('memory', this)">🗂️ Memória</div>
     <div class="tab" onclick="switchPage('history', this)">💾 Histórico</div>
     <div class="tab" onclick="switchPage('settings', this)">🔧 Tokens</div>
   </div>
@@ -199,6 +201,15 @@
         </div>
         <div class="loader" id="planLoader">Gerando planejamento do mês...</div>
 
+        <div class="field"><label class="label">Modo de geração</label>
+          <select id="planMode">
+            <option value="conversao">Conversão</option>
+            <option value="autoridade">Autoridade</option>
+            <option value="engajamento">Engajamento</option>
+            <option value="prova">Prova</option>
+          </select>
+        </div>
+
         <div class="field"><label class="label">Nicho</label><input id="planNiche" /></div>
         <div class="field"><label class="label">Público</label><input id="planAudience" /></div>
         <div class="field"><label class="label">Objetivo do mês</label><input id="planGoal" /></div>
@@ -213,8 +224,10 @@
           <div class="field"><label class="label">Estáticos</label><input id="planSingles" type="number" value="4" /></div>
         </div>
 
-        <button class="btn secondary" onclick="syncTotal()">Recalcular total</button>
-        <button class="btn secondary" style="margin-top:10px" onclick="exportPlannerPDF()">Exportar PDF</button>
+        <div class="two-actions">
+          <button class="btn secondary" onclick="syncTotal()">Recalcular total</button>
+          <button class="btn secondary" onclick="exportPlannerPDF()">Exportar PDF</button>
+        </div>
       </div>
 
       <div class="card span-8">
@@ -226,6 +239,35 @@
           <button onclick="setPostFilter('Post', this)">Post</button>
         </div>
         <div id="planResult" class="notice">Gere um plano para visualizar as peças completas.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-memory">
+    <div class="grid">
+      <div class="card span-4">
+        <div class="title">Memória do cliente</div>
+        <div class="three-actions" style="margin-bottom:12px">
+          <button class="btn secondary" onclick="loadMemory()">Carregar</button>
+          <button class="btn" onclick="saveMemory()">Salvar</button>
+          <button class="btn secondary" onclick="autoFillAll()">Puxar IA</button>
+        </div>
+
+        <div class="field"><label class="label">Nicho padrão</label><input id="memNiche" /></div>
+        <div class="field"><label class="label">Público padrão</label><input id="memAudience" /></div>
+        <div class="field"><label class="label">Localização padrão</label><input id="memLocation" /></div>
+        <div class="field"><label class="label">Tom padrão</label><input id="memTone" /></div>
+        <div class="field"><label class="label">Estilo de CTA</label><input id="memCtaStyle" /></div>
+        <div class="field"><label class="label">Diferenciais (um por linha)</label><textarea id="memDifferentials"></textarea></div>
+        <div class="field"><label class="label">Palavras proibidas (uma por linha)</label><textarea id="memForbidden"></textarea></div>
+        <div class="field"><label class="label">O que funciona (uma por linha)</label><textarea id="memWorks"></textarea></div>
+        <div class="field"><label class="label">O que não funciona (uma por linha)</label><textarea id="memNotWorks"></textarea></div>
+        <div class="field"><label class="label">Ângulos fortes (um por linha)</label><textarea id="memAngles"></textarea></div>
+      </div>
+
+      <div class="card span-8">
+        <div class="title">Resumo da memória</div>
+        <div id="memoryResult" class="notice">Selecione uma conta e carregue a memória.</div>
       </div>
     </div>
   </section>
@@ -265,7 +307,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v55_history";
+    const HISTORY_KEY = "ig_planner_agency_v60_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
@@ -287,6 +329,7 @@
       el.classList.add("on");
       document.getElementById("page-" + page).classList.add("on");
       if (page === "history") renderHistory();
+      if (page === "memory") loadMemory();
     }
 
     function setLoading(id, state) {
@@ -354,7 +397,6 @@
           extra: data.extra || ""
         };
 
-        // inteligência
         document.getElementById("intelNiche").value = fields.niche;
         document.getElementById("intelAudience").value = fields.audience;
         document.getElementById("intelGoal").value = fields.goal;
@@ -362,7 +404,6 @@
         document.getElementById("intelLocation").value = fields.location;
         document.getElementById("intelExtra").value = fields.extra;
 
-        // concorrência
         document.getElementById("compNiche").value = fields.niche;
         document.getElementById("compAudience").value = fields.audience;
         document.getElementById("compGoal").value = fields.goal;
@@ -370,13 +411,17 @@
         document.getElementById("compLocation").value = fields.location;
         document.getElementById("compExtra").value = fields.extra;
 
-        // planner
         document.getElementById("planNiche").value = fields.niche;
         document.getElementById("planAudience").value = fields.audience;
         document.getElementById("planGoal").value = fields.goal;
         document.getElementById("planTone").value = fields.tone;
         document.getElementById("planLocation").value = fields.location;
         document.getElementById("planExtra").value = fields.extra;
+
+        document.getElementById("memNiche").value = fields.niche;
+        document.getElementById("memAudience").value = fields.audience;
+        document.getElementById("memLocation").value = fields.location;
+        document.getElementById("memTone").value = fields.tone;
 
         toast("Campos preenchidos pela IA.");
       } catch (error) {
@@ -408,6 +453,7 @@
       CURRENT = ACCOUNTS.find(a => a.id === id);
       renderAccounts();
       await loadDashboard();
+      await loadMemory();
     }
 
     async function loadDashboard() {
@@ -580,6 +626,7 @@
             tone: document.getElementById("planTone").value,
             location: document.getElementById("planLocation").value,
             extra: document.getElementById("planExtra").value,
+            mode: document.getElementById("planMode").value,
             totalPosts: total,
             reels,
             carousels,
@@ -594,6 +641,7 @@
         document.getElementById("plannerFilters").style.display = "flex";
         renderPlanner();
         savePlannerToHistory();
+        await loadMemory();
         toast(`Planner gerado com ${data.posts?.length || 0} peças.`);
       } catch (error) {
         document.getElementById("planResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
@@ -679,6 +727,23 @@
             </div>
           `).join("")}
         </div>
+
+        ${Array.isArray(PLAN_DATA.stories) && PLAN_DATA.stories.length ? `
+          <div style="height:14px"></div>
+          <div class="result-title">Stories</div>
+          <div class="list">
+            ${PLAN_DATA.stories.map(s => {
+              const storyText = (s.slides || []).map(sl => `Slide ${sl.n}: ${sl.text} (${sl.action || "ação"})`).join("\\n\\n");
+              return `
+                <div class="story-box">
+                  <div style="font-weight:700;margin-bottom:8px">${escapeHtml(s.day || "")} • ${escapeHtml(s.theme || "")}</div>
+                  <div class="muted" style="margin-bottom:10px">${escapeHtml(s.objective || "")}</div>
+                  <div class="copy-box">${escapeHtml(storyText)}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : ""}
       `;
     }
 
@@ -726,6 +791,81 @@
       a.download = `plano_${CURRENT.username}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    async function loadMemory() {
+      if (!CURRENT) return;
+
+      try {
+        const data = await fetch(`/api/client-memory/${CURRENT.username}`).then(r => r.json());
+
+        document.getElementById("memNiche").value = data.niche || "";
+        document.getElementById("memAudience").value = data.audience || "";
+        document.getElementById("memLocation").value = data.location || "";
+        document.getElementById("memTone").value = data.tone || "";
+        document.getElementById("memCtaStyle").value = data.cta_style || "";
+        document.getElementById("memDifferentials").value = (data.differentials || []).join("\n");
+        document.getElementById("memForbidden").value = (data.forbidden_words || []).join("\n");
+        document.getElementById("memWorks").value = (data.memory?.what_works || []).join("\n");
+        document.getElementById("memNotWorks").value = (data.memory?.what_doesnt_work || []).join("\n");
+        document.getElementById("memAngles").value = (data.memory?.strong_angles || []).join("\n");
+
+        document.getElementById("memoryResult").innerHTML = `
+          <div class="result-title">Resumo</div>
+          <div class="list">
+            <div class="list-item"><strong>Nicho:</strong><br>${escapeHtml(data.niche || "-")}</div>
+            <div class="list-item"><strong>Público:</strong><br>${escapeHtml(data.audience || "-")}</div>
+            <div class="list-item"><strong>Localização:</strong><br>${escapeHtml(data.location || "-")}</div>
+            <div class="list-item"><strong>Tom:</strong><br>${escapeHtml(data.tone || "-")}</div>
+            <div class="list-item"><strong>Diferenças:</strong><br>${escapeHtml((data.differentials || []).join(", ") || "-")}</div>
+            <div class="list-item"><strong>O que funciona:</strong><br>${escapeHtml((data.memory?.what_works || []).join(", ") || "-")}</div>
+            <div class="list-item"><strong>Ângulos fortes:</strong><br>${escapeHtml((data.memory?.strong_angles || []).join(", ") || "-")}</div>
+          </div>
+        `;
+      } catch (error) {
+        document.getElementById("memoryResult").innerHTML = `<div class="notice">Erro ao carregar memória.</div>`;
+      }
+    }
+
+    async function saveMemory() {
+      if (!CURRENT) return toast("Selecione uma conta.");
+
+      try {
+        const payload = {
+          niche: document.getElementById("memNiche").value,
+          audience: document.getElementById("memAudience").value,
+          location: document.getElementById("memLocation").value,
+          tone: document.getElementById("memTone").value,
+          cta_style: document.getElementById("memCtaStyle").value,
+          differentials: splitLines(document.getElementById("memDifferentials").value),
+          forbidden_words: splitLines(document.getElementById("memForbidden").value),
+          memory: {
+            what_works: splitLines(document.getElementById("memWorks").value),
+            what_doesnt_work: splitLines(document.getElementById("memNotWorks").value),
+            strong_angles: splitLines(document.getElementById("memAngles").value)
+          }
+        };
+
+        const res = await fetch(`/api/client-memory/${CURRENT.username}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+
+        if (!res.success) throw new Error(res.error || "Erro ao salvar.");
+
+        toast("Memória salva.");
+        await loadMemory();
+      } catch (error) {
+        toast("Erro ao salvar memória.");
+      }
+    }
+
+    function splitLines(value) {
+      return String(value || "")
+        .split("\n")
+        .map(v => v.trim())
+        .filter(Boolean);
     }
 
     function savePlannerToHistory() {
@@ -817,6 +957,7 @@
         <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
         <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
         <div class="list-item">Modelo: <strong>${escapeHtml(data.model || "")}</strong></div>
+        <div class="list-item">Diretório de clientes: <strong>${escapeHtml(data.clients_dir || "")}</strong></div>
       `;
     }
 
