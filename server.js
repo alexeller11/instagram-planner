@@ -4,6 +4,7 @@ const express = require("express");
 const session = require("express-session");
 const axios = require("axios");
 const path = require("path");
+const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const Groq = require("groq-sdk");
 
@@ -22,7 +23,7 @@ const IG_TOKENS = (process.env.IG_TOKENS || "")
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -41,6 +42,57 @@ app.use(
   })
 );
 
+const DATA_DIR = path.join(__dirname, "data");
+const CLIENTS_DIR = path.join(DATA_DIR, "clients");
+const DEFAULT_CLIENT_PATH = path.join(CLIENTS_DIR, "default.json");
+
+function ensureDataStructure() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+  if (!fs.existsSync(CLIENTS_DIR)) fs.mkdirSync(CLIENTS_DIR);
+
+  if (!fs.existsSync(DEFAULT_CLIENT_PATH)) {
+    fs.writeFileSync(
+      DEFAULT_CLIENT_PATH,
+      JSON.stringify(
+        {
+          niche: "",
+          audience: "",
+          location: "",
+          tone: "",
+          goals: [],
+          differentials: [],
+          cta_style: "",
+          forbidden_words: [
+            "você sabia",
+            "entenda",
+            "saiba mais",
+            "nossa equipe explica",
+            "podemos ajudar",
+            "veja como"
+          ],
+          memory: {
+            what_works: [],
+            what_doesnt_work: [],
+            strong_angles: []
+          }
+        },
+        null,
+        2
+      )
+    );
+  }
+}
+
+ensureDataStructure();
+
+function sanitizeFileName(value) {
+  return String(value || "cliente")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .toLowerCase();
+}
+
 function ensureGroq(res) {
   if (!groq) {
     res.status(500).json({ error: "GROQ_API_KEY não configurada." });
@@ -51,6 +103,7 @@ function ensureGroq(res) {
 
 function safeJsonParse(text) {
   if (!text || typeof text !== "string") return null;
+
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
 
@@ -94,11 +147,13 @@ function avg(values) {
 
 async function fetchIGProfiles(tokens) {
   const accounts = [];
+
   for (const token of tokens) {
     try {
       const res = await axios.get("https://graph.instagram.com/v21.0/me", {
         params: {
-          fields: "id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type",
+          fields:
+            "id,name,username,followers_count,media_count,biography,website,profile_picture_url,account_type",
           access_token: token
         }
       });
@@ -111,6 +166,7 @@ async function fetchIGProfiles(tokens) {
       console.error("[IG_PROFILE_ERROR]", error.response?.data || error.message);
     }
   }
+
   return accounts;
 }
 
@@ -123,6 +179,7 @@ async function fetchMedia(igId, token, limit = 30) {
         access_token: token
       }
     });
+
     return res.data.data || [];
   } catch (error) {
     console.error("[IG_MEDIA_ERROR]", error.response?.data || error.message);
@@ -160,6 +217,7 @@ function getAccountFromSession(req, igId) {
 
 function calculateStrategicScore(account, media, metrics, formatMix) {
   let score = 0;
+
   if (account.biography) score += 20;
   if (account.website) score += 10;
   if (media.length >= 12) score += 20;
@@ -195,7 +253,9 @@ function scoreLabel(score) {
 function buildDashboard(media, account) {
   const likes = media.map((m) => Number(m.like_count || 0));
   const comments = media.map((m) => Number(m.comments_count || 0));
-  const engagementAverage = avg(media.map((m) => Number(m.like_count || 0) + Number(m.comments_count || 0)));
+  const engagementAverage = avg(
+    media.map((m) => Number(m.like_count || 0) + Number(m.comments_count || 0))
+  );
   const followerBase = Number(account.followers_count || 0) || 1;
   const engagementRate = ((engagementAverage / followerBase) * 100).toFixed(2);
 
@@ -256,6 +316,41 @@ function buildDashboard(media, account) {
   };
 }
 
+function getClientFilePath(username) {
+  return path.join(CLIENTS_DIR, `${sanitizeFileName(username)}.json`);
+}
+
+function getClientMemory(username) {
+  const clientPath = getClientFilePath(username);
+  try {
+    if (fs.existsSync(clientPath)) {
+      return JSON.parse(fs.readFileSync(clientPath, "utf8"));
+    }
+    return JSON.parse(fs.readFileSync(DEFAULT_CLIENT_PATH, "utf8"));
+  } catch {
+    return JSON.parse(fs.readFileSync(DEFAULT_CLIENT_PATH, "utf8"));
+  }
+}
+
+function saveClientMemory(username, data) {
+  const clientPath = getClientFilePath(username);
+  fs.writeFileSync(clientPath, JSON.stringify(data, null, 2));
+}
+
+function mergeClientMemory(username, patch) {
+  const current = getClientMemory(username);
+  const merged = {
+    ...current,
+    ...patch,
+    memory: {
+      ...(current.memory || {}),
+      ...(patch.memory || {})
+    }
+  };
+  saveClientMemory(username, merged);
+  return merged;
+}
+
 function plannerSystemPrompt() {
   return `
 Você é um estrategista sênior de conteúdo, copy e posicionamento para Instagram, com padrão de agência premium.
@@ -312,7 +407,16 @@ o conteúdo precisa parecer escrito por alguém que entende o nicho e quer gerar
 `;
 }
 
-function buildContextBlock({ account, niche = "", audience = "", goal = "", tone = "", extra = "", location = "" }) {
+function buildContextBlock({
+  account,
+  niche = "",
+  audience = "",
+  goal = "",
+  tone = "",
+  extra = "",
+  location = "",
+  clientMemory = {}
+}) {
   return `
 CONTEXTO DA EMPRESA:
 - Perfil: @${account.username}
@@ -326,8 +430,16 @@ CONTEXTO DA EMPRESA:
 - Bio atual: ${account.biography || ""}
 - Website: ${account.website || ""}
 
+MEMÓRIA DO CLIENTE:
+- Diferenciais: ${(clientMemory.differentials || []).join(", ")}
+- Estilo de CTA: ${clientMemory.cta_style || ""}
+- O que funciona: ${(clientMemory.memory?.what_works || []).join(", ")}
+- O que não funciona: ${(clientMemory.memory?.what_doesnt_work || []).join(", ")}
+- Ângulos fortes: ${(clientMemory.memory?.strong_angles || []).join(", ")}
+- Palavras proibidas: ${(clientMemory.forbidden_words || []).join(", ")}
+
 IMPORTANTE:
-Use nicho, público, objetivo e localização para tornar tudo mais aderente ao contexto real.
+Use nicho, público, objetivo, localização e memória do cliente para tornar tudo mais aderente ao contexto real.
 `;
 }
 
@@ -339,14 +451,42 @@ function normalizeFormat(value) {
   return "Post";
 }
 
-function buildPlannerMetaPrompt({ account, niche, audience, goal, tone, extra, location, totalPosts, reels, carousels, singlePosts, media }) {
+function getModeInstruction(mode) {
+  const map = {
+    autoridade: "focar em profundidade técnica, autoridade e percepção de referência",
+    conversao: "focar em ação, argumento comercial, desejo e geração de demanda",
+    engajamento: "focar em retenção, identificação e conversa com o público",
+    prova: "focar em evidência, processo, bastidor, caso e validação"
+  };
+  return map[mode] || "equilibrar autoridade, retenção e conversão";
+}
+
+function buildPlannerMetaPrompt({
+  account,
+  niche,
+  audience,
+  goal,
+  tone,
+  extra,
+  location,
+  totalPosts,
+  reels,
+  carousels,
+  singlePosts,
+  media,
+  clientMemory,
+  mode
+}) {
   return `
 Você vai montar a ESTRATÉGIA do mês antes de escrever as peças.
 
-${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
 POSTS RECENTES:
 ${summarizePosts(media)}
+
+MODO DE GERAÇÃO:
+${getModeInstruction(mode)}
 
 MIX OBRIGATÓRIO:
 - Total de posts: ${totalPosts}
@@ -403,9 +543,12 @@ REGRAS:
 `;
 }
 
-function buildPlannerWritingPrompt(metaPlan) {
+function buildPlannerWritingPrompt(metaPlan, mode) {
   return `
 Agora escreva as peças completas do planner abaixo.
+
+MODO DE GERAÇÃO:
+${getModeInstruction(mode)}
 
 ESTRATÉGIA DEFINIDA:
 ${JSON.stringify(metaPlan, null, 2)}
@@ -522,9 +665,9 @@ function forcePlannerMix(plan, { totalPosts, reels, carousels, singlePosts }) {
       day_suggestion: "Segunda",
       pillar: "Autoridade",
       intent: "Autoridade",
-      title: "Post a complementar",
+      title: "Post complementar",
       objective: "complementar o plano",
-      hook: "Hook a complementar",
+      hook: "Gancho complementar",
       copy: "Conteúdo complementar a aprofundar.",
       cta: "Fale conosco"
     };
@@ -555,45 +698,43 @@ function forcePlannerMix(plan, { totalPosts, reels, carousels, singlePosts }) {
   };
 }
 
-function enforcePlannerQuality(plan) {
+function qualityCheck(plan) {
   if (!plan || !Array.isArray(plan.posts)) return plan;
 
-  const bannedFragments = [
-    "nossa equipe explica",
+  const weakPatterns = [
+    "nossa equipe",
+    "saiba mais",
+    "entenda",
     "podemos ajudar",
-    "saiba tudo",
-    "entenda mais",
-    "conheça nossos serviços",
-    "veja como podemos ajudar",
-    "nossa equipe especializada",
-    "veja como"
+    "veja como",
+    "conheça nossos serviços"
   ];
 
   plan.posts = plan.posts.map((post) => {
     let copy = String(post.copy || "").trim();
     let script = String(post.script || "").trim();
 
-    if (copy.length < 260) {
-      copy += "\n\nAprofunde este conteúdo com explicação prática, consequência real e orientação clara para o leitor.";
+    if (copy.length < 240) {
+      copy += "\n\nExplique melhor o contexto, mostre consequência real e detalhe prático para o leitor.";
     }
 
-    for (const fragment of bannedFragments) {
-      if (copy.toLowerCase().includes(fragment)) {
-        copy += "\n\nSubstitua discurso institucional por explicação concreta, argumento ou orientação prática.";
-        break;
+    weakPatterns.forEach((pattern) => {
+      if (copy.toLowerCase().includes(pattern)) {
+        copy += "\n\nSubstitua linguagem institucional por explicação prática, argumento ou consequência concreta.";
       }
-    }
+    });
 
-    if (post.format === "Reels" && script.length < 260) {
-      script += "\n\nCena 1: abertura visual forte.\nCena 2: contexto do problema.\nCena 3: explicação prática.\nCena 4: consequência ou virada.\nCena 5: fechamento com CTA.";
+    if (post.format === "Reels" && script.length < 220) {
+      script +=
+        "\n\nCena 1: abertura forte.\nCena 2: contexto do problema.\nCena 3: explicação prática.\nCena 4: consequência ou virada.\nCena 5: fechamento com CTA.";
     }
 
     if (post.format === "Carrossel") {
       if (!Array.isArray(post.carousel_slides) || post.carousel_slides.length < 5) {
         post.carousel_slides = [
           post.title || "Tema do carrossel",
-          "Abra o assunto com contexto real.",
-          "Explique o ponto central com clareza.",
+          "Contextualize o problema ou a dúvida.",
+          "Aprofunde a explicação com clareza.",
           "Mostre consequência, erro ou oportunidade.",
           "Feche com orientação prática."
         ];
@@ -616,7 +757,40 @@ function enforcePlannerQuality(plan) {
   return plan;
 }
 
-async function generateAgencyLevelPlanner({ account, niche, audience, goal, tone, extra, location, totalPosts, reels, carousels, singlePosts, media }) {
+function updateMemory(username, plan) {
+  const current = getClientMemory(username);
+  const titles = (plan.posts || []).map((p) => p.title).filter(Boolean);
+  const intents = (plan.posts || []).map((p) => p.intent).filter(Boolean);
+
+  const merged = {
+    ...current,
+    memory: {
+      ...(current.memory || {}),
+      what_works: [...new Set([...(current.memory?.what_works || []), ...titles.slice(0, 5)])],
+      what_doesnt_work: [...new Set([...(current.memory?.what_doesnt_work || [])])],
+      strong_angles: [...new Set([...(current.memory?.strong_angles || []), ...intents.slice(0, 5)])]
+    }
+  };
+
+  saveClientMemory(username, merged);
+}
+
+async function generateAgencyLevelPlanner({
+  account,
+  niche,
+  audience,
+  goal,
+  tone,
+  extra,
+  location,
+  totalPosts,
+  reels,
+  carousels,
+  singlePosts,
+  media,
+  mode,
+  clientMemory
+}) {
   const system = plannerSystemPrompt();
 
   const metaPlan = await callGroqJSON({
@@ -633,7 +807,9 @@ async function generateAgencyLevelPlanner({ account, niche, audience, goal, tone
       reels,
       carousels,
       singlePosts,
-      media
+      media,
+      clientMemory,
+      mode
     }),
     maxTokens: 4500,
     temperature: 0.75
@@ -641,7 +817,7 @@ async function generateAgencyLevelPlanner({ account, niche, audience, goal, tone
 
   const draftPlan = await callGroqJSON({
     system,
-    user: buildPlannerWritingPrompt(metaPlan),
+    user: buildPlannerWritingPrompt(metaPlan, mode),
     maxTokens: 8000,
     temperature: 0.85
   });
@@ -654,7 +830,7 @@ async function generateAgencyLevelPlanner({ account, niche, audience, goal, tone
   });
 
   const mixed = forcePlannerMix(reviewedPlan, { totalPosts, reels, carousels, singlePosts });
-  return enforcePlannerQuality(mixed);
+  return qualityCheck(mixed);
 }
 
 function renderPostToPdf(doc, post) {
@@ -702,6 +878,7 @@ app.post("/api/suggest", async (req, res) => {
   }
 
   const media = await fetchMedia(account.id, account.ig_token, 18);
+  const clientMemory = getClientMemory(account.username);
 
   const prompt = `
 Faça um auto preenchimento estratégico para esta conta de Instagram.
@@ -716,6 +893,9 @@ PERFIL:
 POSTS RECENTES:
 ${summarizePosts(media)}
 
+MEMÓRIA JÁ EXISTENTE:
+${JSON.stringify(clientMemory, null, 2)}
+
 RETORNE EXATAMENTE NESTE JSON:
 {
   "niche": "nicho sugerido",
@@ -728,21 +908,39 @@ RETORNE EXATAMENTE NESTE JSON:
 
 REGRAS:
 - seja específico
-- use o nome, bio e posts para inferir
-- se não souber a localização com precisão, dê uma sugestão plausível curta, ou deixe vazio
+- use nome, bio, posts e memória
+- se não souber a localização com precisão, dê sugestão curta plausível ou deixe vazio
 `;
 
   try {
     const data = await callGroqJSON({
       system: plannerSystemPrompt(),
       user: prompt,
-      maxTokens: 1200,
+      maxTokens: 1400,
       temperature: 0.4
     });
 
     return res.json(data);
   } catch (error) {
     return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/client-memory/:username", (req, res) => {
+  try {
+    const data = getClientMemory(req.params.username);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/client-memory/:username", (req, res) => {
+  try {
+    const merged = mergeClientMemory(req.params.username, req.body || {});
+    res.json({ success: true, data: merged });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -755,7 +953,10 @@ app.post("/api/auth", async (req, res) => {
     const accounts = await fetchIGProfiles(IG_TOKENS);
 
     if (!accounts.length) {
-      return res.status(400).json({ success: false, error: "Nenhuma conta foi carregada com os tokens atuais." });
+      return res.status(400).json({
+        success: false,
+        error: "Nenhuma conta foi carregada com os tokens atuais."
+      });
     }
 
     req.session.user = { accounts };
@@ -827,11 +1028,12 @@ app.post("/api/intelligence", async (req, res) => {
 
   const media = await fetchMedia(account.id, account.ig_token, 20);
   const dashboard = buildDashboard(media, account);
+  const clientMemory = getClientMemory(account.username);
 
   const userPrompt = `
 Faça uma análise estratégica profunda deste perfil de Instagram.
 
-${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
 DADOS DO DASHBOARD:
 ${JSON.stringify(dashboard, null, 2)}
@@ -889,6 +1091,7 @@ app.post("/api/competitors", async (req, res) => {
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
   const media = await fetchMedia(account.id, account.ig_token, 15);
+  const clientMemory = getClientMemory(account.username);
 
   const competitorsText =
     Array.isArray(competitors) && competitors.length
@@ -898,7 +1101,7 @@ app.post("/api/competitors", async (req, res) => {
   const userPrompt = `
 Faça uma análise estratégica de concorrência para este perfil.
 
-${buildContextBlock({ account, niche, audience, goal, tone, extra, location })}
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
 POSTS RECENTES DO PERFIL:
 ${summarizePosts(media)}
@@ -944,6 +1147,7 @@ app.post("/api/generate", async (req, res) => {
     tone = "",
     extra = "",
     location = "",
+    mode = "conversao",
     totalPosts = 16,
     reels = 6,
     carousels = 6,
@@ -954,13 +1158,19 @@ app.post("/api/generate", async (req, res) => {
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
   try {
-    if (Number(totalPosts) !== Number(reels) + Number(carousels) + Number(singlePosts)) {
+    const total = Number(totalPosts);
+    const totalReels = Number(reels);
+    const totalCarousels = Number(carousels);
+    const totalSingles = Number(singlePosts);
+
+    if (total !== totalReels + totalCarousels + totalSingles) {
       return res.status(400).json({
         error: "O total de posts precisa ser exatamente a soma de reels + carrosséis + estáticos."
       });
     }
 
     const media = await fetchMedia(account.id, account.ig_token, 20);
+    const clientMemory = getClientMemory(account.username);
 
     const plan = await generateAgencyLevelPlanner({
       account,
@@ -970,12 +1180,16 @@ app.post("/api/generate", async (req, res) => {
       tone,
       extra,
       location,
-      totalPosts: Number(totalPosts),
-      reels: Number(reels),
-      carousels: Number(carousels),
-      singlePosts: Number(singlePosts),
-      media
+      totalPosts: total,
+      reels: totalReels,
+      carousels: totalCarousels,
+      singlePosts: totalSingles,
+      media,
+      mode,
+      clientMemory
     });
+
+    updateMemory(account.username, plan);
 
     return res.json(plan);
   } catch (error) {
@@ -1105,7 +1319,8 @@ app.get("/api/status", (req, res) => {
     groq: Boolean(GROQ_API_KEY),
     tokens_configured: IG_TOKENS.length,
     base_url: BASE_URL,
-    model: GROQ_MODEL
+    model: GROQ_MODEL,
+    clients_dir: CLIENTS_DIR
   });
 });
 
@@ -1127,7 +1342,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 5.5 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 6.0 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
 });
