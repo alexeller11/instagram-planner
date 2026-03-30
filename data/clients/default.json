@@ -1,0 +1,22 @@
+{
+  "niche": "",
+  "audience": "",
+  "location": "",
+  "tone": "",
+  "goals": [],
+  "differentials": [],
+  "cta_style": "",
+  "forbidden_words": [
+    "você sabia",
+    "entenda",
+    "saiba mais",
+    "nossa equipe explica",
+    "podemos ajudar",
+    "veja como"
+  ],
+  "memory": {
+    "what_works": [],
+    "what_doesnt_work": [],
+    "strong_angles": []
+  }
+}
