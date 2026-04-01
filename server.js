@@ -7,6 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const Groq = require("groq-sdk");
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
@@ -14,14 +15,20 @@ const PORT = Number(process.env.PORT || 3000);
 const NODE_ENV = process.env.NODE_ENV || "development";
 const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
 const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-in-production";
+
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
 const IG_TOKENS = (process.env.IG_TOKENS || "")
   .split(",")
   .map((t) => t.trim())
   .filter(Boolean);
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
+const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -93,9 +100,9 @@ function sanitizeFileName(value) {
     .toLowerCase();
 }
 
-function ensureGroq(res) {
-  if (!groq) {
-    res.status(500).json({ error: "GROQ_API_KEY não configurada." });
+function ensureAtLeastOneModel(res) {
+  if (!groq && !gemini) {
+    res.status(500).json({ error: "Configure GROQ_API_KEY ou GEMINI_API_KEY." });
     return false;
   }
   return true;
@@ -130,11 +137,11 @@ function compactText(value, max = 300) {
   return String(value).replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-function summarizePosts(media = []) {
+function summarizePosts(media = [], maxItems = 8, captionMax = 120) {
   return media
-    .slice(0, 15)
+    .slice(0, maxItems)
     .map((m, i) => {
-      const caption = compactText(m.caption || "Sem legenda", 180);
+      const caption = compactText(m.caption || "Sem legenda", captionMax);
       return `${i + 1}. [${m.media_type}] ${caption} | likes=${m.like_count || 0} | comments=${m.comments_count || 0}`;
     })
     .join("\n");
@@ -204,10 +211,67 @@ async function callGroqJSON({ system, user, maxTokens = 4096, temperature = 0.7 
   const parsed = safeJsonParse(text);
 
   if (!parsed) {
-    throw new Error("A IA retornou JSON inválido.");
+    throw new Error("Groq retornou JSON inválido.");
   }
 
   return parsed;
+}
+
+async function callGeminiJSON({ system, user }) {
+  if (!gemini) throw new Error("GEMINI_API_KEY não configurada");
+
+  const prompt = `${system}\n\n${user}`;
+
+  const response = await gemini.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: prompt,
+    config: {
+      thinkingConfig: {
+        thinkingBudget: 0
+      }
+    }
+  });
+
+  const text = response.text || "";
+  const parsed = safeJsonParse(text);
+
+  if (!parsed) {
+    throw new Error("Gemini retornou JSON inválido.");
+  }
+
+  return parsed;
+}
+
+function shouldFallbackToGemini(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return (
+    msg.includes("request too large") ||
+    msg.includes("tokens per minute") ||
+    msg.includes("rate_limit_exceeded") ||
+    msg.includes("requested") && msg.includes("limit")
+  );
+}
+
+async function callAIWithFallback({ system, user, maxTokens = 4096, temperature = 0.7 }) {
+  if (groq) {
+    try {
+      return await callGroqJSON({ system, user, maxTokens, temperature });
+    } catch (error) {
+      console.log("[AI] Groq falhou:", error.message);
+
+      if (gemini && shouldFallbackToGemini(error)) {
+        console.log("[AI] Usando fallback para Gemini...");
+        return await callGeminiJSON({ system, user });
+      }
+
+      if (!gemini) throw error;
+
+      console.log("[AI] Groq falhou por outro motivo, tentando Gemini...");
+      return await callGeminiJSON({ system, user });
+    }
+  }
+
+  return await callGeminiJSON({ system, user });
 }
 
 function getAccountFromSession(req, igId) {
@@ -378,33 +442,18 @@ REGRAS MÁXIMAS:
 - todo carrossel precisa ter sequência lógica de slides
 - se o título prometer algo, a legenda precisa cumprir essa promessa
 - se a ideia estiver fraca, você deve reescrever mentalmente antes de responder
-
-TIPOS DE PEÇA:
-- EXPLICATIVA: ensina de forma simples e concreta
-- DOR: mostra problema real e consequência
-- ERRO: mostra o erro e por que ele custa caro
-- OBJEÇÃO: quebra crença com lógica
-- AUTORIDADE: demonstra conhecimento real, sem autopromoção vazia
-- PROVA: mostra processo, evidência, caso ou bastidor
-- COMERCIAL: vende com substância, não só com chamada promocional
-
-PARA REELS:
-- hook de abertura
-- descrição das cenas
-- fala principal
-- virada / progressão
-- fechamento
-- CTA coerente
-
-PARA CARROSSEL:
-- capa forte
-- progressão
-- fechamento útil
-- não repetir a mesma frase em 7 variações
-
-PADRÃO DE QUALIDADE:
-o conteúdo precisa parecer escrito por alguém que entende o nicho e quer gerar resultado real.
 `;
+}
+
+function buildMemorySummary(clientMemory = {}) {
+  return {
+    differentials: (clientMemory.differentials || []).slice(0, 5),
+    cta_style: clientMemory.cta_style || "",
+    what_works: (clientMemory.memory?.what_works || []).slice(0, 5),
+    what_doesnt_work: (clientMemory.memory?.what_doesnt_work || []).slice(0, 5),
+    strong_angles: (clientMemory.memory?.strong_angles || []).slice(0, 5),
+    forbidden_words: (clientMemory.forbidden_words || []).slice(0, 5)
+  };
 }
 
 function buildContextBlock({
@@ -417,6 +466,8 @@ function buildContextBlock({
   location = "",
   clientMemory = {}
 }) {
+  const mem = buildMemorySummary(clientMemory);
+
   return `
 CONTEXTO DA EMPRESA:
 - Perfil: @${account.username}
@@ -431,12 +482,12 @@ CONTEXTO DA EMPRESA:
 - Website: ${account.website || ""}
 
 MEMÓRIA DO CLIENTE:
-- Diferenciais: ${(clientMemory.differentials || []).join(", ")}
-- Estilo de CTA: ${clientMemory.cta_style || ""}
-- O que funciona: ${(clientMemory.memory?.what_works || []).join(", ")}
-- O que não funciona: ${(clientMemory.memory?.what_doesnt_work || []).join(", ")}
-- Ângulos fortes: ${(clientMemory.memory?.strong_angles || []).join(", ")}
-- Palavras proibidas: ${(clientMemory.forbidden_words || []).join(", ")}
+- Diferenciais: ${mem.differentials.join(", ")}
+- Estilo de CTA: ${mem.cta_style}
+- O que funciona: ${mem.what_works.join(", ")}
+- O que não funciona: ${mem.what_doesnt_work.join(", ")}
+- Ângulos fortes: ${mem.strong_angles.join(", ")}
+- Palavras proibidas: ${mem.forbidden_words.join(", ")}
 
 IMPORTANTE:
 Use nicho, público, objetivo, localização e memória do cliente para tornar tudo mais aderente ao contexto real.
@@ -483,7 +534,7 @@ Você vai montar a ESTRATÉGIA do mês antes de escrever as peças.
 ${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
 POSTS RECENTES:
-${summarizePosts(media)}
+${summarizePosts(media, 6, 90)}
 
 MODO DE GERAÇÃO:
 ${getModeInstruction(mode)}
@@ -539,26 +590,23 @@ REGRAS:
 - criar EXATAMENTE ${carousels} blueprints com format "Carrossel"
 - criar EXATAMENTE ${singlePosts} blueprints com format "Post"
 - não repetir ângulo
-- variar entre dor, erro, objeção, prova, bastidor, desejo, percepção, contexto local e venda
 `;
 }
 
-function buildPlannerWritingPrompt(metaPlan, mode) {
+function buildPlannerWritingPrompt(metaPlan, mode, startIndex, endIndex) {
+  const selected = (metaPlan.post_blueprints || []).slice(startIndex, endIndex);
+
   return `
-Agora escreva as peças completas do planner abaixo.
+Agora escreva as peças completas APENAS para estes blueprints.
 
 MODO DE GERAÇÃO:
 ${getModeInstruction(mode)}
 
-ESTRATÉGIA DEFINIDA:
-${JSON.stringify(metaPlan, null, 2)}
+BLUEPRINTS SELECIONADOS:
+${JSON.stringify(selected, null, 2)}
 
 RETORNE EXATAMENTE NESTE JSON:
 {
-  "audit": ${JSON.stringify(metaPlan.audit || {}, null, 2)},
-  "content_pillars": ${JSON.stringify(metaPlan.content_pillars || [], null, 2)},
-  "priority_ctas": ${JSON.stringify(metaPlan.priority_ctas || [], null, 2)},
-  "hashtags": ${JSON.stringify(metaPlan.hashtags || {}, null, 2)},
   "posts": [
     {
       "n": 1,
@@ -575,7 +623,30 @@ RETORNE EXATAMENTE NESTE JSON:
       "script": "roteiro completo se for reels",
       "carousel_slides": ["slide 1", "slide 2", "slide 3"]
     }
-  ],
+  ]
+}
+
+REGRAS:
+- manter a quantidade exata destes blueprints
+- manter o formato de cada blueprint
+- legenda precisa cumprir a promessa
+- reels precisam ter script forte
+- carrosséis precisam ter progressão
+- posts não podem sair vazios
+`;
+}
+
+function buildStoriesPrompt(metaPlan) {
+  const selected = (metaPlan.story_blueprints || []).slice(0, 6);
+
+  return `
+Escreva as sequências de stories abaixo.
+
+BLUEPRINTS:
+${JSON.stringify(selected, null, 2)}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
   "stories": [
     {
       "day": "Dia 1",
@@ -590,25 +661,26 @@ RETORNE EXATAMENTE NESTE JSON:
   ]
 }
 
-REGRAS DE ESCRITA:
-- escrever EXATAMENTE a mesma quantidade de posts dos blueprints
-- manter os formatos dos blueprints
-- toda legenda deve ter substância real
-- toda legenda deve cumprir a promessa do título
-- se for explicativo, precisa explicar
-- se for de erro, precisa mostrar o erro e a consequência
-- se for de objeção, precisa quebrar a objeção
-- se for comercial, pode vender, mas com argumento
-- reels precisam ter script com cena, fala, progressão e fechamento
-- carrosséis precisam ter slides com progressão lógica
-- posts estáticos não precisam de carousel_slides
-- não usar textos vazios como:
-  "nossa equipe explica", "podemos ajudar", "veja como", "entenda melhor", "saiba mais"
-- não gerar legendas curtas demais
+REGRAS:
+- cada sequência precisa ter pelo menos 3 slides
+- os stories precisam ser úteis, claros e acionáveis
 `;
 }
 
 function buildPlannerReviewPrompt(draftPlan) {
+  const compactReviewObject = {
+    posts: (draftPlan.posts || []).map((p) => ({
+      n: p.n,
+      format: p.format,
+      title: p.title,
+      hook: p.hook,
+      copy: p.copy,
+      cta: p.cta,
+      script: p.script,
+      carousel_slides: p.carousel_slides
+    }))
+  };
+
   return `
 Você vai atuar como revisor sênior de agência.
 
@@ -622,11 +694,8 @@ Revise o planner abaixo e MELHORE o que estiver:
 - com reels fracos
 - com carrosséis fracos
 
-NÃO resuma.
-MELHORE o texto.
-
-RETORNE NO MESMO FORMATO JSON, COMPLETO:
-${JSON.stringify(draftPlan, null, 2)}
+RETORNE EXATAMENTE NESTE JSON:
+${JSON.stringify(compactReviewObject, null, 2)}
 
 REGRAS:
 - não alterar a quantidade de posts
@@ -635,8 +704,6 @@ REGRAS:
 - título precisa ser magnético
 - reels precisam ter script forte
 - não pode haver legenda oca
-- não pode haver frase vaga
-- se o conteúdo prometer explicar algo, ele deve explicar
 `;
 }
 
@@ -714,7 +781,7 @@ function qualityCheck(plan) {
     let copy = String(post.copy || "").trim();
     let script = String(post.script || "").trim();
 
-    if (copy.length < 240) {
+    if (copy.length < 220) {
       copy += "\n\nExplique melhor o contexto, mostre consequência real e detalhe prático para o leitor.";
     }
 
@@ -724,7 +791,7 @@ function qualityCheck(plan) {
       }
     });
 
-    if (post.format === "Reels" && script.length < 220) {
+    if (post.format === "Reels" && script.length < 180) {
       script +=
         "\n\nCena 1: abertura forte.\nCena 2: contexto do problema.\nCena 3: explicação prática.\nCena 4: consequência ou virada.\nCena 5: fechamento com CTA.";
     }
@@ -793,7 +860,7 @@ async function generateAgencyLevelPlanner({
 }) {
   const system = plannerSystemPrompt();
 
-  const metaPlan = await callGroqJSON({
+  const metaPlan = await callAIWithFallback({
     system,
     user: buildPlannerMetaPrompt({
       account,
@@ -811,25 +878,61 @@ async function generateAgencyLevelPlanner({
       clientMemory,
       mode
     }),
-    maxTokens: 4500,
+    maxTokens: 2800,
     temperature: 0.75
   });
 
-  const draftPlan = await callGroqJSON({
-    system,
-    user: buildPlannerWritingPrompt(metaPlan, mode),
-    maxTokens: 8000,
-    temperature: 0.85
-  });
+  const batchSize = 5;
+  const postBatches = [];
+  for (let i = 0; i < totalPosts; i += batchSize) {
+    postBatches.push([i, Math.min(i + batchSize, totalPosts)]);
+  }
 
-  const reviewedPlan = await callGroqJSON({
+  let posts = [];
+  for (const [start, end] of postBatches) {
+    const batch = await callAIWithFallback({
+      system,
+      user: buildPlannerWritingPrompt(metaPlan, mode, start, end),
+      maxTokens: 3200,
+      temperature: 0.82
+    });
+
+    posts = posts.concat(batch.posts || []);
+  }
+
+  const storiesResponse = await callAIWithFallback({
     system,
-    user: buildPlannerReviewPrompt(draftPlan),
-    maxTokens: 8000,
+    user: buildStoriesPrompt(metaPlan),
+    maxTokens: 1800,
     temperature: 0.72
   });
 
-  const mixed = forcePlannerMix(reviewedPlan, { totalPosts, reels, carousels, singlePosts });
+  const draftPlan = {
+    audit: metaPlan.audit || {},
+    content_pillars: metaPlan.content_pillars || [],
+    priority_ctas: metaPlan.priority_ctas || [],
+    hashtags: metaPlan.hashtags || {},
+    posts,
+    stories: storiesResponse.stories || []
+  };
+
+  const reviewedSubset = await callAIWithFallback({
+    system,
+    user: buildPlannerReviewPrompt(draftPlan),
+    maxTokens: 3200,
+    temperature: 0.65
+  });
+
+  const reviewedPostsMap = new Map(
+    (reviewedSubset.posts || []).map((p) => [Number(p.n), p])
+  );
+
+  draftPlan.posts = draftPlan.posts.map((p) => {
+    const rev = reviewedPostsMap.get(Number(p.n));
+    return rev ? { ...p, ...rev } : p;
+  });
+
+  const mixed = forcePlannerMix(draftPlan, { totalPosts, reels, carousels, singlePosts });
   return qualityCheck(mixed);
 }
 
@@ -868,7 +971,7 @@ function renderPostToPdf(doc, post) {
 }
 
 app.post("/api/suggest", async (req, res) => {
-  if (!ensureGroq(res)) return;
+  if (!ensureAtLeastOneModel(res)) return;
 
   const { igId } = req.body || {};
   const account = getAccountFromSession(req, igId);
@@ -891,10 +994,10 @@ PERFIL:
 - Seguidores: ${account.followers_count || 0}
 
 POSTS RECENTES:
-${summarizePosts(media)}
+${summarizePosts(media, 6, 90)}
 
 MEMÓRIA JÁ EXISTENTE:
-${JSON.stringify(clientMemory, null, 2)}
+${JSON.stringify(buildMemorySummary(clientMemory), null, 2)}
 
 RETORNE EXATAMENTE NESTE JSON:
 {
@@ -905,18 +1008,13 @@ RETORNE EXATAMENTE NESTE JSON:
   "location": "localização provável ou sugerida",
   "extra": "contexto estratégico curto"
 }
-
-REGRAS:
-- seja específico
-- use nome, bio, posts e memória
-- se não souber a localização com precisão, dê sugestão curta plausível ou deixe vazio
 `;
 
   try {
-    const data = await callGroqJSON({
+    const data = await callAIWithFallback({
       system: plannerSystemPrompt(),
       user: prompt,
-      maxTokens: 1400,
+      maxTokens: 900,
       temperature: 0.4
     });
 
@@ -1020,7 +1118,7 @@ app.get("/api/dashboard/:igId", async (req, res) => {
 });
 
 app.post("/api/intelligence", async (req, res) => {
-  if (!ensureGroq(res)) return;
+  if (!ensureAtLeastOneModel(res)) return;
 
   const { igId, niche = "", audience = "", goal = "", tone = "", extra = "", location = "" } = req.body || {};
   const account = getAccountFromSession(req, igId);
@@ -1039,7 +1137,7 @@ DADOS DO DASHBOARD:
 ${JSON.stringify(dashboard, null, 2)}
 
 ÚLTIMOS POSTS:
-${summarizePosts(media)}
+${summarizePosts(media, 6, 90)}
 
 RETORNE EXATAMENTE NESTE JSON:
 {
@@ -1060,10 +1158,10 @@ RETORNE EXATAMENTE NESTE JSON:
 `;
 
   try {
-    const data = await callGroqJSON({
+    const data = await callAIWithFallback({
       system: plannerSystemPrompt(),
       user: userPrompt,
-      maxTokens: 3400,
+      maxTokens: 2200,
       temperature: 0.7
     });
 
@@ -1074,7 +1172,7 @@ RETORNE EXATAMENTE NESTE JSON:
 });
 
 app.post("/api/competitors", async (req, res) => {
-  if (!ensureGroq(res)) return;
+  if (!ensureAtLeastOneModel(res)) return;
 
   const {
     igId,
@@ -1104,7 +1202,7 @@ Faça uma análise estratégica de concorrência para este perfil.
 ${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
 POSTS RECENTES DO PERFIL:
-${summarizePosts(media)}
+${summarizePosts(media, 6, 90)}
 
 CONCORRENTES/REFERÊNCIAS INFORMADAS:
 ${competitorsText}
@@ -1123,10 +1221,10 @@ RETORNE EXATAMENTE NESTE JSON:
 `;
 
   try {
-    const data = await callGroqJSON({
+    const data = await callAIWithFallback({
       system: plannerSystemPrompt(),
       user: userPrompt,
-      maxTokens: 3400,
+      maxTokens: 2200,
       temperature: 0.72
     });
 
@@ -1137,7 +1235,7 @@ RETORNE EXATAMENTE NESTE JSON:
 });
 
 app.post("/api/generate", async (req, res) => {
-  if (!ensureGroq(res)) return;
+  if (!ensureAtLeastOneModel(res)) return;
 
   const {
     igId,
@@ -1317,9 +1415,11 @@ app.get("/api/status", (req, res) => {
   res.json({
     ok: true,
     groq: Boolean(GROQ_API_KEY),
+    gemini: Boolean(GEMINI_API_KEY),
     tokens_configured: IG_TOKENS.length,
     base_url: BASE_URL,
-    model: GROQ_MODEL,
+    groq_model: GROQ_MODEL,
+    gemini_model: GEMINI_MODEL,
     clients_dir: CLIENTS_DIR
   });
 });
@@ -1342,7 +1442,8 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 6.0 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 6.1 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
+  console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
 });
