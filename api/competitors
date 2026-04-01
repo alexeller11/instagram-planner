@@ -1,0 +1,135 @@
+app.post("/api/competitors", async (req, res) => {
+  if (!ensureAtLeastOneModel(res)) return;
+
+  const {
+    igId,
+    niche = "",
+    audience = "",
+    competitors = [],
+    location = "",
+    goal = "",
+    tone = "",
+    extra = ""
+  } = req.body || {};
+
+  const account = getAccountFromSession(req, igId);
+  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
+
+  const media = await fetchMedia(account.id, account.ig_token, 12);
+  const clientMemory = getClientMemory(account.username);
+
+  const competitorsData = competitors.map((c) => ({
+    username: c.replace("@", "").trim()
+  }));
+
+  const userPrompt = `
+Faça uma análise estratégica PROFUNDA.
+
+${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
+
+PERFIL ANALISADO:
+@${account.username}
+
+BIO ATUAL:
+${account.biography || "Não informada"}
+
+POSTS RECENTES:
+${summarizePosts(media, 6, 90)}
+
+CONCORRENTES:
+${JSON.stringify(competitorsData, null, 2)}
+
+RETORNE EXATAMENTE NESTE JSON:
+
+{
+  "market_overview": "leitura do mercado",
+
+  "competitors_analysis": [
+    {
+      "username": "@concorrente",
+      "positioning": "como se posiciona",
+      "content_style": "como se comunica",
+      "visual_style": "como aparenta visualmente",
+      "strengths": ["força 1", "força 2"],
+      "weaknesses": ["fraqueza 1", "fraqueza 2"],
+      "opportunity_against": "como bater esse concorrente"
+    }
+  ],
+
+  "comparative_analysis": {
+    "where_you_are_stronger": ["ponto 1", "ponto 2"],
+    "where_you_are_weaker": ["ponto 1", "ponto 2"],
+    "positioning_gap": "o que falta no seu perfil hoje"
+  },
+
+  "bio_optimization": {
+    "analysis": "o que está errado ou fraco na bio atual",
+    "improvements": [
+      "ajuste 1",
+      "ajuste 2",
+      "ajuste 3"
+    ],
+    "bio_suggestions": [
+      {
+        "type": "direta",
+        "bio": "bio clara e objetiva",
+        "char_count": 0
+      },
+      {
+        "type": "autoridade",
+        "bio": "bio que gera confiança",
+        "char_count": 0
+      },
+      {
+        "type": "conversão",
+        "bio": "bio que puxa para ação",
+        "char_count": 0
+      }
+    ]
+  },
+
+  "strategic_direction": [
+    "movimento 1",
+    "movimento 2",
+    "movimento 3"
+  ]
+}
+
+REGRAS IMPORTANTES:
+
+- cada bio deve ter NO MÁXIMO 150 caracteres
+- bio precisa ser específica, nada genérico
+- bio precisa deixar claro:
+  - o que faz
+  - para quem
+  - diferencial ou benefício
+- evitar frases vagas como:
+  "qualidade", "excelência", "soluções completas"
+- bio precisa parecer escrita por humano
+
+- concorrentes devem ser analisados individualmente
+- nada de resposta genérica
+`;
+
+  try {
+    const data = await callAIWithFallback({
+      system: plannerSystemPrompt(),
+      user: userPrompt,
+      maxTokens: 2200,
+      temperature: 0.75
+    });
+
+    // 🔥 FORÇAR CONTAGEM DE CARACTERES
+    if (data.bio_optimization?.bio_suggestions) {
+      data.bio_optimization.bio_suggestions =
+        data.bio_optimization.bio_suggestions.map((b) => ({
+          ...b,
+          char_count: b.bio.length
+        }));
+    }
+
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
