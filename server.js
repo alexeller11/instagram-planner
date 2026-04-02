@@ -8,6 +8,7 @@ const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const Groq = require("groq-sdk");
 const { GoogleGenAI } = require("@google/genai");
+const { chromium } = require("playwright");
 
 const app = express();
 
@@ -30,7 +31,7 @@ const IG_TOKENS = (process.env.IG_TOKENS || "")
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "8mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -52,10 +53,13 @@ app.use(
 const DATA_DIR = path.join(__dirname, "data");
 const CLIENTS_DIR = path.join(DATA_DIR, "clients");
 const DEFAULT_CLIENT_PATH = path.join(CLIENTS_DIR, "default.json");
+const PUBLIC_TMP_DIR = path.join(__dirname, "public", "tmp");
+const LOGO_PATH = path.join(__dirname, "public", "assets", "ideale-logo.png");
 
-function ensureDataStructure() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
-  if (!fs.existsSync(CLIENTS_DIR)) fs.mkdirSync(CLIENTS_DIR);
+function ensureDirs() {
+  [DATA_DIR, CLIENTS_DIR, PUBLIC_TMP_DIR].forEach((dir) => {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  });
 
   if (!fs.existsSync(DEFAULT_CLIENT_PATH)) {
     fs.writeFileSync(
@@ -90,7 +94,7 @@ function ensureDataStructure() {
   }
 }
 
-ensureDataStructure();
+ensureDirs();
 
 function sanitizeFileName(value) {
   return String(value || "cliente")
@@ -580,13 +584,6 @@ RETORNE EXATAMENTE NESTE JSON:
     "strategy": "estratégia de hashtags"
   }
 }
-
-REGRAS:
-- criar EXATAMENTE ${totalPosts} blueprints
-- criar EXATAMENTE ${reels} blueprints com format "Reels"
-- criar EXATAMENTE ${carousels} blueprints com format "Carrossel"
-- criar EXATAMENTE ${singlePosts} blueprints com format "Post"
-- não repetir ângulo
 `;
 }
 
@@ -801,6 +798,58 @@ function qualityCheck(plan) {
   return plan;
 }
 
+function scorePostQuality(post) {
+  let score = 0;
+  const title = String(post.title || "");
+  const hook = String(post.hook || "");
+  const copy = String(post.copy || "");
+  const script = String(post.script || "");
+  const slides = Array.isArray(post.carousel_slides) ? post.carousel_slides : [];
+
+  if (title.length >= 20 && title.length <= 85) score += 20;
+  else if (title.length >= 12) score += 12;
+
+  if (hook.length >= 20) score += 15;
+  if (copy.length >= 260) score += 25;
+  else if (copy.length >= 180) score += 15;
+
+  if (post.format === "Reels") {
+    if (script.length >= 220) score += 20;
+    else if (script.length >= 140) score += 10;
+  }
+
+  if (post.format === "Carrossel") {
+    if (slides.length >= 5) score += 20;
+    else if (slides.length >= 3) score += 10;
+  }
+
+  const weakPatterns = [
+    "nossa equipe",
+    "saiba mais",
+    "entenda",
+    "podemos ajudar",
+    "veja como",
+    "conheça nossos serviços"
+  ];
+
+  let penalty = 0;
+  weakPatterns.forEach((p) => {
+    if (copy.toLowerCase().includes(p)) penalty += 8;
+  });
+
+  const finalScore = Math.max(0, Math.min(100, score - penalty));
+
+  let label = "Fraco";
+  if (finalScore >= 80) label = "Muito forte";
+  else if (finalScore >= 65) label = "Bom";
+  else if (finalScore >= 45) label = "Regular";
+
+  return {
+    score: finalScore,
+    label
+  };
+}
+
 function updateMemory(username, plan) {
   const current = getClientMemory(username);
   const titles = (plan.posts || []).map((p) => p.title).filter(Boolean);
@@ -910,7 +959,113 @@ async function generateAgencyLevelPlanner({
   });
 
   const mixed = forcePlannerMix(draftPlan, { totalPosts, reels, carousels, singlePosts });
-  return qualityCheck(mixed);
+  const qualityChecked = qualityCheck(mixed);
+
+  qualityChecked.posts = (qualityChecked.posts || []).map((post) => {
+    const q = scorePostQuality(post);
+    return {
+      ...post,
+      quality_score: q.score,
+      quality_label: q.label
+    };
+  });
+
+  return qualityChecked;
+}
+
+async function captureInstagramProfileScreenshot(username) {
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 2200 }
+    });
+
+    const cleanUsername = String(username || "").replace("@", "").trim();
+    const url = `https://www.instagram.com/${cleanUsername}/`;
+
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000
+    });
+
+    await page.waitForTimeout(3500);
+
+    const bodyText = await page.textContent("body").catch(() => "");
+    const lower = String(bodyText || "").toLowerCase();
+
+    if (
+      lower.includes("login") ||
+      lower.includes("entrar") ||
+      lower.includes("sign up") ||
+      lower.includes("something went wrong")
+    ) {
+      throw new Error("Instagram bloqueou a visualização pública para este perfil.");
+    }
+
+    const filename = `competitor_${cleanUsername}_${Date.now()}.png`;
+    const filepath = path.join(PUBLIC_TMP_DIR, filename);
+
+    await page.screenshot({
+      path: filepath,
+      fullPage: true
+    });
+
+    return {
+      success: true,
+      imageUrl: `/tmp/${filename}`,
+      sourceUrl: url
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+}
+
+function addPdfCover(doc, title, subtitle = "") {
+  doc.rect(0, 0, doc.page.width, 170).fill("#19152f");
+
+  if (fs.existsSync(LOGO_PATH)) {
+    doc.image(LOGO_PATH, 40, 36, { fit: [140, 70] });
+  }
+
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(24).text(title, 40, 90, {
+    width: doc.page.width - 80,
+    align: "center"
+  });
+
+  if (subtitle) {
+    doc.font("Helvetica").fontSize(12).text(subtitle, 40, 120, {
+      width: doc.page.width - 80,
+      align: "center"
+    });
+  }
+
+  doc.moveDown(7);
+  doc.fillColor("#111111");
+}
+
+function addSectionTitle(doc, title) {
+  doc.font("Helvetica-Bold").fontSize(16).fillColor("#111111").text(title);
+  doc.moveDown(0.4);
+}
+
+function addListItems(doc, items = []) {
+  doc.font("Helvetica").fontSize(10);
+  items.forEach((item) => {
+    doc.text(`• ${item}`);
+  });
+  doc.moveDown(0.4);
 }
 
 function renderPostToPdf(doc, post) {
@@ -920,6 +1075,7 @@ function renderPostToPdf(doc, post) {
   doc.font("Helvetica").fontSize(10).fillColor("#555555");
   doc.text(`Objetivo: ${post.objective || ""}`);
   doc.text(`Pilar: ${post.pillar || ""} | Intenção: ${post.intent || ""} | Sugestão de dia: ${post.day_suggestion || ""}`);
+  doc.text(`Score: ${post.quality_score || 0} (${post.quality_label || "-"})`);
   doc.moveDown(0.5);
 
   doc.font("Helvetica-Bold").fontSize(11).fillColor("#111111").text("Gancho");
@@ -1261,9 +1417,8 @@ REGRAS IMPORTANTES:
 - cada sugestão de nome deve ter NO MÁXIMO 64 caracteres
 - bio precisa ser específica
 - bio precisa deixar claro o que faz, para quem e diferencial
-- evitar frases vagas como "qualidade", "excelência", "soluções completas"
+- evitar frases vagas
 - concorrentes devem ser analisados individualmente
-- nada de resposta genérica
 `;
 
   try {
@@ -1273,6 +1428,19 @@ REGRAS IMPORTANTES:
       maxTokens: 2600,
       temperature: 0.75
     });
+
+    const enrichedCompetitors = [];
+
+    for (const comp of data.competitors_analysis || []) {
+      const username = String(comp.username || "").replace("@", "").trim();
+      const preview = await captureInstagramProfileScreenshot(username);
+
+      enrichedCompetitors.push({
+        ...comp,
+        preview_image: preview.success ? preview.imageUrl : "",
+        preview_error: preview.success ? "" : preview.error
+      });
+    }
 
     if (data.bio_optimization?.bio_suggestions) {
       data.bio_optimization.bio_suggestions = data.bio_optimization.bio_suggestions.map((b) => ({
@@ -1290,9 +1458,87 @@ REGRAS IMPORTANTES:
       }));
     }
 
+    data.competitors_analysis = enrichedCompetitors;
+
     return res.json(data);
   } catch (error) {
     return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/improve-post", async (req, res) => {
+  if (!ensureAtLeastOneModel(res)) return;
+
+  const { post, mode = "conversao" } = req.body || {};
+
+  if (!post) {
+    return res.status(400).json({ error: "Post não enviado." });
+  }
+
+  const prompt = `
+Você vai reescrever um post fraco para deixá-lo mais forte.
+
+POST ORIGINAL:
+${JSON.stringify(post, null, 2)}
+
+MODO:
+${getModeInstruction(mode)}
+
+RETORNE EXATAMENTE NESTE JSON:
+{
+  "title": "novo título",
+  "hook": "novo gancho",
+  "copy": "nova legenda completa",
+  "cta": "novo cta",
+  "script": "novo roteiro se for reels",
+  "carousel_slides": ["slide 1", "slide 2", "slide 3"]
+}
+
+REGRAS:
+- manter o mesmo formato do post original
+- deixar mais forte, mais útil e mais comercial
+- nada genérico
+- se for reels, fortalecer o script
+- se for carrossel, fortalecer a progressão
+`;
+
+  try {
+    const improved = await callAIWithFallback({
+      system: plannerSystemPrompt(),
+      user: prompt,
+      maxTokens: 1800,
+      temperature: 0.78
+    });
+
+    const merged = {
+      ...post,
+      ...improved
+    };
+
+    const q = scorePostQuality(merged);
+
+    return res.json({
+      ...merged,
+      quality_score: q.score,
+      quality_label: q.label
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/competitor-preview/:username", async (req, res) => {
+  const username = String(req.params.username || "").replace("@", "").trim();
+
+  if (!username) {
+    return res.status(400).json({ error: "Username inválido." });
+  }
+
+  try {
+    const result = await captureInstagramProfileScreenshot(username);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1357,114 +1603,192 @@ app.post("/api/generate", async (req, res) => {
   }
 });
 
-app.post("/api/export-pdf", (req, res) => {
-  const { plan, username = "perfil" } = req.body || {};
-
+app.post("/api/export-report", async (req, res) => {
   try {
+    const { type, username = "perfil", payload = {} } = req.body || {};
     const doc = new PDFDocument({ margin: 40, size: "A4" });
-    const filename = `plano_${username}_${Date.now()}.pdf`;
 
+    const filename = `${type || "relatorio"}_${sanitizeFileName(username)}_${Date.now()}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
     doc.pipe(res);
 
-    doc.rect(0, 0, doc.page.width, 170).fill("#19152f");
-    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(24).text("PLANO ESTRATÉGICO DE INSTAGRAM", 40, 50, {
-      width: doc.page.width - 80,
-      align: "center"
-    });
-    doc.font("Helvetica").fontSize(12).text(`@${username}`, 40, 95, {
-      width: doc.page.width - 80,
-      align: "center"
-    });
+    const titles = {
+      planner: "PLANEJAMENTO DE INSTAGRAM",
+      intelligence: "ANÁLISE ESTRATÉGICA",
+      competitors: "ANÁLISE DE CONCORRÊNCIA",
+      memory: "MEMÓRIA DO CLIENTE"
+    };
 
-    doc.moveDown(7);
-    doc.fillColor("#111111");
+    addPdfCover(doc, titles[type] || "RELATÓRIO", `@${username}`);
 
-    if (plan?.audit) {
-      doc.font("Helvetica-Bold").fontSize(16).text("Resumo executivo");
-      doc.moveDown(0.3);
-      doc.font("Helvetica").fontSize(11).text(plan.audit.summary || "");
-      doc.moveDown(0.5);
+    if (type === "planner") {
+      if (payload.audit) {
+        addSectionTitle(doc, "Resumo executivo");
+        doc.font("Helvetica").fontSize(11).text(payload.audit.summary || "");
+        doc.moveDown(0.5);
 
-      doc.font("Helvetica-Bold").fontSize(12).text("Estratégia do mês");
-      doc.font("Helvetica").fontSize(10).text(plan.audit.month_strategy || "");
-      doc.moveDown(0.4);
-
-      doc.font("Helvetica-Bold").fontSize(12).text("Lógica do funil");
-      doc.font("Helvetica").fontSize(10).text(plan.audit.funnel_logic || "");
-      doc.moveDown(0.8);
-    }
-
-    if (Array.isArray(plan?.content_pillars) && plan.content_pillars.length) {
-      doc.font("Helvetica-Bold").fontSize(12).text("Pilares");
-      doc.font("Helvetica").fontSize(10).text(plan.content_pillars.join(" • "));
-      doc.moveDown(0.5);
-    }
-
-    if (Array.isArray(plan?.priority_ctas) && plan.priority_ctas.length) {
-      doc.font("Helvetica-Bold").fontSize(12).text("CTAs prioritários");
-      doc.font("Helvetica").fontSize(10).text(plan.priority_ctas.join(" • "));
-      doc.moveDown(0.8);
-    }
-
-    if (Array.isArray(plan?.posts) && plan.posts.length) {
-      doc.addPage();
-      doc.font("Helvetica-Bold").fontSize(18).text("Calendário resumido");
-      doc.moveDown(0.7);
-
-      plan.posts.forEach((post) => {
-        doc.font("Helvetica-Bold").fontSize(11).text(`#${post.n} • ${post.day_suggestion || ""} • ${post.format || ""}`);
-        doc.font("Helvetica").fontSize(10).text(post.title || "");
+        addSectionTitle(doc, "Estratégia do mês");
+        doc.font("Helvetica").fontSize(10).text(payload.audit.month_strategy || "");
         doc.moveDown(0.4);
-      });
-    }
 
-    if (Array.isArray(plan?.posts)) {
-      plan.posts.forEach((post) => {
-        doc.addPage();
-        renderPostToPdf(doc, post);
-      });
-    }
+        addSectionTitle(doc, "Lógica do funil");
+        doc.font("Helvetica").fontSize(10).text(payload.audit.funnel_logic || "");
+        doc.moveDown(0.6);
+      }
 
-    if (Array.isArray(plan?.stories) && plan.stories.length) {
-      doc.addPage();
-      doc.font("Helvetica-Bold").fontSize(18).text("Sequências de stories");
-      doc.moveDown(0.7);
+      addSectionTitle(doc, "Pilares");
+      doc.font("Helvetica").fontSize(10).text((payload.content_pillars || []).join(" • "));
+      doc.moveDown(0.5);
 
-      plan.stories.forEach((story) => {
-        doc.font("Helvetica-Bold").fontSize(13).text(`${story.day || ""} • ${story.theme || ""}`);
-        doc.font("Helvetica").fontSize(10).text(`Objetivo: ${story.objective || ""}`);
-        doc.moveDown(0.3);
-
-        (story.slides || []).forEach((slide) => {
-          doc.text(`Slide ${slide.n}: ${slide.text} (${slide.action || "ação"})`);
-        });
-
-        doc.moveDown(0.8);
-      });
-    }
-
-    if (plan?.hashtags) {
-      doc.addPage();
-      doc.font("Helvetica-Bold").fontSize(18).text("Hashtags e observações");
-      doc.moveDown(0.7);
-
-      doc.font("Helvetica-Bold").fontSize(12).text("Nicho");
-      doc.font("Helvetica").fontSize(10).text((plan.hashtags.niche || []).join(" "));
-      doc.moveDown(0.4);
-
-      doc.font("Helvetica-Bold").fontSize(12).text("Local");
-      doc.font("Helvetica").fontSize(10).text((plan.hashtags.local || []).join(" "));
-      doc.moveDown(0.4);
-
-      doc.font("Helvetica-Bold").fontSize(12).text("Amplas");
-      doc.font("Helvetica").fontSize(10).text((plan.hashtags.broad || []).join(" "));
+      addSectionTitle(doc, "CTAs prioritários");
+      doc.font("Helvetica").fontSize(10).text((payload.priority_ctas || []).join(" • "));
       doc.moveDown(0.6);
 
-      doc.font("Helvetica-Bold").fontSize(12).text("Estratégia");
-      doc.font("Helvetica").fontSize(10).text(plan.hashtags.strategy || "");
+      if (Array.isArray(payload.posts)) {
+        doc.addPage();
+        addSectionTitle(doc, "Calendário resumido");
+        payload.posts.forEach((post) => {
+          doc.font("Helvetica-Bold").fontSize(11).text(`#${post.n} • ${post.day_suggestion || ""} • ${post.format || ""}`);
+          doc.font("Helvetica").fontSize(10).text(post.title || "");
+          doc.moveDown(0.4);
+        });
+
+        payload.posts.forEach((post) => {
+          doc.addPage();
+          renderPostToPdf(doc, post);
+        });
+      }
+
+      if (Array.isArray(payload.stories) && payload.stories.length) {
+        doc.addPage();
+        addSectionTitle(doc, "Sequências de stories");
+        payload.stories.forEach((story) => {
+          doc.font("Helvetica-Bold").fontSize(12).text(`${story.day || ""} • ${story.theme || ""}`);
+          doc.font("Helvetica").fontSize(10).text(`Objetivo: ${story.objective || ""}`);
+          doc.moveDown(0.2);
+          (story.slides || []).forEach((slide) => {
+            doc.text(`Slide ${slide.n}: ${slide.text} (${slide.action || "ação"})`);
+          });
+          doc.moveDown(0.8);
+        });
+      }
+    }
+
+    if (type === "intelligence") {
+      addSectionTitle(doc, "Resumo executivo");
+      doc.font("Helvetica").fontSize(10).text(payload.executive_summary || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Diagnóstico");
+      doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${payload.diagnosis?.positioning || ""}`);
+      doc.text(`Força atual: ${payload.diagnosis?.content_strength || ""}`);
+      doc.text(`Gap: ${payload.diagnosis?.content_gap || ""}`);
+      doc.text(`Engajamento: ${payload.diagnosis?.engagement_read || ""}`);
+      doc.text(`Funil: ${payload.diagnosis?.funnel_read || ""}`);
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Leitura local");
+      doc.font("Helvetica").fontSize(10).text(payload.local_market_read || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Oportunidades");
+      addListItems(doc, payload.opportunities || []);
+
+      addSectionTitle(doc, "Ações prioritárias");
+      addListItems(doc, payload.priority_actions || []);
+
+      addSectionTitle(doc, "Ângulos de conteúdo");
+      addListItems(doc, payload.content_angles || []);
+
+      addSectionTitle(doc, "Sugestões de bio");
+      addListItems(doc, payload.bio_suggestions || []);
+    }
+
+    if (type === "competitors") {
+      addSectionTitle(doc, "Leitura do mercado");
+      doc.font("Helvetica").fontSize(10).text(payload.market_overview || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Concorrentes analisados");
+      for (const comp of payload.competitors_analysis || []) {
+        doc.font("Helvetica-Bold").fontSize(12).text(comp.username || "");
+        doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${comp.positioning || ""}`);
+        doc.text(`Conteúdo: ${comp.content_style || ""}`);
+        doc.text(`Visual: ${comp.visual_style || ""}`);
+        doc.text(`Forças: ${(comp.strengths || []).join(", ")}`);
+        doc.text(`Fraquezas: ${(comp.weaknesses || []).join(", ")}`);
+        doc.text(`Como bater: ${comp.opportunity_against || ""}`);
+        doc.moveDown(0.6);
+      }
+
+      addSectionTitle(doc, "Comparativo");
+      doc.font("Helvetica").fontSize(10).text(`Onde você está mais forte: ${(payload.comparative_analysis?.where_you_are_stronger || []).join(", ")}`);
+      doc.text(`Onde você está mais fraco: ${(payload.comparative_analysis?.where_you_are_weaker || []).join(", ")}`);
+      doc.text(`Lacuna de posicionamento: ${payload.comparative_analysis?.positioning_gap || ""}`);
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Otimização da bio");
+      doc.font("Helvetica").fontSize(10).text(payload.bio_optimization?.analysis || "");
+      doc.moveDown(0.3);
+      addListItems(doc, payload.bio_optimization?.improvements || []);
+
+      addSectionTitle(doc, "Sugestões de bio");
+      (payload.bio_optimization?.bio_suggestions || []).forEach((b) => {
+        doc.font("Helvetica-Bold").fontSize(10).text(`${b.type || ""} • ${b.char_count || 0} caracteres`);
+        doc.font("Helvetica").fontSize(10).text(b.bio || "");
+        doc.moveDown(0.4);
+      });
+
+      addSectionTitle(doc, "Sugestões de nome");
+      (payload.profile_optimization?.name_suggestions || []).forEach((n) => {
+        doc.font("Helvetica-Bold").fontSize(10).text(`${n.name || ""} • ${n.char_count || 0} caracteres`);
+      });
+      doc.moveDown(0.5);
+
+      addSectionTitle(doc, "Destaques sugeridos");
+      addListItems(doc, payload.profile_optimization?.highlights_suggestions || []);
+
+      addSectionTitle(doc, "Recomendação para link da bio");
+      doc.font("Helvetica").fontSize(10).text(payload.profile_optimization?.link_bio_recommendation || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Direção estratégica");
+      addListItems(doc, payload.strategic_direction || []);
+    }
+
+    if (type === "memory") {
+      addSectionTitle(doc, "Nicho");
+      doc.font("Helvetica").fontSize(10).text(payload.niche || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Público");
+      doc.font("Helvetica").fontSize(10).text(payload.audience || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Localização");
+      doc.font("Helvetica").fontSize(10).text(payload.location || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Tom");
+      doc.font("Helvetica").fontSize(10).text(payload.tone || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Diferenciais");
+      addListItems(doc, payload.differentials || []);
+
+      addSectionTitle(doc, "Palavras proibidas");
+      addListItems(doc, payload.forbidden_words || []);
+
+      addSectionTitle(doc, "O que funciona");
+      addListItems(doc, payload.memory?.what_works || []);
+
+      addSectionTitle(doc, "O que não funciona");
+      addListItems(doc, payload.memory?.what_doesnt_work || []);
+
+      addSectionTitle(doc, "Ângulos fortes");
+      addListItems(doc, payload.memory?.strong_angles || []);
     }
 
     doc.end();
@@ -1504,7 +1828,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 6.2 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 6.4 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
