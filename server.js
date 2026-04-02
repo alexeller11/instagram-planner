@@ -248,7 +248,7 @@ function shouldFallbackToGemini(error) {
     msg.includes("request too large") ||
     msg.includes("tokens per minute") ||
     msg.includes("rate_limit_exceeded") ||
-    msg.includes("requested") && msg.includes("limit")
+    (msg.includes("requested") && msg.includes("limit"))
   );
 }
 
@@ -488,9 +488,6 @@ MEMÓRIA DO CLIENTE:
 - O que não funciona: ${mem.what_doesnt_work.join(", ")}
 - Ângulos fortes: ${mem.strong_angles.join(", ")}
 - Palavras proibidas: ${mem.forbidden_words.join(", ")}
-
-IMPORTANTE:
-Use nicho, público, objetivo, localização e memória do cliente para tornar tudo mais aderente ao contexto real.
 `;
 }
 
@@ -625,14 +622,6 @@ RETORNE EXATAMENTE NESTE JSON:
     }
   ]
 }
-
-REGRAS:
-- manter a quantidade exata destes blueprints
-- manter o formato de cada blueprint
-- legenda precisa cumprir a promessa
-- reels precisam ter script forte
-- carrosséis precisam ter progressão
-- posts não podem sair vazios
 `;
 }
 
@@ -660,10 +649,6 @@ RETORNE EXATAMENTE NESTE JSON:
     }
   ]
 }
-
-REGRAS:
-- cada sequência precisa ter pelo menos 3 slides
-- os stories precisam ser úteis, claros e acionáveis
 `;
 }
 
@@ -696,14 +681,6 @@ Revise o planner abaixo e MELHORE o que estiver:
 
 RETORNE EXATAMENTE NESTE JSON:
 ${JSON.stringify(compactReviewObject, null, 2)}
-
-REGRAS:
-- não alterar a quantidade de posts
-- não alterar a distribuição de formatos
-- legenda precisa soar útil
-- título precisa ser magnético
-- reels precisam ter script forte
-- não pode haver legenda oca
 `;
 }
 
@@ -1188,45 +1165,130 @@ app.post("/api/competitors", async (req, res) => {
   const account = getAccountFromSession(req, igId);
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
-  const media = await fetchMedia(account.id, account.ig_token, 15);
+  const media = await fetchMedia(account.id, account.ig_token, 12);
   const clientMemory = getClientMemory(account.username);
 
-  const competitorsText =
-    Array.isArray(competitors) && competitors.length
-      ? competitors.map((c, i) => `${i + 1}. ${c}`).join("\n")
-      : "Nenhum concorrente específico informado.";
+  const competitorsData = (competitors || [])
+    .map((c) => String(c || "").trim())
+    .filter(Boolean)
+    .map((c) => ({
+      username: c.startsWith("@") ? c : `@${c}`
+    }));
 
   const userPrompt = `
-Faça uma análise estratégica de concorrência para este perfil.
+Faça uma análise estratégica PROFUNDA.
 
 ${buildContextBlock({ account, niche, audience, goal, tone, extra, location, clientMemory })}
 
-POSTS RECENTES DO PERFIL:
+PERFIL ANALISADO:
+@${account.username}
+
+BIO ATUAL:
+${account.biography || "Não informada"}
+
+LINK ATUAL:
+${account.website || "Não informado"}
+
+POSTS RECENTES:
 ${summarizePosts(media, 6, 90)}
 
-CONCORRENTES/REFERÊNCIAS INFORMADAS:
-${competitorsText}
+CONCORRENTES:
+${JSON.stringify(competitorsData, null, 2)}
 
 RETORNE EXATAMENTE NESTE JSON:
 {
-  "market_read": "leitura do cenário competitivo",
-  "local_competitive_context": "como localização e nicho influenciam o mercado",
-  "suggested_reference_profiles": ["tipo de perfil 1", "tipo de perfil 2", "tipo de perfil 3"],
-  "competitor_patterns": ["padrão 1", "padrão 2", "padrão 3", "padrão 4"],
-  "what_they_do_well": ["ponto 1", "ponto 2", "ponto 3"],
-  "gaps_to_exploit": ["gap 1", "gap 2", "gap 3", "gap 4"],
-  "positioning_differentiators": ["diferencial 1", "diferencial 2", "diferencial 3"],
-  "content_opportunities": ["conteúdo 1", "conteúdo 2", "conteúdo 3", "conteúdo 4", "conteúdo 5"]
+  "market_overview": "leitura do mercado",
+  "competitors_analysis": [
+    {
+      "username": "@concorrente",
+      "positioning": "como se posiciona",
+      "content_style": "como se comunica",
+      "visual_style": "como aparenta visualmente",
+      "strengths": ["força 1", "força 2"],
+      "weaknesses": ["fraqueza 1", "fraqueza 2"],
+      "opportunity_against": "como bater esse concorrente"
+    }
+  ],
+  "comparative_analysis": {
+    "where_you_are_stronger": ["ponto 1", "ponto 2"],
+    "where_you_are_weaker": ["ponto 1", "ponto 2"],
+    "positioning_gap": "o que falta no seu perfil hoje"
+  },
+  "bio_optimization": {
+    "analysis": "o que está errado ou fraco na bio atual",
+    "improvements": ["ajuste 1", "ajuste 2", "ajuste 3"],
+    "bio_suggestions": [
+      {
+        "type": "direta",
+        "bio": "bio clara e objetiva",
+        "char_count": 0
+      },
+      {
+        "type": "autoridade",
+        "bio": "bio que gera confiança",
+        "char_count": 0
+      },
+      {
+        "type": "conversão",
+        "bio": "bio que puxa para ação",
+        "char_count": 0
+      }
+    ]
+  },
+  "profile_optimization": {
+    "name_suggestions": [
+      {
+        "name": "Nome sugerido 1",
+        "char_count": 0
+      },
+      {
+        "name": "Nome sugerido 2",
+        "char_count": 0
+      },
+      {
+        "name": "Nome sugerido 3",
+        "char_count": 0
+      }
+    ],
+    "highlights_suggestions": ["Destaque 1", "Destaque 2", "Destaque 3", "Destaque 4", "Destaque 5"],
+    "link_bio_recommendation": "como o link da bio deveria ser usado"
+  },
+  "strategic_direction": ["movimento 1", "movimento 2", "movimento 3"]
 }
+
+REGRAS IMPORTANTES:
+- cada bio deve ter NO MÁXIMO 150 caracteres
+- cada sugestão de nome deve ter NO MÁXIMO 64 caracteres
+- bio precisa ser específica
+- bio precisa deixar claro o que faz, para quem e diferencial
+- evitar frases vagas como "qualidade", "excelência", "soluções completas"
+- concorrentes devem ser analisados individualmente
+- nada de resposta genérica
 `;
 
   try {
     const data = await callAIWithFallback({
       system: plannerSystemPrompt(),
       user: userPrompt,
-      maxTokens: 2200,
-      temperature: 0.72
+      maxTokens: 2600,
+      temperature: 0.75
     });
+
+    if (data.bio_optimization?.bio_suggestions) {
+      data.bio_optimization.bio_suggestions = data.bio_optimization.bio_suggestions.map((b) => ({
+        ...b,
+        bio: String(b.bio || "").slice(0, 150),
+        char_count: String(b.bio || "").slice(0, 150).length
+      }));
+    }
+
+    if (data.profile_optimization?.name_suggestions) {
+      data.profile_optimization.name_suggestions = data.profile_optimization.name_suggestions.map((n) => ({
+        ...n,
+        name: String(n.name || "").slice(0, 64),
+        char_count: String(n.name || "").slice(0, 64).length
+      }));
+    }
 
     return res.json(data);
   } catch (error) {
@@ -1442,7 +1504,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 6.1 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 6.2 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
