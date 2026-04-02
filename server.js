@@ -978,7 +978,11 @@ async function captureInstagramProfileScreenshot(username) {
   try {
     browser = await chromium.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage"
+      ]
     });
 
     const page = await browser.newPage({
@@ -1103,151 +1107,198 @@ function renderPostToPdf(doc, post) {
   doc.font("Helvetica").fontSize(10).text(post.cta || "");
 }
 
-app.post("/api/suggest", async (req, res) => {
-  if (!ensureAtLeastOneModel(res)) return;
-
-  const { igId } = req.body || {};
-  const account = getAccountFromSession(req, igId);
-
-  if (!account) {
-    return res.status(404).json({ error: "Conta não encontrada." });
-  }
-
-  const media = await fetchMedia(account.id, account.ig_token, 18);
-  const clientMemory = getClientMemory(account.username);
-
-  const prompt = `
-Faça um auto preenchimento estratégico para esta conta de Instagram.
-
-PERFIL:
-- @${account.username}
-- Nome: ${account.name || ""}
-- Bio: ${account.biography || ""}
-- Website: ${account.website || ""}
-- Seguidores: ${account.followers_count || 0}
-
-POSTS RECENTES:
-${summarizePosts(media, 6, 90)}
-
-MEMÓRIA JÁ EXISTENTE:
-${JSON.stringify(buildMemorySummary(clientMemory), null, 2)}
-
-RETORNE EXATAMENTE NESTE JSON:
-{
-  "niche": "nicho sugerido",
-  "audience": "público sugerido",
-  "goal": "objetivo sugerido",
-  "tone": "tom de voz sugerido",
-  "location": "localização provável ou sugerida",
-  "extra": "contexto estratégico curto"
-}
-`;
-
+app.post("/api/export-report", async (req, res) => {
   try {
-    const data = await callAIWithFallback({
-      system: plannerSystemPrompt(),
-      user: prompt,
-      maxTokens: 900,
-      temperature: 0.4
-    });
+    const { type, username = "perfil", payload = {} } = req.body || {};
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
 
-    return res.json(data);
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-});
+    const filename = `${type || "relatorio"}_${sanitizeFileName(username)}_${Date.now()}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-app.get("/api/client-memory/:username", (req, res) => {
-  try {
-    const data = getClientMemory(req.params.username);
-    res.json(data);
+    doc.pipe(res);
+
+    const titles = {
+      planner: "PLANEJAMENTO DE INSTAGRAM",
+      intelligence: "ANÁLISE ESTRATÉGICA",
+      competitors: "ANÁLISE DE CONCORRÊNCIA",
+      memory: "MEMÓRIA DO CLIENTE"
+    };
+
+    addPdfCover(doc, titles[type] || "RELATÓRIO", `@${username}`);
+
+    if (type === "planner") {
+      if (payload.audit) {
+        addSectionTitle(doc, "Resumo executivo");
+        doc.font("Helvetica").fontSize(11).text(payload.audit.summary || "");
+        doc.moveDown(0.5);
+
+        addSectionTitle(doc, "Estratégia do mês");
+        doc.font("Helvetica").fontSize(10).text(payload.audit.month_strategy || "");
+        doc.moveDown(0.4);
+
+        addSectionTitle(doc, "Lógica do funil");
+        doc.font("Helvetica").fontSize(10).text(payload.audit.funnel_logic || "");
+        doc.moveDown(0.6);
+      }
+
+      addSectionTitle(doc, "Pilares");
+      doc.font("Helvetica").fontSize(10).text((payload.content_pillars || []).join(" • "));
+      doc.moveDown(0.5);
+
+      addSectionTitle(doc, "CTAs prioritários");
+      doc.font("Helvetica").fontSize(10).text((payload.priority_ctas || []).join(" • "));
+      doc.moveDown(0.6);
+
+      if (Array.isArray(payload.posts)) {
+        doc.addPage();
+        addSectionTitle(doc, "Calendário resumido");
+        payload.posts.forEach((post) => {
+          doc.font("Helvetica-Bold").fontSize(11).text(`#${post.n} • ${post.day_suggestion || ""} • ${post.format || ""}`);
+          doc.font("Helvetica").fontSize(10).text(post.title || "");
+          doc.moveDown(0.4);
+        });
+
+        payload.posts.forEach((post) => {
+          doc.addPage();
+          renderPostToPdf(doc, post);
+        });
+      }
+
+      if (Array.isArray(payload.stories) && payload.stories.length) {
+        doc.addPage();
+        addSectionTitle(doc, "Sequências de stories");
+        payload.stories.forEach((story) => {
+          doc.font("Helvetica-Bold").fontSize(12).text(`${story.day || ""} • ${story.theme || ""}`);
+          doc.font("Helvetica").fontSize(10).text(`Objetivo: ${story.objective || ""}`);
+          doc.moveDown(0.2);
+          (story.slides || []).forEach((slide) => {
+            doc.text(`Slide ${slide.n}: ${slide.text} (${slide.action || "ação"})`);
+          });
+          doc.moveDown(0.8);
+        });
+      }
+    }
+
+    if (type === "intelligence") {
+      addSectionTitle(doc, "Resumo executivo");
+      doc.font("Helvetica").fontSize(10).text(payload.executive_summary || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Diagnóstico");
+      doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${payload.diagnosis?.positioning || ""}`);
+      doc.text(`Força atual: ${payload.diagnosis?.content_strength || ""}`);
+      doc.text(`Gap: ${payload.diagnosis?.content_gap || ""}`);
+      doc.text(`Engajamento: ${payload.diagnosis?.engagement_read || ""}`);
+      doc.text(`Funil: ${payload.diagnosis?.funnel_read || ""}`);
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Leitura local");
+      doc.font("Helvetica").fontSize(10).text(payload.local_market_read || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Oportunidades");
+      addListItems(doc, payload.opportunities || []);
+
+      addSectionTitle(doc, "Ações prioritárias");
+      addListItems(doc, payload.priority_actions || []);
+
+      addSectionTitle(doc, "Ângulos de conteúdo");
+      addListItems(doc, payload.content_angles || []);
+
+      addSectionTitle(doc, "Sugestões de bio");
+      addListItems(doc, payload.bio_suggestions || []);
+    }
+
+    if (type === "competitors") {
+      addSectionTitle(doc, "Leitura do mercado");
+      doc.font("Helvetica").fontSize(10).text(payload.market_overview || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Concorrentes analisados");
+      for (const comp of payload.competitors_analysis || []) {
+        doc.font("Helvetica-Bold").fontSize(12).text(comp.username || "");
+        doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${comp.positioning || ""}`);
+        doc.text(`Conteúdo: ${comp.content_style || ""}`);
+        doc.text(`Visual: ${comp.visual_style || ""}`);
+        doc.text(`Forças: ${(comp.strengths || []).join(", ")}`);
+        doc.text(`Fraquezas: ${(comp.weaknesses || []).join(", ")}`);
+        doc.text(`Como bater: ${comp.opportunity_against || ""}`);
+        doc.moveDown(0.6);
+      }
+
+      addSectionTitle(doc, "Comparativo");
+      doc.font("Helvetica").fontSize(10).text(`Onde você está mais forte: ${(payload.comparative_analysis?.where_you_are_stronger || []).join(", ")}`);
+      doc.text(`Onde você está mais fraco: ${(payload.comparative_analysis?.where_you_are_weaker || []).join(", ")}`);
+      doc.text(`Lacuna de posicionamento: ${payload.comparative_analysis?.positioning_gap || ""}`);
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Otimização da bio");
+      doc.font("Helvetica").fontSize(10).text(payload.bio_optimization?.analysis || "");
+      doc.moveDown(0.3);
+      addListItems(doc, payload.bio_optimization?.improvements || []);
+
+      addSectionTitle(doc, "Sugestões de bio");
+      (payload.bio_optimization?.bio_suggestions || []).forEach((b) => {
+        doc.font("Helvetica-Bold").fontSize(10).text(`${b.type || ""} • ${b.char_count || 0} caracteres`);
+        doc.font("Helvetica").fontSize(10).text(b.bio || "");
+        doc.moveDown(0.4);
+      });
+
+      addSectionTitle(doc, "Sugestões de nome");
+      (payload.profile_optimization?.name_suggestions || []).forEach((n) => {
+        doc.font("Helvetica-Bold").fontSize(10).text(`${n.name || ""} • ${n.char_count || 0} caracteres`);
+      });
+      doc.moveDown(0.5);
+
+      addSectionTitle(doc, "Destaques sugeridos");
+      addListItems(doc, payload.profile_optimization?.highlights_suggestions || []);
+
+      addSectionTitle(doc, "Recomendação para link da bio");
+      doc.font("Helvetica").fontSize(10).text(payload.profile_optimization?.link_bio_recommendation || "");
+      doc.moveDown(0.6);
+
+      addSectionTitle(doc, "Direção estratégica");
+      addListItems(doc, payload.strategic_direction || []);
+    }
+
+    if (type === "memory") {
+      addSectionTitle(doc, "Nicho");
+      doc.font("Helvetica").fontSize(10).text(payload.niche || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Público");
+      doc.font("Helvetica").fontSize(10).text(payload.audience || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Localização");
+      doc.font("Helvetica").fontSize(10).text(payload.location || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Tom");
+      doc.font("Helvetica").fontSize(10).text(payload.tone || "-");
+      doc.moveDown(0.4);
+
+      addSectionTitle(doc, "Diferenciais");
+      addListItems(doc, payload.differentials || []);
+
+      addSectionTitle(doc, "Palavras proibidas");
+      addListItems(doc, payload.forbidden_words || []);
+
+      addSectionTitle(doc, "O que funciona");
+      addListItems(doc, payload.memory?.what_works || []);
+
+      addSectionTitle(doc, "O que não funciona");
+      addListItems(doc, payload.memory?.what_doesnt_work || []);
+
+      addSectionTitle(doc, "Ângulos fortes");
+      addListItems(doc, payload.memory?.strong_angles || []);
+    }
+
+    doc.end();
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-app.post("/api/client-memory/:username", (req, res) => {
-  try {
-    const merged = mergeClientMemory(req.params.username, req.body || {});
-    res.json({ success: true, data: merged });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/auth", async (req, res) => {
-  if (!IG_TOKENS.length) {
-    return res.status(400).json({ success: false, error: "Nenhum token configurado em IG_TOKENS." });
-  }
-
-  try {
-    const accounts = await fetchIGProfiles(IG_TOKENS);
-
-    if (!accounts.length) {
-      return res.status(400).json({
-        success: false,
-        error: "Nenhuma conta foi carregada com os tokens atuais."
-      });
-    }
-
-    req.session.user = { accounts };
-
-    return res.json({
-      success: true,
-      accounts: accounts.map((a) => ({
-        id: a.id,
-        username: a.username,
-        followers_count: a.followers_count
-      }))
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get("/api/me", (req, res) => {
-  if (!req.session.user) return res.json({ logged: false, accounts: [] });
-  return res.json({ logged: true, accounts: req.session.user.accounts || [] });
-});
-
-app.get("/auth/logout", (req, res) => {
-  req.session.destroy(() => res.redirect("/"));
-});
-
-app.post("/api/test-token", async (req, res) => {
-  const token = (req.body?.token || "").trim();
-  if (!token) return res.status(400).json({ success: false, error: "Token vazio." });
-
-  try {
-    const accounts = await fetchIGProfiles([token]);
-    if (!accounts.length) {
-      return res.status(400).json({ success: false, error: "Token inválido ou sem acesso." });
-    }
-
-    if (!req.session.user) req.session.user = { accounts: [] };
-
-    for (const acc of accounts) {
-      const exists = req.session.user.accounts.find((a) => a.id === acc.id);
-      if (!exists) req.session.user.accounts.push(acc);
-    }
-
-    return res.json({ success: true, accounts });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get("/api/dashboard/:igId", async (req, res) => {
-  const account = getAccountFromSession(req, req.params.igId);
-  if (!account) return res.status(404).json({ error: "Conta não encontrada na sessão." });
-
-  const media = await fetchMedia(account.id, account.ig_token, 30);
-  const dashboard = buildDashboard(media, account);
-
-  return res.json({
-    ...dashboard,
-    media_sample: media.slice(0, 12)
-  });
 });
 
 app.post("/api/intelligence", async (req, res) => {
@@ -1603,200 +1654,6 @@ app.post("/api/generate", async (req, res) => {
   }
 });
 
-app.post("/api/export-report", async (req, res) => {
-  try {
-    const { type, username = "perfil", payload = {} } = req.body || {};
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-
-    const filename = `${type || "relatorio"}_${sanitizeFileName(username)}_${Date.now()}.pdf`;
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-
-    doc.pipe(res);
-
-    const titles = {
-      planner: "PLANEJAMENTO DE INSTAGRAM",
-      intelligence: "ANÁLISE ESTRATÉGICA",
-      competitors: "ANÁLISE DE CONCORRÊNCIA",
-      memory: "MEMÓRIA DO CLIENTE"
-    };
-
-    addPdfCover(doc, titles[type] || "RELATÓRIO", `@${username}`);
-
-    if (type === "planner") {
-      if (payload.audit) {
-        addSectionTitle(doc, "Resumo executivo");
-        doc.font("Helvetica").fontSize(11).text(payload.audit.summary || "");
-        doc.moveDown(0.5);
-
-        addSectionTitle(doc, "Estratégia do mês");
-        doc.font("Helvetica").fontSize(10).text(payload.audit.month_strategy || "");
-        doc.moveDown(0.4);
-
-        addSectionTitle(doc, "Lógica do funil");
-        doc.font("Helvetica").fontSize(10).text(payload.audit.funnel_logic || "");
-        doc.moveDown(0.6);
-      }
-
-      addSectionTitle(doc, "Pilares");
-      doc.font("Helvetica").fontSize(10).text((payload.content_pillars || []).join(" • "));
-      doc.moveDown(0.5);
-
-      addSectionTitle(doc, "CTAs prioritários");
-      doc.font("Helvetica").fontSize(10).text((payload.priority_ctas || []).join(" • "));
-      doc.moveDown(0.6);
-
-      if (Array.isArray(payload.posts)) {
-        doc.addPage();
-        addSectionTitle(doc, "Calendário resumido");
-        payload.posts.forEach((post) => {
-          doc.font("Helvetica-Bold").fontSize(11).text(`#${post.n} • ${post.day_suggestion || ""} • ${post.format || ""}`);
-          doc.font("Helvetica").fontSize(10).text(post.title || "");
-          doc.moveDown(0.4);
-        });
-
-        payload.posts.forEach((post) => {
-          doc.addPage();
-          renderPostToPdf(doc, post);
-        });
-      }
-
-      if (Array.isArray(payload.stories) && payload.stories.length) {
-        doc.addPage();
-        addSectionTitle(doc, "Sequências de stories");
-        payload.stories.forEach((story) => {
-          doc.font("Helvetica-Bold").fontSize(12).text(`${story.day || ""} • ${story.theme || ""}`);
-          doc.font("Helvetica").fontSize(10).text(`Objetivo: ${story.objective || ""}`);
-          doc.moveDown(0.2);
-          (story.slides || []).forEach((slide) => {
-            doc.text(`Slide ${slide.n}: ${slide.text} (${slide.action || "ação"})`);
-          });
-          doc.moveDown(0.8);
-        });
-      }
-    }
-
-    if (type === "intelligence") {
-      addSectionTitle(doc, "Resumo executivo");
-      doc.font("Helvetica").fontSize(10).text(payload.executive_summary || "");
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Diagnóstico");
-      doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${payload.diagnosis?.positioning || ""}`);
-      doc.text(`Força atual: ${payload.diagnosis?.content_strength || ""}`);
-      doc.text(`Gap: ${payload.diagnosis?.content_gap || ""}`);
-      doc.text(`Engajamento: ${payload.diagnosis?.engagement_read || ""}`);
-      doc.text(`Funil: ${payload.diagnosis?.funnel_read || ""}`);
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Leitura local");
-      doc.font("Helvetica").fontSize(10).text(payload.local_market_read || "");
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Oportunidades");
-      addListItems(doc, payload.opportunities || []);
-
-      addSectionTitle(doc, "Ações prioritárias");
-      addListItems(doc, payload.priority_actions || []);
-
-      addSectionTitle(doc, "Ângulos de conteúdo");
-      addListItems(doc, payload.content_angles || []);
-
-      addSectionTitle(doc, "Sugestões de bio");
-      addListItems(doc, payload.bio_suggestions || []);
-    }
-
-    if (type === "competitors") {
-      addSectionTitle(doc, "Leitura do mercado");
-      doc.font("Helvetica").fontSize(10).text(payload.market_overview || "");
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Concorrentes analisados");
-      for (const comp of payload.competitors_analysis || []) {
-        doc.font("Helvetica-Bold").fontSize(12).text(comp.username || "");
-        doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${comp.positioning || ""}`);
-        doc.text(`Conteúdo: ${comp.content_style || ""}`);
-        doc.text(`Visual: ${comp.visual_style || ""}`);
-        doc.text(`Forças: ${(comp.strengths || []).join(", ")}`);
-        doc.text(`Fraquezas: ${(comp.weaknesses || []).join(", ")}`);
-        doc.text(`Como bater: ${comp.opportunity_against || ""}`);
-        doc.moveDown(0.6);
-      }
-
-      addSectionTitle(doc, "Comparativo");
-      doc.font("Helvetica").fontSize(10).text(`Onde você está mais forte: ${(payload.comparative_analysis?.where_you_are_stronger || []).join(", ")}`);
-      doc.text(`Onde você está mais fraco: ${(payload.comparative_analysis?.where_you_are_weaker || []).join(", ")}`);
-      doc.text(`Lacuna de posicionamento: ${payload.comparative_analysis?.positioning_gap || ""}`);
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Otimização da bio");
-      doc.font("Helvetica").fontSize(10).text(payload.bio_optimization?.analysis || "");
-      doc.moveDown(0.3);
-      addListItems(doc, payload.bio_optimization?.improvements || []);
-
-      addSectionTitle(doc, "Sugestões de bio");
-      (payload.bio_optimization?.bio_suggestions || []).forEach((b) => {
-        doc.font("Helvetica-Bold").fontSize(10).text(`${b.type || ""} • ${b.char_count || 0} caracteres`);
-        doc.font("Helvetica").fontSize(10).text(b.bio || "");
-        doc.moveDown(0.4);
-      });
-
-      addSectionTitle(doc, "Sugestões de nome");
-      (payload.profile_optimization?.name_suggestions || []).forEach((n) => {
-        doc.font("Helvetica-Bold").fontSize(10).text(`${n.name || ""} • ${n.char_count || 0} caracteres`);
-      });
-      doc.moveDown(0.5);
-
-      addSectionTitle(doc, "Destaques sugeridos");
-      addListItems(doc, payload.profile_optimization?.highlights_suggestions || []);
-
-      addSectionTitle(doc, "Recomendação para link da bio");
-      doc.font("Helvetica").fontSize(10).text(payload.profile_optimization?.link_bio_recommendation || "");
-      doc.moveDown(0.6);
-
-      addSectionTitle(doc, "Direção estratégica");
-      addListItems(doc, payload.strategic_direction || []);
-    }
-
-    if (type === "memory") {
-      addSectionTitle(doc, "Nicho");
-      doc.font("Helvetica").fontSize(10).text(payload.niche || "-");
-      doc.moveDown(0.4);
-
-      addSectionTitle(doc, "Público");
-      doc.font("Helvetica").fontSize(10).text(payload.audience || "-");
-      doc.moveDown(0.4);
-
-      addSectionTitle(doc, "Localização");
-      doc.font("Helvetica").fontSize(10).text(payload.location || "-");
-      doc.moveDown(0.4);
-
-      addSectionTitle(doc, "Tom");
-      doc.font("Helvetica").fontSize(10).text(payload.tone || "-");
-      doc.moveDown(0.4);
-
-      addSectionTitle(doc, "Diferenciais");
-      addListItems(doc, payload.differentials || []);
-
-      addSectionTitle(doc, "Palavras proibidas");
-      addListItems(doc, payload.forbidden_words || []);
-
-      addSectionTitle(doc, "O que funciona");
-      addListItems(doc, payload.memory?.what_works || []);
-
-      addSectionTitle(doc, "O que não funciona");
-      addListItems(doc, payload.memory?.what_doesnt_work || []);
-
-      addSectionTitle(doc, "Ângulos fortes");
-      addListItems(doc, payload.memory?.strong_angles || []);
-    }
-
-    doc.end();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.get("/api/status", (req, res) => {
   res.json({
     ok: true,
@@ -1828,7 +1685,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 6.4 rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 6.4.1 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
