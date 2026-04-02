@@ -1,6 +1,6 @@
 {
   "name": "instagram-planner-agency",
-  "version": "6.1.0",
+  "version": "6.3.0",
   "description": "Ferramenta interna de planejamento estratégico para Instagram com IA Groq + Gemini",
   "main": "server.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "groq-sdk": "^0.9.1",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "playwright": "^1.54.2"
   },
   "engines": {
     "node": ">=20"
