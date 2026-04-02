@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • 6.0</title>
+  <title>Instagram Planner Agency • 6.2</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -80,13 +80,14 @@
     .toast.show{display:block}
     .two-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .three-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .comp-card{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
     @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions,.three-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 6.0</div>
+    <div class="logo">✦ Instagram Planner Agency 6.2</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -180,7 +181,10 @@
         <div class="field"><label class="label">Localização</label><input id="compLocation" /></div>
         <div class="field"><label class="label">Objetivo da marca</label><input id="compGoal" /></div>
         <div class="field"><label class="label">Tom desejado</label><input id="compTone" /></div>
-        <div class="field"><label class="label">Concorrentes / referências</label><textarea id="compList"></textarea></div>
+        <div class="field">
+          <label class="label">Concorrentes (@ um por linha)</label>
+          <textarea id="compList" placeholder="@concorrente1&#10;@concorrente2&#10;@concorrente3"></textarea>
+        </div>
         <div class="field"><label class="label">Contexto extra</label><textarea id="compExtra"></textarea></div>
       </div>
 
@@ -307,7 +311,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v60_history";
+    const HISTORY_KEY = "ig_planner_agency_v62_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
@@ -556,7 +560,10 @@
       setDisabled("compBtn", true);
       document.getElementById("compResult").innerHTML = "Analisando concorrência...";
 
-      const competitors = document.getElementById("compList").value.split("\n").map(v => v.trim()).filter(Boolean);
+      const competitors = document.getElementById("compList").value
+        .split("\n")
+        .map(v => v.trim())
+        .filter(Boolean);
 
       try {
         const data = await fetch("/api/competitors", {
@@ -578,15 +585,82 @@
 
         document.getElementById("compResult").innerHTML = `
           <div class="result-title">Leitura do mercado</div>
-          <div class="copy-box">${escapeHtml(data.market_read || "")}</div>
+          <div class="copy-box">${escapeHtml(data.market_overview || "")}</div>
 
           <div style="height:14px"></div>
-          <div class="result-title">Contexto competitivo local</div>
-          <div class="copy-box">${escapeHtml(data.local_competitive_context || "")}</div>
+          <div class="result-title">Concorrentes analisados</div>
+          <div class="list">
+            ${(data.competitors_analysis || []).map(c => `
+              <div class="comp-card">
+                <div style="font-weight:700;font-size:18px;margin-bottom:10px">${escapeHtml(c.username || "")}</div>
+                <div class="list">
+                  <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(c.positioning || "")}</div>
+                  <div class="list-item"><strong>Estilo de conteúdo:</strong><br>${escapeHtml(c.content_style || "")}</div>
+                  <div class="list-item"><strong>Estilo visual:</strong><br>${escapeHtml(c.visual_style || "")}</div>
+                  <div class="list-item"><strong>Forças:</strong><br>${escapeHtml((c.strengths || []).join(", ") || "-")}</div>
+                  <div class="list-item"><strong>Fraquezas:</strong><br>${escapeHtml((c.weaknesses || []).join(", ") || "-")}</div>
+                  <div class="list-item"><strong>Como bater esse concorrente:</strong><br>${escapeHtml(c.opportunity_against || "")}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
 
           <div style="height:14px"></div>
-          <div class="result-title">Perfis de referência sugeridos</div>
-          <div class="tag-list">${(data.suggested_reference_profiles || []).map(i => `<div class="tag">${escapeHtml(i)}</div>`).join("")}</div>
+          <div class="result-title">Comparativo</div>
+          <div class="list">
+            <div class="list-item"><strong>Onde você está mais forte:</strong><br>${escapeHtml((data.comparative_analysis?.where_you_are_stronger || []).join(", ") || "-")}</div>
+            <div class="list-item"><strong>Onde você está mais fraco:</strong><br>${escapeHtml((data.comparative_analysis?.where_you_are_weaker || []).join(", ") || "-")}</div>
+            <div class="list-item"><strong>Lacuna de posicionamento:</strong><br>${escapeHtml(data.comparative_analysis?.positioning_gap || "")}</div>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Otimização da bio</div>
+          <div class="list">
+            <div class="list-item"><strong>Análise:</strong><br>${escapeHtml(data.bio_optimization?.analysis || "")}</div>
+            <div class="list-item"><strong>Ajustes:</strong><br>${escapeHtml((data.bio_optimization?.improvements || []).join(", ") || "-")}</div>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Sugestões de bio</div>
+          <div class="list">
+            ${(data.bio_optimization?.bio_suggestions || []).map(b => `
+              <div class="list-item">
+                <strong>${escapeHtml(b.type || "")}</strong><br>
+                ${escapeHtml(b.bio || "")}<br>
+                <span class="muted">${b.char_count || 0} caracteres</span>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Otimização do perfil</div>
+          <div class="list">
+            <div class="list-item">
+              <strong>Link da bio:</strong><br>
+              ${escapeHtml(data.profile_optimization?.link_bio_recommendation || "")}
+            </div>
+            <div class="list-item">
+              <strong>Destaques sugeridos:</strong><br>
+              ${escapeHtml((data.profile_optimization?.highlights_suggestions || []).join(", ") || "-")}
+            </div>
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Sugestões de nome do perfil</div>
+          <div class="list">
+            ${(data.profile_optimization?.name_suggestions || []).map(n => `
+              <div class="list-item">
+                ${escapeHtml(n.name || "")}<br>
+                <span class="muted">${n.char_count || 0} caracteres</span>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="height:14px"></div>
+          <div class="result-title">Direção estratégica</div>
+          <div class="list">
+            ${(data.strategic_direction || []).map(i => `<div class="list-item">${escapeHtml(i)}</div>`).join("")}
+          </div>
         `;
       } catch (error) {
         document.getElementById("compResult").innerHTML = `<div class="notice">Erro: ${escapeHtml(error.message)}</div>`;
@@ -954,9 +1028,11 @@
 
       box.innerHTML = `
         <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
+        <div class="list-item">Gemini configurado: <strong>${data.gemini ? "Sim" : "Não"}</strong></div>
         <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
         <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
-        <div class="list-item">Modelo: <strong>${escapeHtml(data.model || "")}</strong></div>
+        <div class="list-item">Modelo Groq: <strong>${escapeHtml(data.groq_model || "")}</strong></div>
+        <div class="list-item">Modelo Gemini: <strong>${escapeHtml(data.gemini_model || "")}</strong></div>
         <div class="list-item">Diretório de clientes: <strong>${escapeHtml(data.clients_dir || "")}</strong></div>
       `;
     }
