@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • 6.2</title>
+  <title>Instagram Planner Agency • 6.4</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -81,13 +81,15 @@
     .two-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .three-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
     .comp-card{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+    .section-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .section-actions button{width:auto}
     @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions,.three-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 6.2</div>
+    <div class="logo">✦ Instagram Planner Agency 6.4</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -161,6 +163,9 @@
 
       <div class="card span-8">
         <div class="title">Diagnóstico estratégico</div>
+        <div class="section-actions">
+          <button class="btn secondary" onclick="exportIntelligence()">Exportar análise</button>
+        </div>
         <div id="intelResult" class="notice">Preencha os campos ou use o auto preenchimento.</div>
       </div>
     </div>
@@ -190,6 +195,9 @@
 
       <div class="card span-8">
         <div class="title">Leitura competitiva</div>
+        <div class="section-actions">
+          <button class="btn secondary" onclick="exportCompetitors()">Exportar concorrência</button>
+        </div>
         <div id="compResult" class="notice">Use o auto preenchimento ou informe manualmente os campos.</div>
       </div>
     </div>
@@ -230,7 +238,7 @@
 
         <div class="two-actions">
           <button class="btn secondary" onclick="syncTotal()">Recalcular total</button>
-          <button class="btn secondary" onclick="exportPlannerPDF()">Exportar PDF</button>
+          <button class="btn secondary" onclick="exportPlannerPDF()">Exportar planner</button>
         </div>
       </div>
 
@@ -271,6 +279,9 @@
 
       <div class="card span-8">
         <div class="title">Resumo da memória</div>
+        <div class="section-actions">
+          <button class="btn secondary" onclick="exportMemory()">Exportar memória</button>
+        </div>
         <div id="memoryResult" class="notice">Selecione uma conta e carregue a memória.</div>
       </div>
     </div>
@@ -311,12 +322,15 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v62_history";
+    const HISTORY_KEY = "ig_planner_agency_v64_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
     let DASHBOARD = null;
     let PLAN_DATA = null;
+    let INTEL_DATA = null;
+    let COMP_DATA = null;
+    let MEMORY_DATA = null;
     let CURRENT_POST_FILTER = "ALL";
     let formatChart = null;
 
@@ -532,6 +546,8 @@
 
         if (data.error) throw new Error(data.error);
 
+        INTEL_DATA = data;
+
         document.getElementById("intelResult").innerHTML = `
           <div class="result-title">Resumo executivo</div>
           <div class="copy-box">${escapeHtml(data.executive_summary || "")}</div>
@@ -583,6 +599,8 @@
 
         if (data.error) throw new Error(data.error);
 
+        COMP_DATA = data;
+
         document.getElementById("compResult").innerHTML = `
           <div class="result-title">Leitura do mercado</div>
           <div class="copy-box">${escapeHtml(data.market_overview || "")}</div>
@@ -593,6 +611,18 @@
             ${(data.competitors_analysis || []).map(c => `
               <div class="comp-card">
                 <div style="font-weight:700;font-size:18px;margin-bottom:10px">${escapeHtml(c.username || "")}</div>
+
+                ${c.preview_image ? `
+                  <div style="margin-bottom:12px">
+                    <img src="${c.preview_image}" alt="${escapeHtml(c.username || "")}" style="width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.08)" />
+                  </div>
+                ` : `
+                  <div class="list-item" style="margin-bottom:12px">
+                    <strong>Visual do feed indisponível</strong><br>
+                    ${escapeHtml(c.preview_error || "Não foi possível gerar o print desse perfil.")}
+                  </div>
+                `}
+
                 <div class="list">
                   <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(c.positioning || "")}</div>
                   <div class="list-item"><strong>Estilo de conteúdo:</strong><br>${escapeHtml(c.content_style || "")}</div>
@@ -770,7 +800,7 @@
         <div class="list">
           ${filteredPosts.map(p => `
             <div class="list-item">
-              <div class="format">${escapeHtml(p.format || "")} • ${escapeHtml(p.intent || "")}</div>
+              <div class="format">${escapeHtml(p.format || "")} • ${escapeHtml(p.intent || "")} • Score ${p.quality_score || 0} (${escapeHtml(p.quality_label || "-")})</div>
               <div style="font-weight:700;font-size:18px;margin-bottom:8px">${escapeHtml(p.title || "")}</div>
               <div class="muted" style="margin-bottom:8px">Objetivo: ${escapeHtml(p.objective || "")}</div>
 
@@ -797,6 +827,7 @@
               <div class="result-title" style="font-size:14px">CTA</div>
               <div class="copy-box">${escapeHtml(p.cta || "")}</div>
 
+              <button class="copy-btn" onclick='improvePost(${JSON.stringify(p)})'>Melhorar este post</button>
               <button class="copy-btn" onclick='copyText(${JSON.stringify(buildPostCopy(p))})'>Copiar peça completa</button>
             </div>
           `).join("")}
@@ -828,6 +859,7 @@
         `Intenção: ${p.intent || ""}`,
         `Título: ${p.title || ""}`,
         `Objetivo: ${p.objective || ""}`,
+        `Score: ${p.quality_score || 0} (${p.quality_label || ""})`,
         ``,
         `GANCHO`,
         `${p.hook || ""}`,
@@ -849,20 +881,67 @@
       renderPlanner();
     }
 
+    async function improvePost(post) {
+      try {
+        toast("Melhorando post...");
+        const mode = document.getElementById("planMode")?.value || "conversao";
+
+        const improved = await fetch("/api/improve-post", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ post, mode })
+        }).then(r => r.json());
+
+        if (improved.error) throw new Error(improved.error);
+
+        PLAN_DATA.posts = (PLAN_DATA.posts || []).map((p) =>
+          Number(p.n) === Number(improved.n) ? improved : p
+        );
+
+        renderPlanner();
+        toast("Post melhorado.");
+      } catch (error) {
+        toast("Erro ao melhorar post.");
+      }
+    }
+
     async function exportPlannerPDF() {
       if (!PLAN_DATA || !CURRENT) return toast("Gere um planner antes.");
 
-      const res = await fetch("/api/export-pdf", {
+      await exportReport("planner", PLAN_DATA);
+    }
+
+    async function exportIntelligence() {
+      if (!INTEL_DATA || !CURRENT) return toast("Gere a análise antes.");
+      await exportReport("intelligence", INTEL_DATA);
+    }
+
+    async function exportCompetitors() {
+      if (!COMP_DATA || !CURRENT) return toast("Gere a concorrência antes.");
+      await exportReport("competitors", COMP_DATA);
+    }
+
+    async function exportMemory() {
+      if (!MEMORY_DATA || !CURRENT) return toast("Carregue a memória antes.");
+      await exportReport("memory", MEMORY_DATA);
+    }
+
+    async function exportReport(type, payload) {
+      const res = await fetch("/api/export-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: PLAN_DATA, username: CURRENT.username })
+        body: JSON.stringify({
+          type,
+          username: CURRENT?.username || "perfil",
+          payload
+        })
       });
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `plano_${CURRENT.username}.pdf`;
+      a.download = `${type}_${CURRENT?.username || "perfil"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -872,6 +951,7 @@
 
       try {
         const data = await fetch(`/api/client-memory/${CURRENT.username}`).then(r => r.json());
+        MEMORY_DATA = data;
 
         document.getElementById("memNiche").value = data.niche || "";
         document.getElementById("memAudience").value = data.audience || "";
