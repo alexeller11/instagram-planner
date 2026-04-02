@@ -1,11 +1,12 @@
 {
   "name": "instagram-planner-agency",
-  "version": "6.4.0",
+  "version": "6.4.1",
   "description": "Ferramenta interna de planejamento estratégico para Instagram com IA Groq + Gemini",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
