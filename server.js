@@ -1,3 +1,5 @@
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const express = require("express");
@@ -30,12 +32,15 @@ if (!fs.existsSync(CLIENTS_DIR)) {
   fs.mkdirSync(CLIENTS_DIR, { recursive: true });
 }
 
+app.use(helmet());
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+app.use(limiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "agency-secret",
+    secret: process.env.SESSION_SECRET || (() => { if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET não configurado em produção"); return "dev-only-insecure-secret"; })(),
     resave: false,
     saveUninitialized: false,
     cookie: {
