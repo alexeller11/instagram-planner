@@ -14,8 +14,7 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "groq-sdk": "^0.9.1",
-    "pdfkit": "^0.15.0",
-    "playwright": "^1.54.2"
+    "pdfkit": "^0.15.0"
   },
   "engines": {
     "node": ">=20"

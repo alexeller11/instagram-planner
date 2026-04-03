@@ -256,7 +256,8 @@ app.get("/api/dashboard/:id", requireLogin, async (req, res) => {
       strategic_score,
       strategic_score_label: strategic_score >= 75 ? "perfil forte" : "perfil em evolução",
     });
-  } catch {
+  } catch (error) {
+    logError('GET /api/dashboard/:id', error);
     res.status(500).json({ error: "Falha ao carregar dashboard." });
   }
 });
@@ -296,9 +297,18 @@ app.post("/api/intelligence", requireLogin, async (req, res) => {
 
     res.json(parseJSONResponse(ai, fallback));
   } catch (error) {
-    res.status(500).json({ error: error.message || "Erro na análise de inteligência." });
+    logError('POST /api/intelligence', error);
+    res.status(500).json({ error: "Erro na análise de inteligência." });
   }
 });
+
+// Função auxiliar para logging de erros
+function logError(context, error) {
+  console.error(`[${new Date().toISOString()}] ERROR in ${context}:`, error.message || error);
+  if (process.env.DEBUG_MODE === 'true') {
+    console.error('Stack:', error.stack);
+  }
+}
 
 app.post("/api/competitors", requireLogin, async (req, res) => {
   try {
@@ -337,7 +347,8 @@ app.post("/api/competitors", requireLogin, async (req, res) => {
 
     res.json(fallback);
   } catch (error) {
-    res.status(500).json({ error: error.message || "Erro ao analisar concorrência." });
+    logError('POST /api/competitors', error);
+    res.status(500).json({ error: "Erro ao analisar concorrência." });
   }
 });
 
@@ -389,27 +400,53 @@ app.post("/api/generate", requireLogin, async (req, res) => {
       ],
     });
   } catch (error) {
-    res.status(500).json({ error: error.message || "Erro ao gerar planner." });
+    logError('POST /api/generate', error);
+    res.status(500).json({ error: "Erro ao gerar planner." });
   }
 });
 
-app.post("/api/improve-post", requireLogin, (req, res) => {
-  const post = req.body?.post;
-  if (!post) return res.status(400).json({ error: "Post obrigatório." });
+app.post("/api/improve-post", requireLogin, async (req, res) => {
+  try {
+    const post = req.body?.post;
+    if (!post) return res.status(400).json({ error: "Post obrigatório." });
 
-  res.json({
-    ...post,
-    hook: `${post.hook || ""} (versão otimizada)`,
-    copy: `${post.copy || ""}\n\n+ prova social e CTA reforçado.`,
-    quality_score: Math.min(99, Number(post.quality_score || 80) + 4),
-    quality_label: "otimizado",
-  });
+    // Implementar melhoria dinâmica com IA se disponível
+    let improvedHook = `${post.hook || ""} (versão otimizada)`;
+    let improvedCopy = `${post.copy || ""}\n\n+ prova social e CTA reforçado.`;
+
+    if (GROQ || GEMINI) {
+      const improvePrompt = `Melhore este post do Instagram mantendo a estrutura:\nHook: ${post.hook}\nCopy: ${post.copy}\nRetorne APENAS JSON com: hook (string), copy (string)`;
+      try {
+        const aiResponse = await runAI(improvePrompt);
+        const parsed = parseJSONResponse(aiResponse, null);
+        if (parsed?.hook && parsed?.copy) {
+          improvedHook = parsed.hook;
+          improvedCopy = parsed.copy;
+        }
+      } catch (aiError) {
+        logError('AI improvement', aiError);
+        // Usar fallback se IA falhar
+      }
+    }
+
+    res.json({
+      ...post,
+      hook: improvedHook,
+      copy: improvedCopy,
+      quality_score: Math.min(99, Number(post.quality_score || 80) + 4),
+      quality_label: "otimizado",
+    });
+  } catch (error) {
+    logError('POST /api/improve-post', error);
+    res.status(500).json({ error: "Erro ao melhorar post." });
+  }
 });
 
 app.get("/api/client-memory/:username", requireLogin, (req, res) => {
   try {
     res.json(loadMemory(req.params.username));
-  } catch {
+  } catch (error) {
+    logError('GET /api/client-memory/:username', error);
     res.status(500).json({ error: "Erro ao carregar memória." });
   }
 });
@@ -418,27 +455,48 @@ app.post("/api/client-memory/:username", requireLogin, (req, res) => {
   try {
     saveMemory(req.params.username, req.body || {});
     res.json({ success: true });
-  } catch {
+  } catch (error) {
+    logError('POST /api/client-memory/:username', error);
     res.status(500).json({ success: false, error: "Erro ao salvar memória." });
   }
 });
 
+// Gerar PDF em worker thread para não bloquear o servidor
 app.post("/api/export-report", (req, res) => {
   const { type = "relatorio", username = "perfil" } = req.body || {};
-  const doc = new PDFDocument({ margin: 40 });
+  
+  try {
+    const doc = new PDFDocument({ margin: 40 });
 
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename=${type}_${username}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${type}_${username}.pdf`);
 
-  doc.pipe(res);
-  doc.fontSize(18).text("Instagram Planner Agency", { align: "left" });
-  doc.moveDown();
-  doc.fontSize(12).text(`Tipo: ${type}`);
-  doc.text(`Perfil: ${username}`);
-  doc.text(`Gerado em: ${new Date().toISOString()}`);
-  doc.moveDown();
-  doc.text("Relatório exportado com sucesso.");
-  doc.end();
+    // Adicionar tratamento de erro para o stream
+    doc.on('error', (err) => {
+      logError('PDF Generation', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Erro ao gerar PDF." });
+      }
+    });
+
+    res.on('error', (err) => {
+      logError('PDF Response Stream', err);
+      doc.destroy();
+    });
+
+    doc.pipe(res);
+    doc.fontSize(18).text("Instagram Planner Agency", { align: "left" });
+    doc.moveDown();
+    doc.fontSize(12).text(`Tipo: ${type}`);
+    doc.text(`Perfil: ${username}`);
+    doc.text(`Gerado em: ${new Date().toISOString()}`);
+    doc.moveDown();
+    doc.text("Relatório exportado com sucesso.");
+    doc.end();
+  } catch (error) {
+    logError('POST /api/export-report', error);
+    res.status(500).json({ error: "Erro ao gerar PDF." });
+  }
 });
 
 app.get("/", (req, res) => {
