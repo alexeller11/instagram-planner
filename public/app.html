@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • 6.4</title>
+  <title>Instagram Planner Agency • 7.3</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -17,6 +17,8 @@
       --muted:rgba(255,255,255,.58);
       --brand:#ff6b35;
       --brand2:#ffd166;
+      --ok:#62d394;
+      --danger:#ff7b7b;
     }
     body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
     header{position:sticky;top:0;z-index:99;background:rgba(19,17,42,.96);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;backdrop-filter:blur(10px)}
@@ -83,13 +85,14 @@
     .comp-card{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
     .section-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
     .section-actions button{width:auto}
+    .status-pill{display:inline-block;padding:8px 10px;border-radius:999px;background:rgba(98,211,148,.12);border:1px solid rgba(98,211,148,.25);color:var(--ok);font-size:12px}
     @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions,.three-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 6.4</div>
+    <div class="logo">✦ Instagram Planner Agency 7.3</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -322,7 +325,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v64_history";
+    const HISTORY_KEY = "ig_planner_agency_v73_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
@@ -360,23 +363,48 @@
       if (el) el.disabled = state;
     }
 
+    async function safeFetch(url, options = {}) {
+      const res = await fetch(url, {
+        credentials: "include",
+        cache: "no-store",
+        ...options
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Erro HTTP ${res.status}`);
+      }
+
+      return data;
+    }
+
     async function init() {
-      const me = await fetch("/api/me").then(r => r.json()).catch(() => ({ logged: false, accounts: [] }));
-      if (!me.logged) {
+      try {
+        const me = await safeFetch("/api/me");
+        if (!me.logged) {
+          window.location.href = "/";
+          return;
+        }
+
+        ACCOUNTS = me.accounts || [];
+        renderAccounts();
+
+        if (ACCOUNTS.length) {
+          await selectAccount(ACCOUNTS[0].id);
+        }
+
+        attachMixListeners();
+        await loadStatus();
+        renderHistory();
+      } catch (error) {
         window.location.href = "/";
-        return;
       }
-
-      ACCOUNTS = me.accounts || [];
-      renderAccounts();
-
-      if (ACCOUNTS.length) {
-        selectAccount(ACCOUNTS[0].id);
-      }
-
-      attachMixListeners();
-      loadStatus();
-      renderHistory();
     }
 
     function attachMixListeners() {
@@ -398,13 +426,11 @@
 
       setLoading("suggestLoader", true);
       try {
-        const data = await fetch("/api/suggest", {
+        const data = await safeFetch("/api/suggest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ igId: CURRENT.id })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
+        });
 
         const fields = {
           niche: data.niche || "",
@@ -443,7 +469,7 @@
 
         toast("Campos preenchidos pela IA.");
       } catch (error) {
-        toast("Erro no auto preenchimento.");
+        toast(error.message || "Erro no auto preenchimento.");
       } finally {
         setLoading("suggestLoader", false);
       }
@@ -476,34 +502,41 @@
 
     async function loadDashboard() {
       if (!CURRENT) return;
-      const data = await fetch(`/api/dashboard/${CURRENT.id}`).then(r => r.json());
-      DASHBOARD = data;
 
-      document.getElementById("mFollowers").textContent = formatNumber(data.account.followers_count || 0);
-      document.getElementById("mPosts").textContent = formatNumber(data.account.media_count || 0);
-      document.getElementById("mEngagement").textContent = formatNumber(data.metrics.avg_engagement || 0);
-      document.getElementById("mRate").textContent = (data.metrics.engagement_rate || 0) + "%";
-      document.getElementById("scoreValue").textContent = data.strategic_score || 0;
-      document.getElementById("scoreLabel").textContent = `Leitura atual: ${data.strategic_score_label || "-"}.`;
+      try {
+        const data = await safeFetch(`/api/dashboard/${CURRENT.id}`);
+        DASHBOARD = data;
 
-      document.getElementById("quickRead").innerHTML = `
-        <div class="list-item">Bio atual: ${escapeHtml(data.account.biography || "Sem bio")}</div>
-        <div class="list-item">Website: ${escapeHtml(data.account.website || "Não informado")}</div>
-        <div class="list-item">Frequência média: ${data.metrics.posting_frequency_days ? `${data.metrics.posting_frequency_days} dias entre posts` : "dados insuficientes"}</div>
-      `;
+        document.getElementById("mFollowers").textContent = formatNumber(data.account?.followers_count || 0);
+        document.getElementById("mPosts").textContent = formatNumber(data.account?.media_count || 0);
+        document.getElementById("mEngagement").textContent = formatNumber(data.metrics?.avg_engagement || 0);
+        document.getElementById("mRate").textContent = (data.metrics?.engagement_rate || 0) + "%";
+        document.getElementById("scoreValue").textContent = data.strategic_score || 0;
+        document.getElementById("scoreLabel").textContent = `Leitura atual: ${data.strategic_score_label || "-"}.`;
 
-      document.getElementById("topPosts").innerHTML = (data.top_posts || []).map(p => `
-        <div class="top-post">
-          <div class="post-title">${escapeHtml((p.caption || "Sem legenda").slice(0, 90))}</div>
-          <div class="muted">${p.media_type || "POST"} • ❤️ ${p.like_count || 0} • 💬 ${p.comments_count || 0}</div>
-        </div>
-      `).join("");
+        document.getElementById("quickRead").innerHTML = `
+          <div class="list-item">Bio atual: ${escapeHtml(data.account?.biography || "Sem bio")}</div>
+          <div class="list-item">Website: ${escapeHtml(data.account?.website || "Não informado")}</div>
+          <div class="list-item">Leitura pronta para decisões estratégicas e comparação com concorrentes.</div>
+        `;
 
-      renderFormatChart(data.format_mix || {});
+        document.getElementById("topPosts").innerHTML = (data.top_posts || []).map(p => `
+          <div class="top-post">
+            <div class="post-title">${escapeHtml((p.caption || "Sem legenda").slice(0, 90))}</div>
+            <div class="muted">${p.media_type || "POST"} • ❤️ ${p.like_count || 0} • 💬 ${p.comments_count || 0}</div>
+          </div>
+        `).join("");
+
+        renderFormatChart(data.format_mix || {});
+      } catch (error) {
+        document.getElementById("quickRead").innerHTML = `<div class="list-item">Erro ao carregar dashboard.</div>`;
+      }
     }
 
     function renderFormatChart(formatMix) {
-      const ctx = document.getElementById("formatChart").getContext("2d");
+      const canvas = document.getElementById("formatChart");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
       const labels = Object.keys(formatMix);
       const values = labels.map(l => formatMix[l].count);
 
@@ -518,7 +551,11 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: "rgba(255,255,255,.7)" } } }
+          plugins: {
+            legend: {
+              labels: { color: "rgba(255,255,255,.7)" }
+            }
+          }
         }
       });
     }
@@ -530,7 +567,7 @@
       document.getElementById("intelResult").innerHTML = "Analisando perfil...";
 
       try {
-        const data = await fetch("/api/intelligence", {
+        const data = await safeFetch("/api/intelligence", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -542,9 +579,7 @@
             location: document.getElementById("intelLocation").value,
             extra: document.getElementById("intelExtra").value
           })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
+        });
 
         INTEL_DATA = data;
 
@@ -582,7 +617,7 @@
         .filter(Boolean);
 
       try {
-        const data = await fetch("/api/competitors", {
+        const data = await safeFetch("/api/competitors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -595,9 +630,7 @@
             extra: document.getElementById("compExtra").value,
             competitors
           })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
+        });
 
         COMP_DATA = data;
 
@@ -610,7 +643,10 @@
           <div class="list">
             ${(data.competitors_analysis || []).map(c => `
               <div class="comp-card">
-                <div style="font-weight:700;font-size:18px;margin-bottom:10px">${escapeHtml(c.username || "")}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+                  <div style="font-weight:700;font-size:18px">${escapeHtml(c.username || "")}</div>
+                  <div class="status-pill">Score ${c.score || 0} • ${escapeHtml(c.threat_level || "-")}</div>
+                </div>
 
                 ${c.preview_image ? `
                   <div style="margin-bottom:12px">
@@ -627,6 +663,7 @@
                   <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(c.positioning || "")}</div>
                   <div class="list-item"><strong>Estilo de conteúdo:</strong><br>${escapeHtml(c.content_style || "")}</div>
                   <div class="list-item"><strong>Estilo visual:</strong><br>${escapeHtml(c.visual_style || "")}</div>
+                  <div class="list-item"><strong>Quem está puxando mais atenção:</strong><br>${escapeHtml(c.attention_winner_reason || "")}</div>
                   <div class="list-item"><strong>Forças:</strong><br>${escapeHtml((c.strengths || []).join(", ") || "-")}</div>
                   <div class="list-item"><strong>Fraquezas:</strong><br>${escapeHtml((c.weaknesses || []).join(", ") || "-")}</div>
                   <div class="list-item"><strong>Como bater esse concorrente:</strong><br>${escapeHtml(c.opportunity_against || "")}</div>
@@ -719,7 +756,7 @@
       document.getElementById("planResult").innerHTML = "Gerando planejamento do mês...";
 
       try {
-        const data = await fetch("/api/generate", {
+        const data = await safeFetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -736,9 +773,7 @@
             carousels,
             singlePosts: singles
           })
-        }).then(r => r.json());
-
-        if (data.error) throw new Error(data.error);
+        });
 
         PLAN_DATA = data;
         CURRENT_POST_FILTER = "ALL";
@@ -884,15 +919,11 @@
     async function improvePost(post) {
       try {
         toast("Melhorando post...");
-        const mode = document.getElementById("planMode")?.value || "conversao";
-
-        const improved = await fetch("/api/improve-post", {
+        const improved = await safeFetch("/api/improve-post", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ post, mode })
-        }).then(r => r.json());
-
-        if (improved.error) throw new Error(improved.error);
+          body: JSON.stringify({ post })
+        });
 
         PLAN_DATA.posts = (PLAN_DATA.posts || []).map((p) =>
           Number(p.n) === Number(improved.n) ? improved : p
@@ -901,13 +932,12 @@
         renderPlanner();
         toast("Post melhorado.");
       } catch (error) {
-        toast("Erro ao melhorar post.");
+        toast(error.message || "Erro ao melhorar post.");
       }
     }
 
     async function exportPlannerPDF() {
       if (!PLAN_DATA || !CURRENT) return toast("Gere um planner antes.");
-
       await exportReport("planner", PLAN_DATA);
     }
 
@@ -929,6 +959,7 @@
     async function exportReport(type, payload) {
       const res = await fetch("/api/export-report", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
@@ -950,7 +981,7 @@
       if (!CURRENT) return;
 
       try {
-        const data = await fetch(`/api/client-memory/${CURRENT.username}`).then(r => r.json());
+        const data = await safeFetch(`/api/client-memory/${CURRENT.username}`);
         MEMORY_DATA = data;
 
         document.getElementById("memNiche").value = data.niche || "";
@@ -971,7 +1002,7 @@
             <div class="list-item"><strong>Público:</strong><br>${escapeHtml(data.audience || "-")}</div>
             <div class="list-item"><strong>Localização:</strong><br>${escapeHtml(data.location || "-")}</div>
             <div class="list-item"><strong>Tom:</strong><br>${escapeHtml(data.tone || "-")}</div>
-            <div class="list-item"><strong>Diferenças:</strong><br>${escapeHtml((data.differentials || []).join(", ") || "-")}</div>
+            <div class="list-item"><strong>Diferenciais:</strong><br>${escapeHtml((data.differentials || []).join(", ") || "-")}</div>
             <div class="list-item"><strong>O que funciona:</strong><br>${escapeHtml((data.memory?.what_works || []).join(", ") || "-")}</div>
             <div class="list-item"><strong>Ângulos fortes:</strong><br>${escapeHtml((data.memory?.strong_angles || []).join(", ") || "-")}</div>
           </div>
@@ -1000,18 +1031,18 @@
           }
         };
 
-        const res = await fetch(`/api/client-memory/${CURRENT.username}`, {
+        const res = await safeFetch(`/api/client-memory/${CURRENT.username}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
-        }).then(r => r.json());
+        });
 
         if (!res.success) throw new Error(res.error || "Erro ao salvar.");
 
         toast("Memória salva.");
         await loadMemory();
       } catch (error) {
-        toast("Erro ao salvar memória.");
+        toast(error.message || "Erro ao salvar memória.");
       }
     }
 
@@ -1079,42 +1110,45 @@
       const token = document.getElementById("manualToken").value.trim();
       if (!token) return toast("Cole um token.");
 
-      const data = await fetch("/api/test-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      }).then(r => r.json());
+      try {
+        const data = await safeFetch("/api/test-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
 
-      if (!data.success) return toast(data.error || "Erro no token.");
+        data.accounts.forEach(acc => {
+          const exists = ACCOUNTS.find(a => a.id === acc.id);
+          if (!exists) ACCOUNTS.push(acc);
+        });
 
-      data.accounts.forEach(acc => {
-        const exists = ACCOUNTS.find(a => a.id === acc.id);
-        if (!exists) ACCOUNTS.push(acc);
-      });
-
-      document.getElementById("manualToken").value = "";
-      renderAccounts();
-      toast("Conta conectada.");
+        document.getElementById("manualToken").value = "";
+        renderAccounts();
+        toast("Conta conectada.");
+      } catch (error) {
+        toast(error.message || "Erro no token.");
+      }
     }
 
     async function loadStatus() {
-      const data = await fetch("/api/status").then(r => r.json()).catch(() => null);
-      const box = document.getElementById("statusBox");
+      try {
+        const data = await safeFetch("/api/status");
+        const box = document.getElementById("statusBox");
 
-      if (!data) {
-        box.innerHTML = `<div class="list-item">Erro ao carregar status.</div>`;
-        return;
+        box.innerHTML = `
+          <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
+          <div class="list-item">Gemini configurado: <strong>${data.gemini ? "Sim" : "Não"}</strong></div>
+          <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
+          <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
+          <div class="list-item">Modelo Groq: <strong>${escapeHtml(data.groq_model || "")}</strong></div>
+          <div class="list-item">Modelo Gemini: <strong>${escapeHtml(data.gemini_model || "")}</strong></div>
+          <div class="list-item">Diretório de clientes: <strong>${escapeHtml(data.clients_dir || "")}</strong></div>
+          <div class="list-item">Sessão ativa: <strong>${data.has_session ? "Sim" : "Não"}</strong></div>
+          <div class="list-item">Session ID: <strong>${escapeHtml(data.session_id || "-")}</strong></div>
+        `;
+      } catch (error) {
+        document.getElementById("statusBox").innerHTML = `<div class="list-item">Erro ao carregar status.</div>`;
       }
-
-      box.innerHTML = `
-        <div class="list-item">Groq configurado: <strong>${data.groq ? "Sim" : "Não"}</strong></div>
-        <div class="list-item">Gemini configurado: <strong>${data.gemini ? "Sim" : "Não"}</strong></div>
-        <div class="list-item">Tokens IG no ambiente: <strong>${data.tokens_configured}</strong></div>
-        <div class="list-item">Base URL: <strong>${escapeHtml(data.base_url || "")}</strong></div>
-        <div class="list-item">Modelo Groq: <strong>${escapeHtml(data.groq_model || "")}</strong></div>
-        <div class="list-item">Modelo Gemini: <strong>${escapeHtml(data.gemini_model || "")}</strong></div>
-        <div class="list-item">Diretório de clientes: <strong>${escapeHtml(data.clients_dir || "")}</strong></div>
-      `;
     }
 
     function formatNumber(value) {
