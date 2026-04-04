@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner Agency • 7.3</title>
+  <title>Instagram Planner Agency • 7.4</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
@@ -19,6 +19,7 @@
       --brand2:#ffd166;
       --ok:#62d394;
       --danger:#ff7b7b;
+      --warn:#ffd166;
     }
     body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
     header{position:sticky;top:0;z-index:99;background:rgba(19,17,42,.96);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;backdrop-filter:blur(10px)}
@@ -56,6 +57,7 @@
     .btn:disabled{opacity:.6;cursor:not-allowed}
     .tag-list{display:flex;gap:8px;flex-wrap:wrap}
     .tag{padding:7px 10px;border-radius:999px;background:rgba(255,107,53,.12);border:1px solid rgba(255,107,53,.26);color:#ffb38a;font-size:12px}
+    .tag.warn{background:rgba(255,209,102,.10);border-color:rgba(255,209,102,.22);color:#ffe39a}
     .list{display:grid;gap:10px}
     .list-item{padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);line-height:1.6;font-size:14px;color:rgba(255,255,255,.88)}
     .top-post{display:grid;gap:4px;padding:12px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
@@ -86,13 +88,14 @@
     .section-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
     .section-actions button{width:auto}
     .status-pill{display:inline-block;padding:8px 10px;border-radius:999px;background:rgba(98,211,148,.12);border:1px solid rgba(98,211,148,.25);color:var(--ok);font-size:12px}
+    .status-pill.warn{background:rgba(255,209,102,.10);border-color:rgba(255,209,102,.22);color:#ffe39a}
     @media (max-width:1100px){.span-8,.span-6,.span-4{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:640px){.metrics,.small-grid,.calendar,.two-actions,.three-actions{grid-template-columns:1fr}.token-row{flex-direction:column}}
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">✦ Instagram Planner Agency 7.3</div>
+    <div class="logo">✦ Instagram Planner Agency 7.4</div>
     <div class="row" id="accountsRow"></div>
     <a class="btn-out" href="/auth/logout">Sair</a>
   </header>
@@ -325,7 +328,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const HISTORY_KEY = "ig_planner_agency_v73_history";
+    const HISTORY_KEY = "ig_planner_agency_v74_history";
 
     let ACCOUNTS = [];
     let CURRENT = null;
@@ -605,6 +608,20 @@
       }
     }
 
+    function renderEvidenceMeta(comp) {
+      const title = comp.evidence_meta?.title || comp.evidence_meta?.ogTitle || "-";
+      const desc = comp.evidence_best_description || comp.evidence_meta?.description || comp.evidence_meta?.ogDescription || "-";
+      return `
+        <div class="list">
+          <div class="list-item"><strong>Força da evidência:</strong><br>${comp.evidence_strength || 0} • ${escapeHtml(comp.data_confidence || "-")}</div>
+          <div class="list-item"><strong>Resumo da evidência:</strong><br>${escapeHtml(comp.evidence_summary || comp.evidence_note || "-")}</div>
+          <div class="list-item"><strong>Title/meta público:</strong><br>${escapeHtml(title)}</div>
+          <div class="list-item"><strong>Description/meta pública:</strong><br>${escapeHtml(desc)}</div>
+          <div class="list-item"><strong>Precisa revisão manual:</strong><br>${comp.needs_manual_review ? "Sim" : "Não"}</div>
+        </div>
+      `;
+    }
+
     async function runCompetitors() {
       if (!CURRENT) return toast("Selecione uma conta.");
       setLoading("compLoader", true);
@@ -645,7 +662,7 @@
               <div class="comp-card">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
                   <div style="font-weight:700;font-size:18px">${escapeHtml(c.username || "")}</div>
-                  <div class="status-pill">Score ${c.score || 0} • ${escapeHtml(c.threat_level || "-")}</div>
+                  <div class="status-pill ${c.evidence_strength < 2 ? "warn" : ""}">Score ${c.score || 0} • ${escapeHtml(c.threat_level || "-")}</div>
                 </div>
 
                 ${c.preview_image ? `
@@ -658,6 +675,10 @@
                     ${escapeHtml(c.preview_error || "Não foi possível gerar o print desse perfil.")}
                   </div>
                 `}
+
+                <div style="margin-bottom:12px">
+                  ${renderEvidenceMeta(c)}
+                </div>
 
                 <div class="list">
                   <div class="list-item"><strong>Posicionamento:</strong><br>${escapeHtml(c.positioning || "")}</div>
