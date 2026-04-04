@@ -1,5 +1,5 @@
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
+// const helmet = require("helmet");
+// const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const express = require("express");
@@ -45,8 +45,8 @@ app.use(
     },
   })
 );
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
-app.use(limiter);
+// const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+// app.use(limiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
