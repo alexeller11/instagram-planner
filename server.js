@@ -530,6 +530,99 @@ async function captureInstagramProfileScreenshot(username) {
   }
 }
 
+function extractMeta(content, prop) {
+  const regexes = [
+    new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${prop}["']`, "i"),
+    new RegExp(`<meta[^>]+name=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${prop}["']`, "i")
+  ];
+
+  for (const rx of regexes) {
+    const match = content.match(rx);
+    if (match && match[1]) return match[1];
+  }
+
+  return "";
+}
+
+function cleanupInstagramText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/Instagram photos and videos/gi, "")
+    .replace(/on Instagram/gi, "")
+    .trim();
+}
+
+function inferEvidenceStrength(meta) {
+  let points = 0;
+  if (meta.ogTitle) points += 1;
+  if (meta.ogDescription) points += 2;
+  if (meta.description) points += 2;
+  if (meta.title) points += 1;
+  return points;
+}
+
+async function fetchPublicInstagramSignals(username) {
+  const cleanUsername = String(username || "").replace("@", "").trim();
+  const url = `https://www.instagram.com/${cleanUsername}/`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
+      },
+      timeout: 20000
+    });
+
+    const html = response.data || "";
+
+    const meta = {
+      title: cleanupInstagramText(extractMeta(html, "title")),
+      ogTitle: cleanupInstagramText(extractMeta(html, "og:title")),
+      description: cleanupInstagramText(extractMeta(html, "description")),
+      ogDescription: cleanupInstagramText(extractMeta(html, "og:description"))
+    };
+
+    const bestDescription =
+      meta.ogDescription ||
+      meta.description ||
+      "";
+
+    const evidenceStrength = inferEvidenceStrength(meta);
+
+    return {
+      username: `@${cleanUsername}`,
+      profile_url: url,
+      meta,
+      best_description: bestDescription,
+      evidence_strength: evidenceStrength,
+      evidence_available: evidenceStrength >= 2,
+      note:
+        evidenceStrength >= 2
+          ? "Sinais públicos coletados."
+          : "Pouca evidência pública disponível."
+    };
+  } catch (error) {
+    return {
+      username: `@${cleanUsername}`,
+      profile_url: url,
+      meta: {
+        title: "",
+        ogTitle: "",
+        description: "",
+        ogDescription: ""
+      },
+      best_description: "",
+      evidence_strength: 0,
+      evidence_available: false,
+      note: "Não foi possível coletar metadados públicos."
+    };
+  }
+}
+
 function addPdfCover(doc, title, subtitle = "") {
   doc.rect(0, 0, doc.page.width, 170).fill("#19152f");
 
@@ -803,15 +896,21 @@ app.post("/api/competitors", async (req, res) => {
 
   const media = await fetchMedia(account.id, account.ig_token, 12);
 
-  const competitorsData = (competitors || [])
+  const competitorsList = (competitors || [])
     .map((c) => String(c || "").trim())
     .filter(Boolean)
-    .map((c) => ({ username: c.startsWith("@") ? c : `@${c}` }));
+    .map((c) => (c.startsWith("@") ? c : `@${c}`));
+
+  const publicSignals = [];
+  for (const username of competitorsList) {
+    const signals = await fetchPublicInstagramSignals(username);
+    publicSignals.push(signals);
+  }
 
   const userPrompt = `
 Faça uma análise estratégica profunda de concorrência.
 
-Perfil analisado:
+PERFIL ANALISADO:
 - @${account.username}
 - Nicho: ${niche}
 - Público: ${audience}
@@ -820,29 +919,33 @@ Perfil analisado:
 - Localização: ${location}
 - Contexto extra: ${extra}
 
-Bio atual:
+BIO ATUAL:
 ${account.biography || "Não informada"}
 
-Link atual:
+LINK ATUAL:
 ${account.website || "Não informado"}
 
-Posts recentes:
+POSTS RECENTES:
 ${summarizePosts(media, 6, 90)}
 
-Concorrentes:
-${JSON.stringify(competitorsData, null, 2)}
+SINAIS PÚBLICOS DOS CONCORRENTES:
+${JSON.stringify(publicSignals, null, 2)}
 
-Inclua também:
-- score competitivo de 0 a 100
-- nível de ameaça: baixo, médio ou alto
-- quem está ganhando mais atenção hoje
+REGRAS CRÍTICAS:
+- use SOMENTE os sinais públicos fornecidos
+- se não houver evidência suficiente, diga claramente que não foi possível validar
+- não invente nicho, serviço ou posicionamento
+- não presuma segmento com base só no @
+- quando a evidência for fraca, marque isso explicitamente
 
-Retorne exatamente neste JSON:
+RETORNE EXATAMENTE NESTE JSON:
 {
   "market_overview": "",
   "competitors_analysis": [
     {
       "username": "@concorrente",
+      "evidence_strength": 0,
+      "evidence_summary": "",
       "score": 0,
       "threat_level": "",
       "positioning": "",
@@ -851,7 +954,9 @@ Retorne exatamente neste JSON:
       "attention_winner_reason": "",
       "strengths": ["", ""],
       "weaknesses": ["", ""],
-      "opportunity_against": ""
+      "opportunity_against": "",
+      "data_confidence": "alta | média | baixa",
+      "needs_manual_review": false
     }
   ],
   "comparative_analysis": {
@@ -885,8 +990,8 @@ Retorne exatamente neste JSON:
     const data = await callAIWithFallback({
       system: plannerSystemPrompt(),
       user: userPrompt,
-      maxTokens: 3000,
-      temperature: 0.75
+      maxTokens: 3200,
+      temperature: 0.65
     });
 
     const enrichedCompetitors = [];
@@ -894,9 +999,15 @@ Retorne exatamente neste JSON:
     for (const comp of data.competitors_analysis || []) {
       const username = String(comp.username || "").replace("@", "").trim();
       const preview = await captureInstagramProfileScreenshot(username);
+      const evidence = publicSignals.find((s) => s.username.toLowerCase() === `@${username}`.toLowerCase());
 
       enrichedCompetitors.push({
         ...comp,
+        evidence_meta: evidence?.meta || {},
+        evidence_best_description: evidence?.best_description || "",
+        evidence_note: evidence?.note || "",
+        evidence_available: Boolean(evidence?.evidence_available),
+        evidence_strength: Number(comp.evidence_strength ?? evidence?.evidence_strength ?? 0),
         preview_image: preview.success ? preview.imageUrl : "",
         preview_error: preview.success ? "" : preview.error
       });
@@ -916,6 +1027,7 @@ Retorne exatamente neste JSON:
       });
     }
 
+    data.raw_public_signals = publicSignals;
     data.competitors_analysis = enrichedCompetitors;
 
     return res.json(data);
@@ -1141,7 +1253,9 @@ app.post("/api/export-report", async (req, res) => {
       addSectionTitle(doc, "Concorrentes analisados");
       for (const comp of payload.competitors_analysis || []) {
         doc.font("Helvetica-Bold").fontSize(12).text(`${comp.username || ""} • Score ${comp.score || 0} • ${comp.threat_level || ""}`);
-        doc.font("Helvetica").fontSize(10).text(`Posicionamento: ${comp.positioning || ""}`);
+        doc.font("Helvetica").fontSize(10).text(`Confiança do dado: ${comp.data_confidence || ""}`);
+        doc.text(`Resumo da evidência: ${comp.evidence_summary || ""}`);
+        doc.text(`Posicionamento: ${comp.positioning || ""}`);
         doc.text(`Conteúdo: ${comp.content_style || ""}`);
         doc.text(`Visual: ${comp.visual_style || ""}`);
         doc.text(`Atenção: ${comp.attention_winner_reason || ""}`);
@@ -1236,7 +1350,7 @@ app.get("/privacy.html", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🔥 Instagram Planner Agency 7.2-A rodando em ${BASE_URL}`);
+  console.log(`🔥 Instagram Planner Agency 7.4 rodando em ${BASE_URL}`);
   console.log(`[INIT] GROQ configurado: ${Boolean(GROQ_API_KEY)}`);
   console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
