@@ -1,7 +1,7 @@
 {
   "name": "instagram-planner-agency",
-  "version": "7.4.0",
-  "description": "Ferramenta estratégica de Instagram com IA",
+  "version": "8.0.0-render",
+  "description": "Ferramenta estratégica de Instagram com IA para Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,11 +11,11 @@
     "axios": "^1.7.2",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.3.0",
     "express-session": "^1.18.0",
     "groq-sdk": "^0.9.1",
     "helmet": "^7.1.0",
     "pdfkit": "^0.15.0",
-    "playwright": "^1.45.0",
-    "express-rate-limit": "^7.3.0"
+    "playwright": "^1.45.0"
   }
 }
