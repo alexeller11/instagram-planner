@@ -5,6 +5,7 @@ const session = require("express-session");
 const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const PDFDocument = require("pdfkit");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -18,7 +19,11 @@ const PORT = Number(process.env.PORT || 10000);
 const NODE_ENV = process.env.NODE_ENV || "development";
 const IS_PROD = NODE_ENV === "production";
 
-const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL =
+  process.env.RENDER_EXTERNAL_URL ||
+  process.env.BASE_URL ||
+  `http://localhost:${PORT}`;
+
 const SESSION_SECRET = process.env.SESSION_SECRET || "change-me";
 
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
@@ -29,17 +34,43 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const IG_TOKENS = (process.env.IG_TOKENS || "")
   .split(",")
-  .map(t => t.trim())
+  .map((t) => t.trim())
   .filter(Boolean);
 
-const STORAGE_ROOT = process.env.RENDER ? "/app/storage" : path.join(__dirname, "storage");
-const CLIENTS_DIR = path.join(STORAGE_ROOT, "clients");
-const PUBLIC_TMP_DIR = path.join(__dirname, "public", "tmp");
-const DEFAULT_CLIENT_PATH = path.join(CLIENTS_DIR, "default.json");
-const LOGO_PATH = path.join(__dirname, "public", "assets", "ideale-logo.png");
+const PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || "";
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+
+/**
+ * STORAGE
+ * Prioridade:
+ * 1. caminho explícito vindo do Render disk
+ * 2. /var/data (padrão comum quando disk é montado manualmente)
+ * 3. pasta temporária gravável
+ */
+const CANDIDATE_STORAGE_ROOTS = [
+  process.env.RENDER_DISK_PATH,
+  "/var/data",
+  path.join(os.tmpdir(), "instagram-planner-storage")
+].filter(Boolean);
+
+function firstWritableDir(candidates) {
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch (_) {}
+  }
+  return path.join(os.tmpdir(), "instagram-planner-storage");
+}
+
+const STORAGE_ROOT = firstWritableDir(CANDIDATE_STORAGE_ROOTS);
+const CLIENTS_DIR = path.join(STORAGE_ROOT, "clients");
+const PUBLIC_TMP_DIR = path.join(os.tmpdir(), "instagram-planner-public-tmp");
+const DEFAULT_CLIENT_PATH = path.join(CLIENTS_DIR, "default.json");
+const LOGO_PATH = path.join(__dirname, "public", "assets", "ideale-logo.png");
 
 app.set("trust proxy", 1);
 
@@ -53,6 +84,7 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/tmp", express.static(PUBLIC_TMP_DIR));
 
 app.use(
   session({
@@ -82,7 +114,7 @@ app.use(
 );
 
 function ensureDirs() {
-  [STORAGE_ROOT, CLIENTS_DIR, PUBLIC_TMP_DIR].forEach(dir => {
+  [STORAGE_ROOT, CLIENTS_DIR, PUBLIC_TMP_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
 
@@ -302,7 +334,7 @@ async function fetchMedia(igId, token, limit = 30) {
 
 function getAccountFromSession(req, igId) {
   const accounts = req.session?.user?.accounts || [];
-  return accounts.find(a => a.id === igId);
+  return accounts.find((a) => a.id === igId);
 }
 
 function avg(values) {
@@ -311,9 +343,9 @@ function avg(values) {
 }
 
 function buildDashboard(media, account) {
-  const likes = media.map(m => Number(m.like_count || 0));
-  const comments = media.map(m => Number(m.comments_count || 0));
-  const engagementAverage = avg(media.map(m => Number(m.like_count || 0) + Number(m.comments_count || 0)));
+  const likes = media.map((m) => Number(m.like_count || 0));
+  const comments = media.map((m) => Number(m.comments_count || 0));
+  const engagementAverage = avg(media.map((m) => Number(m.like_count || 0) + Number(m.comments_count || 0)));
   const followerBase = Number(account.followers_count || 0) || 1;
   const engagementRate = ((engagementAverage / followerBase) * 100).toFixed(2);
 
@@ -436,7 +468,7 @@ app.post("/api/auth", async (req, res) => {
     req.session.user = { accounts };
     req.session.logged = true;
 
-    req.session.save(err => {
+    req.session.save((err) => {
       if (err) return res.status(500).json({ success: false, error: "Erro ao salvar sessão." });
       return res.json({ success: true, accounts });
     });
@@ -463,6 +495,7 @@ app.get("/api/status", (req, res) => {
     groq: Boolean(GROQ_API_KEY),
     gemini: Boolean(GEMINI_API_KEY),
     storage_root: STORAGE_ROOT,
+    public_tmp_dir: PUBLIC_TMP_DIR,
     playwright_browsers_path: PLAYWRIGHT_BROWSERS_PATH || "(não definido)"
   });
 });
@@ -816,7 +849,6 @@ app.post("/api/export-report", async (req, res) => {
     doc.pipe(res);
     doc.fontSize(20).text(`Relatório • @${username}`, { align: "center" });
     doc.moveDown();
-
     doc.fontSize(12).text(JSON.stringify(payload, null, 2));
     doc.end();
   } catch (error) {
@@ -826,6 +858,10 @@ app.post("/api/export-report", async (req, res) => {
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
+});
+
+app.get("/privacy.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "privacy.html"));
 });
 
 app.get("/", (req, res) => {
@@ -844,5 +880,6 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`[INIT] GEMINI configurado: ${Boolean(GEMINI_API_KEY)}`);
   console.log(`[INIT] Tokens IG configurados: ${IG_TOKENS.length}`);
   console.log(`[INIT] STORAGE_ROOT: ${STORAGE_ROOT}`);
+  console.log(`[INIT] PUBLIC_TMP_DIR: ${PUBLIC_TMP_DIR}`);
   console.log(`[INIT] PLAYWRIGHT_BROWSERS_PATH: ${PLAYWRIGHT_BROWSERS_PATH || "(não definido)"}`);
 });
