@@ -35,13 +35,13 @@ RUN apt-get update && apt-get install -y \
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev
+RUN npm install
 RUN npx playwright install chromium
 
 COPY . .
 
-RUN mkdir -p /app/data/clients /app/public/tmp /app/public/assets
+RUN mkdir -p /app/storage/clients /app/public/tmp /app/public/assets
 
-EXPOSE 3000
+EXPOSE 10000
 
 CMD ["dumb-init", "npm", "start"]
