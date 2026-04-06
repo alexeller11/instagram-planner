@@ -5,76 +5,118 @@ const session = require("express-session");
 const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
-const PDFDocument = require("pdfkit");
-const Groq = require("groq-sdk");
 const { GoogleGenAI } = require("@google/genai");
-const { chromium } = require("playwright");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-const PORT = Number(process.env.PORT || 3000);
-const NODE_ENV = process.env.NODE_ENV || "development";
-const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
-const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-in-production";
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+app.use(express.json());
+app.use(express.static("public"));
 
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+app.use(session({
+  secret: "planner-secret",
+  resave: false,
+  saveUninitialized: true
+}));
 
-const IG_TOKENS = (process.env.IG_TOKENS || "")
-  .split(",")
-  .map((t) => t.trim())
-  .filter(Boolean);
-
-const PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || "";
-
-const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
-const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
-
-const IS_PROD = NODE_ENV === "production";
-
-app.set("trust proxy", 1);
-
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
-  })
-);
-
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
-
-app.use(
-  session({
-    name: "igplanner.sid",
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    rolling: true,
-    proxy: true,
-    cookie: {
-      httpOnly: true,
-      secure: IS_PROD,
-      sameSite: IS_PROD ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 12
-    }
-  })
-);
-
-const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false
+// ================= LOGIN =================
+app.post("/api/auth", (req,res)=>{
+  req.session.logged=true;
+  res.json({success:true});
 });
 
-app.use("/api", limiter);
+// ================= STATUS =================
+app.get("/api/status",(req,res)=>{
+  res.json({ok:true});
+});
 
-const DATA_DIR = path.join(__dirname, "data");
-const CLIENTS_DIR = path.join(DATA_DIR, "clients
+// ================= CONCORRENCIA =================
+
+async function analisarConcorrente({ username, nicho, cidade }) {
+
+  const prompt = `
+Você é um estrategista de marketing nível agência.
+
+Analise @${username}
+
+Se não houver dados públicos:
+ASSUMA comportamento padrão de empresas de ${nicho} em ${cidade}
+
+Gere:
+
+1. Score (0-100)
+2. Diagnóstico direto
+3. Posicionamento provável
+4. Estilo de conteúdo
+5. Estilo visual
+6. O que funciona
+7. Fraquezas
+8. Oportunidades
+9. Como bater esse concorrente
+
+NÃO seja genérico.
+`;
+
+  const response = await gemini.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt
+  });
+
+  return {
+    username,
+    analise: response.text
+  };
+}
+
+app.post("/api/competitors", async (req,res)=>{
+
+  const { competitors, niche, location } = req.body;
+
+  const results = [];
+
+  for(const c of competitors){
+    const data = await analisarConcorrente({
+      username:c,
+      nicho:niche,
+      cidade:location
+    });
+    results.push(data);
+  }
+
+  res.json({competitors_analysis:results});
+});
+
+// ================= EXPORT PDF =================
+
+app.post("/api/export", async (req,res)=>{
+  const PDFDocument = require("pdfkit");
+
+  const doc = new PDFDocument();
+  res.setHeader('Content-Type','application/pdf');
+
+  doc.pipe(res);
+
+  doc.fontSize(18).text("Relatório", {align:"center"});
+
+  req.body.data.forEach(c=>{
+    doc.moveDown();
+    doc.fontSize(14).text(c.username);
+    doc.fontSize(10).text(c.analise);
+  });
+
+  doc.end();
+});
+
+// ================= ROTAS =================
+app.get("/",(req,res)=>{
+  res.sendFile(path.join(__dirname,"public/index.html"));
+});
+
+app.get("/app",(req,res)=>{
+  if(!req.session.logged) return res.redirect("/");
+  res.sendFile(path.join(__dirname,"public/app.html"));
+});
+
+app.listen(PORT,()=>console.log("🔥 RUNNING",PORT));
