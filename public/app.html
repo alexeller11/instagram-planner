@@ -1,3 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instagram Planner Agency</title>
+  <style>
+    body{margin:0;background:#0c0a1a;color:#fff;font-family:Arial,sans-serif}
+    header{padding:16px 20px;background:#17142d;display:flex;justify-content:space-between;align-items:center}
+    main{padding:20px;max-width:1100px;margin:0 auto}
+    .card{background:#17142d;border-radius:16px;padding:18px;margin-bottom:16px}
+    textarea,input{width:100%;padding:12px;border-radius:10px;border:0;margin-top:8px;background:#26223f;color:#fff}
+    button{padding:12px 16px;border:0;border-radius:10px;background:#ff6b35;color:#fff;font-weight:700;cursor:pointer;margin-top:12px}
+    .list{display:grid;gap:12px;margin-top:16px}
+    pre{white-space:pre-wrap;line-height:1.6}
+  </style>
+</head>
 <body>
   <header>
     <strong>Instagram Planner Agency</strong>
@@ -57,7 +74,6 @@
     }
 
     async function loadStatus(){
-      const data = await fetch("/api/status", { credentials:"include" }).then(r => r.json());
       const data = await apiFetch("/api/status").then(r => r.json());
       document.getElementById("statusBox").textContent = JSON.stringify(data, null, 2);
     }
@@ -80,10 +96,8 @@
         extra: ""
       };
 
-      const res = await fetch("/api/competitors", {
       const res = await apiFetch("/api/competitors", {
         method:"POST",
-        credentials:"include",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify(payload)
       });
@@ -92,16 +106,6 @@
       const box = document.getElementById("result");
       box.textContent = "";
 
-      box.innerHTML = (data.competitors_analysis || []).map(c => `
-        <div class="card">
-          <h3>${c.username || ""}</h3>
-          <div><strong>Score:</strong> ${c.score || 0}</div>
-          <div><strong>Ameaça:</strong> ${c.threat_level || "-"}</div>
-          <div><strong>Confiança:</strong> ${c.data_confidence || "-"}</div>
-          <div><strong>Evidência:</strong> ${c.evidence_summary || "-"}</div>
-          <pre>${c.opportunity_against || ""}</pre>
-        </div>
-      `).join("");
       (data.competitors_analysis || []).forEach((c) => {
         const card = document.createElement("div");
         card.className = "card";
