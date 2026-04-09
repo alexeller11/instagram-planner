@@ -549,6 +549,32 @@ app.post("/api/auth", async (req, res) => {
   }
 });
 
+app.post("/api/test-token", async (req, res) => {
+  const token = cleanText(req.body?.token || "", 2000);
+  if (!token) return res.status(400).json({ success: false, error: "Token obrigatório." });
+
+  try {
+    const accounts = await fetchIGProfiles([token]);
+    if (!accounts.length) {
+      return res.status(400).json({ success: false, error: "Token inválido ou sem permissões." });
+    }
+
+    const currentAccounts = req.session?.user?.accounts || [];
+    const mergedMap = new Map(currentAccounts.map((acc) => [acc.id, acc]));
+    for (const account of accounts) mergedMap.set(account.id, account);
+
+    req.session.user = { accounts: Array.from(mergedMap.values()) };
+    req.session.logged = true;
+
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ success: false, error: "Erro ao salvar sessão." });
+      return res.json({ success: true, accounts });
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/api/me", (req, res) => {
   const accounts = req.session?.user?.accounts || [];
   const logged = Boolean(req.session?.logged && accounts.length);
@@ -995,7 +1021,7 @@ app.get("/", (req, res) => {
 
 app.get("/app", (req, res) => {
   if (!req.session?.logged) return res.redirect("/");
-  res.sendFile(path.join(__dirname, "public", "app.html"));
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
 });
 
 app.listen(PORT, "0.0.0.0", () => {
