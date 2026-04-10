@@ -1,241 +1,191 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Planner Agency Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
-  :root {
-    --bg: #f8fafc; --sidebar: #0f172a; --surface: #ffffff;
-    --brand: #2563eb; --brand-hover: #1d4ed8; --text-main: #0f172a;
-    --text-muted: #64748b; --border: #e2e8f0; --danger: #ef4444;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-  body { background: var(--bg); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
-  
-  /* Sidebar */
-  aside { width: 260px; background: var(--sidebar); color: white; padding: 24px; display: flex; flex-direction: column; position: fixed; height: 100vh; }
-  .logo { font-size: 1.25rem; font-weight: 700; margin-bottom: 40px; display: flex; align-items: center; gap: 8px; color: white; }
-  .nav-tab { padding: 12px 16px; border-radius: 8px; cursor: pointer; color: #94a3b8; font-weight: 500; transition: 0.2s; margin-bottom: 8px; }
-  .nav-tab:hover, .nav-tab.on { background: rgba(255,255,255,0.1); color: white; }
-  
-  /* Main Content */
-  main { margin-left: 260px; flex: 1; padding: 40px; max-width: 1200px; }
-  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-  .page { display: none; animation: fadeIn 0.3s ease; } .page.on { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  
-  /* Cards & Metrics */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--text-main); }
-  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .metric-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
-  .metric-value { font-size: 1.8rem; font-weight: 700; margin-top: 8px; }
-  
-  /* Inputs & Buttons */
-  .fgroup { margin-bottom: 16px; }
-  .flabel { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
-  input, select { width: 100%; background: #f1f5f9; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 0.95rem; outline: none; transition: 0.2s; }
-  input:focus, select:focus { border-color: var(--brand); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-  .btn { width: 100%; padding: 12px 24px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-  .btn:hover { background: var(--brand-hover); }
-  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-out { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; width: auto; font-size: 0.85rem; padding: 8px 16px; margin-top: auto; }
-  
-  /* Account Chips */
-  .acc-list { display: flex; gap: 8px; overflow-x: auto; }
-  .acc-chip { background: white; border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
-  .acc-chip.on { background: #eff6ff; border-color: var(--brand); color: var(--brand); }
-
-  /* Output Elements (Safe) */
-  .sugg-badge { display: inline-block; background: #eff6ff; color: var(--brand); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; margin: 4px; border: 1px solid #bfdbfe; }
-  .bio-box { background: #f8fafc; border: 1px solid var(--border); padding: 16px; border-radius: 8px; margin-top: 12px; font-size: 0.95rem; line-height: 1.5; }
-  .post-card { background: white; border: 1px solid var(--border); border-left: 4px solid var(--brand); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-  .post-card h4 { margin-bottom: 8px; font-size: 1rem; color: var(--text-main); }
-  .post-card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Agency Planner Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { --bg: #fcfcfd; --sidebar: #09090b; --brand: #006fee; --text: #18181b; --border: #e4e4e7; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; }
+    
+    aside { width: 260px; background: var(--sidebar); color: white; height: 100vh; position: fixed; padding: 24px; display: flex; flex-direction: column; }
+    .nav-item { padding: 12px; border-radius: 8px; cursor: pointer; color: #a1a1aa; margin-bottom: 4px; transition: 0.2s; }
+    .nav-item.active { background: #27272a; color: white; }
+    
+    main { margin-left: 260px; flex: 1; padding: 40px; }
+    .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    
+    .btn { background: var(--brand); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; }
+    .page { display: none; } .page.active { display: block; }
+    .post-card { border-left: 4px solid var(--brand); padding-left: 16px; margin-bottom: 20px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+  </style>
 </head>
 <body>
 
 <aside>
-  <div class="logo">✦ Planner Agency</div>
-  <nav>
-    <div class="nav-tab on" onclick="goPage('dashboard', this)">Dashboard</div>
-    <div class="nav-tab" onclick="goPage('intelligence', this)">Estratégia IA</div>
-    <div class="nav-tab" onclick="goPage('planner', this)">Plano de Conteúdo</div>
-  </nav>
-  <button class="btn btn-out" onclick="location.href='/'">Sair do Sistema</button>
+  <h2 style="margin-bottom: 32px;">✦ Agency Pro</h2>
+  <div class="nav-item active" onclick="show('dashboard')">Dashboard</div>
+  <div class="nav-item" onclick="show('intel')">Inteligência</div>
+  <div class="nav-item" onclick="show('spy')">Spy Tool (Concorrentes)</div>
+  <div class="nav-item" onclick="show('planner')">Planejador</div>
+  <div class="nav-item" style="margin-top: auto;" onclick="logout()">Sair</div>
 </aside>
 
 <main>
-  <div class="header-top">
-    <h2 style="font-weight: 600;">Visão Geral do Cliente</h2>
-    <div id="acc-list" class="acc-list"></div>
+  <div id="dashboard" class="page active">
+    <div style="display:flex; justify-content:space-between; margin-bottom:24px;">
+      <h2>Dashboard do Cliente</h2>
+      <div id="acc-selector" style="display:flex; gap:8px;"></div>
+    </div>
+    
+    <div class="grid-3">
+      <div class="card"><h4>Seguidores</h4><p id="d-followers" style="font-size:24px; font-weight:700;">-</p></div>
+      <div class="card"><h4>Engajamento Real</h4><p id="d-er" style="font-size:24px; font-weight:700; color:var(--brand);">-</p></div>
+      <div class="card"><h4>Média de Likes</h4><p id="d-likes" style="font-size:24px; font-weight:700;">-</p></div>
+    </div>
+    
+    <div class="card"><canvas id="erChart" height="100"></canvas></div>
   </div>
 
-  <div id="dashboard" class="page on">
-    <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Seguidores</div><div class="metric-value" id="m-followers">-</div></div>
-      <div class="metric-card"><div class="metric-label">Total de Posts</div><div class="metric-value" id="m-posts">-</div></div>
-      <div class="metric-card"><div class="metric-label">Taxa de Engajamento Estimada</div><div class="metric-value" id="m-er">-%</div></div>
-    </div>
+  <div id="intel" class="page">
     <div class="card">
-      <div class="card-title">Performance de Engajamento</div>
-      <div style="position: relative; height: 250px;"><canvas id="mainChart"></canvas></div>
+      <h3>Diagnóstico Estratégico IA</h3>
+      <input id="i-niche" placeholder="Nicho (Ex: Advocacia)">
+      <input id="i-audience" placeholder="Público (Ex: Empresários)">
+      <button class="btn" onclick="getIntel()">Gerar Análise Profunda</button>
     </div>
+    <div id="intel-result" class="card" style="display:none;"></div>
   </div>
 
-  <div id="intelligence" class="page">
+  <div id="spy" class="page">
     <div class="card">
-      <div class="card-title">Análise Estratégica Profunda</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="fgroup"><label class="flabel">Nicho de Mercado</label><input type="text" id="i-niche" placeholder="Ex: Clínica Odontológica"/></div>
-        <div class="fgroup"><label class="flabel">Público-Alvo</label><input type="text" id="i-audience" placeholder="Ex: Mulheres 30-50 anos"/></div>
-      </div>
-      <button class="btn" onclick="getIntelligence(this)">Gerar Diagnóstico com IA</button>
+      <h3>Spy Tool: Analisar Concorrente</h3>
+      <input id="s-username" placeholder="@username_do_concorrente">
+      <button class="btn" onclick="spy()">Capturar e Analisar</button>
     </div>
-    <div id="intel-result" style="display:none;">
-      <div class="card">
-        <div class="card-title">Direcionamento de Conteúdo</div>
-        <div id="i-suggs"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Otimização de Biografia</div>
-        <div id="i-bios"></div>
-      </div>
+    <div id="spy-result" class="card" style="display:none;">
+      <img id="spy-img" style="width:100%; border-radius:8px; margin-bottom:16px;">
+      <div id="spy-text"></div>
     </div>
   </div>
 
   <div id="planner" class="page">
     <div class="card">
-      <div class="card-title">Gerador de Linha Editorial</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="fgroup"><label class="flabel">Objetivo Principal</label>
-          <select id="p-goal"><option value="Conversão/Vendas">Vendas</option><option value="Autoridade">Autoridade</option></select>
-        </div>
-        <div class="fgroup"><label class="flabel">Tom de Voz</label>
-          <select id="p-tone"><option value="Profissional">Profissional e Direto</option><option value="Inspirador">Inspirador</option></select>
-        </div>
+      <h3>Planejador 30 Dias</h3>
+      <div class="grid-3">
+        <div><label>Reels</label><input type="number" id="p-reels" value="12"></div>
+        <div><label>Carrossel</label><input type="number" id="p-car" value="8"></div>
+        <div><label>Foto</label><input type="number" id="p-img" value="10"></div>
       </div>
-      <button class="btn" id="btn-gen" onclick="generatePlan(this)">Gerar Plano de 30 Dias</button>
+      <button class="btn" onclick="genPlan()">Gerar Cronograma Completo</button>
     </div>
-    <div id="plan-result" style="display:none">
-      <div class="card">
-        <div class="card-title">Cronograma Aprovado</div>
-        <div id="rb-feed"></div>
-      </div>
-    </div>
+    <div id="plan-result"></div>
+    <button id="btn-pdf" class="btn" style="display:none; margin-top:16px;" onclick="exportPDF()">Baixar PDF da Estratégia</button>
   </div>
 </main>
 
 <script>
-let accounts = [], selAccount = null;
+let accounts = [], selAcc = null, currentPlan = null;
 
-const init = async () => {
-  try {
-    const r = await fetch('/api/me'); const d = await r.json();
-    if (!d.logged) return location.href = '/';
-    accounts = d.accounts || []; renderAccounts();
-  } catch(e) { console.error(e); }
-};
-
-function goPage(p, el) {
-  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('on'));
-  document.getElementById(p).classList.add('on');
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('on'));
-  el.classList.add('on');
-}
-
-function renderAccounts() {
-  const l = document.getElementById('acc-list');
-  l.innerHTML = ''; // Limpa botões antigos
+async function init() {
+  const r = await fetch('/api/me');
+  const d = await r.json();
+  if(!d.logged) location.href = '/';
+  accounts = d.accounts;
+  const container = document.getElementById('acc-selector');
   accounts.forEach(a => {
-    const btn = document.createElement('div');
-    btn.className = `acc-chip ${selAccount?.id === a.id ? 'on' : ''}`;
+    const btn = document.createElement('button');
     btn.textContent = `@${a.username}`;
-    btn.onclick = () => selectAcc(a.id);
-    l.appendChild(btn);
+    btn.onclick = () => select(a);
+    container.appendChild(btn);
   });
-  if (!selAccount && accounts.length) selectAcc(accounts[0].id);
+  if(accounts.length) select(accounts[0]);
 }
 
-function selectAcc(id) {
-  selAccount = accounts.find(a => a.id === id); renderAccounts();
-  document.getElementById('m-followers').textContent = selAccount.followers_count || 0;
-  document.getElementById('m-posts').textContent = selAccount.media_count || 0;
-  document.getElementById('m-er').textContent = '3.2%'; 
-  renderChart();
+async function select(acc) {
+  selAcc = acc;
+  document.getElementById('d-followers').textContent = acc.followers_count;
+  const r = await fetch(`/api/dashboard/${acc.id}`);
+  const data = await r.json();
+  document.getElementById('d-er').textContent = data.metrics.engagement_rate + '%';
+  document.getElementById('d-likes').textContent = data.metrics.avg_likes;
+  renderChart(data.recent_posts);
 }
 
-async function getIntelligence(btn) {
-  btn.disabled = true; btn.textContent = 'Analisando perfil... (Aguarde)';
-  try {
-    const r = await fetch('/api/suggestions', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ igId: selAccount.id }) 
-    });
-    const d = await r.json();
-    document.getElementById('intel-result').style.display = 'block';
-    
-    // XSS SAFE RENDER
-    const suggsDiv = document.getElementById('i-suggs');
-    suggsDiv.innerHTML = '';
-    const bioDiv = document.getElementById('i-bios');
-    bioDiv.innerHTML = '';
-
-    if(d.suggestions) {
-        d.suggestions.forEach(s => {
-            const span = document.createElement('span');
-            span.className = 'sugg-badge'; span.textContent = s;
-            suggsDiv.appendChild(span);
-        });
+function renderChart(posts) {
+  const ctx = document.getElementById('erChart');
+  if(window.chart) window.chart.destroy();
+  window.chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: posts.map((_,i) => `Post ${i+1}`).reverse(),
+      datasets: [{ label: 'Curtidas Reais', data: posts.map(p => p.like_count).reverse(), borderColor: '#006fee', tension: 0.3 }]
     }
-    if(d.bio_options) {
-        d.bio_options.forEach(b => {
-            const div = document.createElement('div');
-            div.className = 'bio-box'; div.textContent = b;
-            bioDiv.appendChild(div);
-        });
-    }
-  } catch (e) { alert('Erro na análise.'); } finally { btn.disabled = false; btn.textContent = 'Gerar Diagnóstico com IA'; }
-}
-
-async function generatePlan(btn) {
-  btn.disabled = true; btn.textContent = 'Criando planejamento estratégico...';
-  try {
-    const r = await fetch('/api/generate', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ igId: selAccount.id, goal: document.getElementById('p-goal').value, tone: document.getElementById('p-tone').value }) 
-    });
-    const d = await r.json();
-    document.getElementById('plan-result').style.display = 'block';
-    
-    // XSS SAFE RENDER
-    const feed = document.getElementById('rb-feed');
-    feed.innerHTML = '';
-    if(d.posts) {
-        d.posts.forEach(p => {
-            const card = document.createElement('div'); card.className = 'post-card';
-            const title = document.createElement('h4'); title.textContent = `DIA ${p.n} — Formato: ${p.format} | ${p.title}`;
-            const copy = document.createElement('p'); copy.textContent = p.copy;
-            card.appendChild(title); card.appendChild(copy);
-            feed.appendChild(card);
-        });
-    }
-  } catch (e) { alert('Erro ao gerar plano.'); } finally { btn.disabled = false; btn.textContent = 'Gerar Plano de 30 Dias'; }
-}
-
-function renderChart() {
-  const ctx = document.getElementById('mainChart').getContext('2d');
-  if (window.myChart) window.myChart.destroy();
-  window.myChart = new Chart(ctx, { 
-    type: 'line', 
-    data: { labels: ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'], datasets: [{ data: [120, 190, 150, 250, 220, 310, 280], borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.4 }] }, 
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { border: { display: false } }, x: { grid: { display: false } } } } 
   });
+}
+
+async function getIntel() {
+  const res = await fetch('/api/intelligence', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ igId: selAcc.id, niche: document.getElementById('i-niche').value, audience: document.getElementById('i-audience').value })
+  });
+  const data = await res.json();
+  const div = document.getElementById('intel-result');
+  div.style.display = 'block';
+  div.innerHTML = `<h4>Resumo Executivo</h4><p>${data.executive_summary}</p><h4>Sugestões de Bio</h4><ul>${data.bio_suggestions.map(b => `<li>${b}</li>`).join('')}</ul>`;
+}
+
+async function spy() {
+  const user = document.getElementById('s-username').value;
+  const res = await fetch('/api/competitors', { 
+    method: 'POST', headers: {'Content-Type':'application/json'}, 
+    body: JSON.stringify({ username: user }) 
+  });
+  const data = await res.json();
+  document.getElementById('spy-result').style.display = 'block';
+  document.getElementById('spy-img').src = data.screenshot;
+}
+
+async function genPlan() {
+  const res = await fetch('/api/generate', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ 
+      igId: selAcc.id, reels: document.getElementById('p-reels').value, 
+      carousels: document.getElementById('p-car').value, singlePosts: document.getElementById('p-img').value 
+    })
+  });
+  currentPlan = await res.json();
+  const div = document.getElementById('plan-result');
+  div.innerHTML = currentPlan.posts.map(p => `
+    <div class="card post-card">
+      <strong>DIA ${p.n} - ${p.format}</strong>
+      <h4>${p.title}</h4>
+      <p><strong>Hook:</strong> ${p.hook}</p>
+      <p style="white-space:pre-wrap; color:#52525b; margin-top:8px;">${p.copy}</p>
+    </div>
+  `).join('');
+  document.getElementById('btn-pdf').style.display = 'block';
+}
+
+async function exportPDF() {
+  const res = await fetch('/api/export-report', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ payload: currentPlan, username: selAcc.username })
+  });
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `estrategia_${selAcc.username}.pdf`; a.click();
+}
+
+function show(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
 }
 
 init();
