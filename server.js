@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const express = require("express");
 const session = require("express-session");
 const axios = require("axios");
@@ -14,255 +13,161 @@ const { GoogleGenAI } = require("@google/genai");
 const { chromium } = require("playwright");
 
 const app = express();
-
 const PORT = Number(process.env.PORT || 10000);
-const NODE_ENV = process.env.NODE_ENV || "development";
-const IS_PROD = NODE_ENV === "production";
+const IS_PROD = process.env.NODE_ENV === "production";
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
-const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${PORT}`;
-const SESSION_SECRET = process.env.SESSION_SECRET || "change-me";
+const SESSION_SECRET = process.env.SESSION_SECRET || "agency-secret-123";
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).filter(Boolean);
 
-const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map((t) => t.trim()).filter(Boolean);
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
-// NOTA PARA PLANO GRATUITO RENDER:
-// O plano gratuito não mantém arquivos após sleep/restart. 
-const STORAGE_ROOT = path.join(os.tmpdir(), "instagram-planner-storage");
+// Configuração de Pastas Temporárias (Padrão Render Free)
+const STORAGE_ROOT = path.join(os.tmpdir(), "planner-agency-storage");
 const CLIENTS_DIR = path.join(STORAGE_ROOT, "clients");
-const PUBLIC_TMP_DIR = path.join(os.tmpdir(), "instagram-planner-public-tmp");
-const DEFAULT_CLIENT_PATH = path.join(CLIENTS_DIR, "default.json");
+const PUBLIC_TMP_DIR = path.join(__dirname, "public", "tmp");
+
+if (!fs.existsSync(CLIENTS_DIR)) fs.mkdirSync(CLIENTS_DIR, { recursive: true });
+if (!fs.existsSync(PUBLIC_TMP_DIR)) fs.mkdirSync(PUBLIC_TMP_DIR, { recursive: true });
 
 app.set("trust proxy", 1);
-
-// Segurança Otimizada - CSP configurado para permitir recursos básicos e proteger contra XSS
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https://*.instagram.com"]
-      }
-    },
-    crossOriginEmbedderPolicy: false
-  })
-);
-
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/tmp", express.static(PUBLIC_TMP_DIR));
 
-app.use(
-  session({
-    name: "igplanner.sid",
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, secure: IS_PROD, maxAge: 1000 * 60 * 60 * 12 }
-  })
-);
+app.use(session({
+  name: "planner.sid",
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, secure: IS_PROD, maxAge: 1000 * 60 * 60 * 24 }
+}));
 
-app.use("/api", rateLimit({ windowMs: 60 * 1000, max: 120 }));
-
-function ensureDirs() {
-  [STORAGE_ROOT, CLIENTS_DIR, PUBLIC_TMP_DIR].forEach((dir) => {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  });
-  if (!fs.existsSync(DEFAULT_CLIENT_PATH)) {
-    fs.writeFileSync(DEFAULT_CLIENT_PATH, JSON.stringify({ niche: "", memory: {} }, null, 2));
-  }
-}
-ensureDirs();
-
-function ensureAtLeastOneModel(res) {
-  if (!groq && !gemini) {
-    res.status(500).json({ error: "Configure GROQ_API_KEY ou GEMINI_API_KEY." });
-    return false;
-  }
-  return true;
-}
-
-function safeJsonParse(text) {
-  if (!text || typeof text !== "string") return null;
-  let cleaned = text.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
-    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
-  }
-  try { return JSON.parse(cleaned); } catch { return null; }
-}
-
-async function callAIWithFallback({ system, user, maxTokens = 4096, temperature = 0.7 }) {
-  if (groq) {
-    try {
-      const completion = await groq.chat.completions.create({
-        model: GROQ_MODEL, temperature, max_tokens: maxTokens,
-        messages: [{ role: "system", content: system }, { role: "user", content: user }]
-      });
-      const parsed = safeJsonParse(completion.choices?.[0]?.message?.content || "");
-      if (parsed) return parsed;
-    } catch (error) {
-      if (!gemini) throw error; // fallback
-    }
-  }
-  if (gemini) {
-    const prompt = `${system}\n\n${user}`;
-    const response = await gemini.models.generateContent({ model: GEMINI_MODEL, contents: prompt });
-    const parsed = safeJsonParse(response.text || "");
-    if (parsed) return parsed;
-  }
-  throw new Error("Falha ao gerar JSON válido com a IA.");
-}
-
-async function fetchIGProfiles(tokens) {
-  const accounts = [];
-  for (const token of tokens) {
-    try {
-      const res = await axios.get("[https://graph.instagram.com/v21.0/me](https://graph.instagram.com/v21.0/me)", {
-        params: { fields: "id,name,username,followers_count,media_count,biography,website", access_token: token }
-      });
-      accounts.push({ ...res.data, ig_token: token });
-    } catch (error) { console.error("[IG_PROFILE_ERROR]", error.message); }
-  }
-  return accounts;
-}
-
-async function fetchMedia(igId, token, limit = 30) {
-  try {
-    const res = await axios.get(`https://graph.instagram.com/v21.0/${igId}/media`, {
-      params: { fields: "id,caption,media_type,like_count,comments_count", limit, access_token: token }
-    });
-    return res.data.data || [];
-  } catch (error) { return []; }
-}
-
-function getAccountFromSession(req, igId) {
-  const accounts = req.session?.user?.accounts || [];
-  return accounts.find((a) => a.id === igId);
-}
-
-// -----------------------------------------------------------------------------
-// OTIMIZAÇÃO: SINGLETON PLAYWRIGHT (Vital para os 512MB RAM do plano Free)
-// -----------------------------------------------------------------------------
-let globalBrowser = null;
-
+// --- SINGLETON BROWSER (ECONOMIA DE RAM) ---
+let _browser = null;
 async function getBrowser() {
-  if (!globalBrowser) {
-    globalBrowser = await chromium.launch({
-      headless: true,
-      args: [
-        "--no-sandbox", 
-        "--disable-setuid-sandbox", 
-        "--disable-dev-shm-usage", 
-        "--single-process", // Reduz radicalmente a RAM
-        "--disable-gpu"
-      ]
+  if (!_browser) {
+    _browser = await chromium.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--single-process"]
     });
   }
-  return globalBrowser;
+  return _browser;
 }
 
-async function captureInstagramProfileScreenshot(username) {
-  let context;
+// --- UTILITÁRIOS DE IA ---
+function safeJsonParse(text) {
   try {
-    const browser = await getBrowser();
-    // Cria apenas uma aba nova em vez de abrir todo o navegador novamente
-    context = await browser.newContext({ viewport: { width: 1440, height: 2200 } });
-    const page = await context.newPage();
+    let cleaned = text.trim().replace(/^```json/i, "").replace(/```$/i, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    return JSON.parse(cleaned.slice(start, end + 1));
+  } catch (e) { return null; }
+}
 
-    const cleanUsername = String(username || "").replace("@", "").trim();
-    const url = `https://www.instagram.com/${cleanUsername}/`;
-
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
-    await page.waitForTimeout(2000); // Reduzido de 3500ms para evitar Timeout na API
-
-    const filename = `competitor_${cleanUsername}_${Date.now()}.png`;
-    const filepath = path.join(PUBLIC_TMP_DIR, filename);
-
-    await page.screenshot({ path: filepath, fullPage: true });
-
-    return { success: true, imageUrl: `/tmp/${filename}`, sourceUrl: url };
-  } catch (error) {
-    return { success: false, error: error.message };
-  } finally {
-    // Fecha apenas o contexto (a aba), mantendo o navegador global pronto
-    if (context) await context.close().catch(() => {});
+async function callAI({ system, user }) {
+  if (groq) {
+    const res = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" }
+    });
+    return JSON.parse(res.choices[0].message.content);
   }
+  const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent(`${system}\n\n${user}`);
+  return safeJsonParse(result.response.text());
 }
 
-// --- ROTAS DA API ---
-
+// --- ROTAS API ---
 app.post("/api/auth", async (req, res) => {
-  if (!IG_TOKENS.length) return res.status(400).json({ success: false, error: "Nenhum token em IG_TOKENS." });
   try {
-    const accounts = await fetchIGProfiles(IG_TOKENS);
-    if (!accounts.length) return res.status(400).json({ success: false, error: "Contas inválidas." });
-    req.session.user = { accounts }; req.session.logged = true;
-    req.session.save(() => res.json({ success: true, accounts }));
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    const accounts = [];
+    for (const token of IG_TOKENS) {
+      const r = await axios.get("https://graph.instagram.com/v21.0/me", {
+        params: { fields: "id,name,username,followers_count,media_count,biography", access_token: token }
+      });
+      accounts.push({ ...r.data, ig_token: token });
+    }
+    req.session.logged = true;
+    req.session.accounts = accounts;
+    res.json({ success: true, accounts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get("/api/me", (req, res) => res.json({ logged: Boolean(req.session?.logged), accounts: req.session?.user?.accounts || [] }));
+app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
 
-app.post("/api/suggestions", async (req, res) => {
-  if (!ensureAtLeastOneModel(res)) return;
-  const { igId } = req.body || {};
-  const account = getAccountFromSession(req, igId);
-  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
-
-  const prompt = `Como estrategista sênior, analise este perfil: @${account.username}. Bio: ${account.biography}. 
-  Retorne EXATAMENTE este JSON válido: {"suggestions": ["ideia 1", "ideia 2"], "bio_options": ["bio 1", "bio 2"]}`;
-
+app.get("/api/dashboard/:igId", async (req, res) => {
+  const acc = (req.session.accounts || []).find(a => a.id === req.params.igId);
+  if (!acc) return res.status(404).send();
   try {
-    const data = await callAIWithFallback({ system: "Retorne apenas JSON válido.", user: prompt, maxTokens: 800 });
-    res.json(data);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+    const r = await axios.get(`https://graph.instagram.com/v21.0/${acc.id}/media`, {
+      params: { fields: "id,caption,media_type,like_count,comments_count,timestamp", limit: 20, access_token: acc.ig_token }
+    });
+    const media = r.data.data || [];
+    const likes = media.reduce((a, b) => a + (b.like_count || 0), 0);
+    const comms = media.reduce((a, b) => a + (b.comments_count || 0), 0);
+    const er = (((likes + comms) / media.length) / (acc.followers_count || 1) * 100).toFixed(2);
+    
+    const formats = media.reduce((acc, m) => {
+      acc[m.media_type] = (acc[m.media_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      metrics: { engagement_rate: er, avg_likes: Math.round(likes/media.length), avg_comments: Math.round(comms/media.length) },
+      format_mix: formats,
+      recent_posts: media.slice(0, 10)
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/intelligence", async (req, res) => {
+  const { igId, niche, audience } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  const prompt = `Analise o perfil @${acc.username}. Nicho: ${niche}, Público: ${audience}. Bio atual: ${acc.biography}. 
+  Retorne JSON: { "executive_summary": "", "priority_actions": [], "bio_suggestions": [] }`;
+  const data = await callAI({ system: "Você é um estrategista sênior.", user: prompt });
+  res.json(data);
+});
+
+app.post("/api/competitors", async (req, res) => {
+  const { username } = req.body;
+  const browser = await getBrowser();
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await page.goto(`https://www.instagram.com/${username.replace('@','')}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+    const filename = `comp_${Date.now()}.png`;
+    await page.screenshot({ path: path.join(PUBLIC_TMP_DIR, filename) });
+    const analysis = await callAI({ system: "Analise concorrente", user: `O perfil @${username} foca em qual estilo?` });
+    res.json({ screenshot: `/tmp/${filename}`, analysis });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+  finally { await context.close(); }
 });
 
 app.post("/api/generate", async (req, res) => {
-  if (!ensureAtLeastOneModel(res)) return;
-  const { igId, goal, tone } = req.body || {};
-  const account = getAccountFromSession(req, igId);
-  if (!account) return res.status(404).json({ error: "Conta não encontrada." });
-
-  const prompt = `Crie um planejamento de conteúdo de 5 posts para @${account.username}. Objetivo: ${goal}, Tom: ${tone}. 
-  Retorne EXATAMENTE este JSON: {"posts": [{"n": 1, "format": "Reels", "title": "Título", "copy": "Legenda aqui"}]}`;
-
-  try {
-    const data = await callAIWithFallback({ system: "Retorne apenas JSON válido.", user: prompt, maxTokens: 1500 });
-    res.json(data);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  const prompt = `Crie um plano de 30 dias para @${acc.username}. Objetivo: ${goal}, Tom: ${tone}. 
+  Mix: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
+  Retorne JSON: { "posts": [{ "n": 1, "format": "", "pillar": "", "title": "", "hook": "", "copy": "" }] }`;
+  const data = await callAI({ system: "Estrategista de copy e funil.", user: prompt });
+  res.json(data);
 });
 
-// Outras rotas originais...
-app.post("/api/competitors", async (req, res) => {
-  /* Lógica original usando captureInstagramProfileScreenshot otimizado */
-  res.json({ message: "Rota suportada pelo Singleton Playwright configurada!" });
+app.post("/api/export-report", (req, res) => {
+  const { payload, username } = req.body;
+  const doc = new PDFDocument();
+  res.setHeader("Content-Type", "application/pdf");
+  doc.pipe(res);
+  doc.fontSize(20).text(`Relatório Estratégico: @${username}`, { align: "center" });
+  doc.moveDown().fontSize(12).text(JSON.stringify(payload, null, 2));
+  doc.end();
 });
 
-app.get("/app", (req, res) => {
-  if (!req.session?.logged) return res.redirect("/");
-  res.sendFile(path.join(__dirname, "public", "app.html"));
-});
-
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-// Graceful shutdown para fechar o browser caso o servidor reinicie
-process.on('SIGINT', async () => {
-    if (globalBrowser) await globalBrowser.close();
-    process.exit();
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Agency Planner Rodando em ${BASE_URL} na porta ${PORT}`);
-  console.log(`[AVISO RENDER] Plano Gratuito: Arquivos locais não são persistentes.`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`🔥 Agency Pro em ${BASE_URL}`));
