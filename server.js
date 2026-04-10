@@ -661,7 +661,7 @@ Concorrentes:
 ${JSON.stringify(competitorsList, null, 2)}
 
 Regras:
-- se faltar evidência pblica, explicite isso
+- se faltar evidência pública, explicite isso
 - não invente fatos específicos
 - mesmo com pouca evidência, entregue leitura estratégica útil
 - compare com a lógica do nicho e da cidade
