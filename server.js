@@ -170,6 +170,17 @@ app.get("/api/dashboard/:igId", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post("/api/quick-verdict", async (req, res) => {
+  const { username, followers, er, media } = req.body;
+  const prompt = `Conta @${username} tem ${followers} segs, ER de ${er}%. Últimos posts: ${media.slice(0,3).map(m=>m.media_type).join(', ')}. 
+  Crie um "Veredito de Estrategista Sênior" RÁPIDO (máx 3 frases) em PORTUGUÊS DIRECIONADO AO DONO com base nesses dados.
+  Retorne um JSON contendo a chave "verdict" com este texto.`;
+  try {
+    const data = await callAI({ system: "Especialista em métricas de Instagram. Retorne sempre JSON válido.", user: prompt });
+    res.json({ verdict: data.verdict || "Continue o bom trabalho com a audiência." });
+  } catch (e) { res.json({ verdict: "Métricas saudáveis, continue o bom trabalho." }); }
+});
+
 app.post("/api/intelligence", async (req, res) => {
   const { igId, niche, audience } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
@@ -203,11 +214,12 @@ app.post("/api/generate", async (req, res) => {
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   const mem = await getClientMemory(acc.username);
 
-  const prompt = `Plano 30 dias para @${acc.username}. Objetivo: ${goal}. Mix: ${reels}R, ${carousels}C, ${singlePosts}S.
+  const prompt = `Plano 30 dias para @${acc.username}. Objetivo principal: ${goal}. Tom de Voz: ${tone}.
+  Mix: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
   Proibido usar: ${mem.forbidden_words.join(", ")}.
-  Retorne JSON: { "posts": [{ "n": 1, "format": "", "pillar": "", "title": "", "hook": "", "copy": "" }] }`;
+  Retorne JSON EXATAMENTE neste formato: { "posts": [{ "n": 1, "format": "", "pillar": "", "title": "", "hook": "", "copy": "" }] }`;
   
-  const data = await callAI({ system: "Estrategista de funil.", user: prompt });
+  const data = await callAI({ system: "Estrategista de funil de vendas. Você só retorna JSON válido.", user: prompt });
   res.json(data);
 });
 
