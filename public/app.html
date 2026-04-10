@@ -156,30 +156,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0
 </main>
 <div id="toast"></div>
 <script>
-let accounts=[],selAccount=null,mix={reels:12,car:10,img:8},csrfToken="";
-async function ensureCsrfToken(){
-  if(csrfToken) return csrfToken;
-  const r=await fetch('/api/csrf-token',{credentials:'include'});
-  const d=await r.json();
-  csrfToken=d.csrfToken||"";
-  return csrfToken;
-}
-async function apiFetch(url,opts={}){
-  const options={credentials:'include',...opts};
-  const method=(options.method||'GET').toUpperCase();
-  if(method!=='GET'){
-    const token=await ensureCsrfToken();
-    options.headers={...(options.headers||{}),'x-csrf-token':token};
-  }
-  return fetch(url,options);
-}
+let accounts=[],selAccount=null,mix={reels:12,car:10,img:8};
 const init=async()=>{
   try{
-    const r=await fetch('/api/me',{credentials:'include'});const d=await r.json();
+    const r=await fetch('/api/me');const d=await r.json();
     if(!d.logged)return location.href='/';
-    accounts=d.accounts||[];
-    await ensureCsrfToken();
-    renderAccounts();
+    accounts=d.accounts||[];renderAccounts();
   }catch(e){console.error(e)}
 };
 function goPage(p,el){
@@ -203,14 +185,11 @@ function updMix(k,v){mix[k]=Math.max(0,mix[k]+v);document.getElementById('v-'+k)
 async function getIntelligence(){
   const btn=event.target;btn.disabled=true;
   try{
-    const r=await apiFetch('/api/intelligence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,niche:document.getElementById('i-niche').value,audience:'',goal:'',tone:'',extra:'',location:''})});
+    const r=await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id})});
     const d=await r.json();
-    if(d.error) throw new Error(d.error);
     document.getElementById('intel-result').style.display='block';
-    const angles=d.content_angles||[];
-    const bios=d.bio_suggestions||[];
-    document.getElementById('i-suggs').innerHTML=angles.map(s=>`<div style="background:rgba(255,107,53,.1);padding:5px 10px;border-radius:20px;font-size:11px">${String(s||'')}</div>`).join('');
-    document.getElementById('i-bios').innerHTML=bios.map(b=>`<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px;margin-top:5px;font-size:12px">${String(b||'')}</div>`).join('');
+    document.getElementById('i-suggs').innerHTML=d.suggestions.map(s=>`<div style="background:rgba(255,107,53,.1);padding:5px 10px;border-radius:20px;font-size:11px">${s}</div>`).join('');
+    document.getElementById('i-bios').innerHTML=d.bio_options.map(b=>`<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px;margin-top:5px;font-size:12px">${b}</div>`).join('');
     toast('Análise concluída!');
   }catch(e){toast('Erro na análise')}finally{btn.disabled=false;}
 }
@@ -218,10 +197,8 @@ async function generatePlan(){
   const btn=document.getElementById('btn-gen'),ld=document.getElementById('loader');
   btn.style.display='none';ld.style.display='block';
   try{
-    const r=await apiFetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,goal:document.getElementById('p-goal').value,tone:document.getElementById('p-tone').value})});
-    const d=await r.json();
-    if(d.error) throw new Error(d.error);
-    renderPlan(d);
+    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,goal:document.getElementById('p-goal').value,tone:document.getElementById('p-tone').value})});
+    const d=await r.json();renderPlan(d);
     document.getElementById('plan-result').style.display='block';toast('Plano gerado!');
   }catch(e){toast('Erro ao gerar plano');}finally{ld.style.display='none';btn.style.display='block';}
 }
@@ -246,7 +223,7 @@ document.getElementById('btn-test-token').addEventListener('click', async () => 
   const token = document.getElementById('manual-token').value;
   if (!token) return alert('Cole um token!');
   try {
-    const res = await apiFetch('/api/test-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    const res = await fetch('/api/test-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
     const data = await res.json();
     if (data.success) {
       data.accounts.forEach(acc => { if (!accounts.find(a => a.id === acc.id)) accounts.push(acc); });
