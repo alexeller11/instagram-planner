@@ -80,6 +80,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/tmp", express.static(PUBLIC_TMP_DIR));
 
+// Redirecionamento amigável para o front-end
+app.get("/app", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "app.html"));
+});
+
 app.use(session({
   name: "planner.sid",
   secret: SESSION_SECRET,
