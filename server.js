@@ -6,7 +6,6 @@ const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const crypto = require("crypto");
 const PDFDocument = require("pdfkit");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -26,10 +25,6 @@ const BASE_URL =
   `http://localhost:${PORT}`;
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "change-me";
-
-if (IS_PROD && (!SESSION_SECRET || SESSION_SECRET === "change-me" || SESSION_SECRET.length < 24)) {
-  throw new Error("SESSION_SECRET inseguro. Defina um valor forte (>= 24 caracteres) em produção.");
-}
 
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
@@ -118,47 +113,6 @@ app.use(
   })
 );
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || BASE_URL)
-  .split(",")
-  .map((v) => v.trim())
-  .filter(Boolean);
-
-function ensureCsrfToken(req) {
-  if (!req.session.csrfToken) {
-    req.session.csrfToken = crypto.randomBytes(32).toString("hex");
-  }
-  return req.session.csrfToken;
-}
-
-function originAllowed(req) {
-  const origin = req.get("origin");
-  if (!origin) return true;
-  return ALLOWED_ORIGINS.includes(origin);
-}
-
-function csrfMiddleware(req, res, next) {
-  if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH" && req.method !== "DELETE") {
-    return next();
-  }
-
-  if (!originAllowed(req)) {
-    return res.status(403).json({ error: "Origin não permitido." });
-  }
-
-  if (req.path === "/auth") return next();
-
-  const sessionToken = ensureCsrfToken(req);
-  const headerToken = req.get("x-csrf-token");
-
-  if (!headerToken || headerToken !== sessionToken) {
-    return res.status(403).json({ error: "CSRF token inválido." });
-  }
-
-  return next();
-}
-
-app.use("/api", csrfMiddleware);
-
 function ensureDirs() {
   [STORAGE_ROOT, CLIENTS_DIR, PUBLIC_TMP_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -198,25 +152,6 @@ function ensureDirs() {
 }
 
 ensureDirs();
-
-function cleanupOldTmpFiles(maxAgeMs = 1000 * 60 * 60 * 24) {
-  try {
-    const now = Date.now();
-    const files = fs.readdirSync(PUBLIC_TMP_DIR);
-    for (const file of files) {
-      const fullPath = path.join(PUBLIC_TMP_DIR, file);
-      const stat = fs.statSync(fullPath);
-      if (now - stat.mtimeMs > maxAgeMs) {
-        fs.unlinkSync(fullPath);
-      }
-    }
-  } catch (error) {
-    console.error("[TMP_CLEANUP_ERROR]", error.message);
-  }
-}
-
-cleanupOldTmpFiles();
-setInterval(() => cleanupOldTmpFiles(), 1000 * 60 * 60).unref();
 
 function sanitizeFileName(value) {
   return String(value || "cliente")
@@ -292,13 +227,6 @@ function safeJsonParse(text) {
   } catch {
     return null;
   }
-}
-
-function cleanText(value, max = 400) {
-  return String(value || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
 }
 
 async function callGroqJSON({ system, user, maxTokens = 4096, temperature = 0.7 }) {
@@ -549,67 +477,27 @@ app.post("/api/auth", async (req, res) => {
   }
 });
 
-app.post("/api/test-token", async (req, res) => {
-  const token = cleanText(req.body?.token || "", 2000);
-  if (!token) return res.status(400).json({ success: false, error: "Token obrigatório." });
-
-  try {
-    const accounts = await fetchIGProfiles([token]);
-    if (!accounts.length) {
-      return res.status(400).json({ success: false, error: "Token inválido ou sem permissões." });
-    }
-
-    const currentAccounts = req.session?.user?.accounts || [];
-    const mergedMap = new Map(currentAccounts.map((acc) => [acc.id, acc]));
-    for (const account of accounts) mergedMap.set(account.id, account);
-
-    req.session.user = { accounts: Array.from(mergedMap.values()) };
-    req.session.logged = true;
-
-    req.session.save((err) => {
-      if (err) return res.status(500).json({ success: false, error: "Erro ao salvar sessão." });
-      return res.json({ success: true, accounts });
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 app.get("/api/me", (req, res) => {
   const accounts = req.session?.user?.accounts || [];
   const logged = Boolean(req.session?.logged && accounts.length);
-  ensureCsrfToken(req);
   res.json({ logged, accounts });
 });
 
-app.get("/api/csrf-token", (req, res) => {
-  const token = ensureCsrfToken(req);
-  res.json({ csrfToken: token });
-});
-
 app.get("/api/status", (req, res) => {
-  const baseStatus = {
+  res.json({
     ok: true,
     render: Boolean(process.env.RENDER),
     base_url: BASE_URL,
     port: PORT,
     has_session: Boolean(req.session?.logged),
+    session_id: req.sessionID || null,
     tokens_configured: IG_TOKENS.length,
     groq: Boolean(GROQ_API_KEY),
-    gemini: Boolean(GEMINI_API_KEY)
-  };
-
-  if (!IS_PROD) {
-    return res.json({
-      ...baseStatus,
-      session_id: req.sessionID || null,
-      storage_root: STORAGE_ROOT,
-      public_tmp_dir: PUBLIC_TMP_DIR,
-      playwright_browsers_path: PLAYWRIGHT_BROWSERS_PATH || "(não definido)"
-    });
-  }
-
-  return res.json(baseStatus);
+    gemini: Boolean(GEMINI_API_KEY),
+    storage_root: STORAGE_ROOT,
+    public_tmp_dir: PUBLIC_TMP_DIR,
+    playwright_browsers_path: PLAYWRIGHT_BROWSERS_PATH || "(não definido)"
+  });
 });
 
 app.get("/api/dashboard/:igId", async (req, res) => {
@@ -690,21 +578,7 @@ app.post("/api/client-memory/:username", (req, res) => {
 app.post("/api/intelligence", async (req, res) => {
   if (!ensureAtLeastOneModel(res)) return;
 
-  const {
-    igId,
-    niche: rawNiche = "",
-    audience: rawAudience = "",
-    goal: rawGoal = "",
-    tone: rawTone = "",
-    extra: rawExtra = "",
-    location: rawLocation = ""
-  } = req.body || {};
-  const niche = cleanText(rawNiche, 140);
-  const audience = cleanText(rawAudience, 140);
-  const goal = cleanText(rawGoal, 140);
-  const tone = cleanText(rawTone, 140);
-  const extra = cleanText(rawExtra, 1200);
-  const location = cleanText(rawLocation, 140);
+  const { igId, niche = "", audience = "", goal = "", tone = "", extra = "", location = "" } = req.body || {};
   const account = getAccountFromSession(req, igId);
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
@@ -763,29 +637,11 @@ Retorne exatamente neste JSON:
 app.post("/api/competitors", async (req, res) => {
   if (!ensureAtLeastOneModel(res)) return;
 
-  const {
-    igId,
-    niche: rawNiche = "",
-    audience: rawAudience = "",
-    competitors = [],
-    location: rawLocation = "",
-    goal: rawGoal = "",
-    tone: rawTone = "",
-    extra: rawExtra = ""
-  } = req.body || {};
-  const niche = cleanText(rawNiche, 140);
-  const audience = cleanText(rawAudience, 140);
-  const location = cleanText(rawLocation, 140);
-  const goal = cleanText(rawGoal, 140);
-  const tone = cleanText(rawTone, 140);
-  const extra = cleanText(rawExtra, 1200);
+  const { igId, niche = "", audience = "", competitors = [], location = "", goal = "", tone = "", extra = "" } = req.body || {};
   const account = getAccountFromSession(req, igId);
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
 
-  const competitorsList = (competitors || [])
-    .map((c) => cleanText(c, 60))
-    .filter(Boolean)
-    .slice(0, 20);
+  const competitorsList = (competitors || []).map(c => String(c || "").trim()).filter(Boolean);
 
   const prompt = `
 ${plannerSystemPrompt()}
@@ -805,7 +661,7 @@ Concorrentes:
 ${JSON.stringify(competitorsList, null, 2)}
 
 Regras:
-- se faltar evidência pública, explicite isso
+- se faltar evidência pblica, explicite isso
 - não invente fatos específicos
 - mesmo com pouca evidência, entregue leitura estratégica útil
 - compare com a lógica do nicho e da cidade
@@ -889,25 +745,18 @@ app.post("/api/generate", async (req, res) => {
 
   const {
     igId,
-    niche: rawNiche = "",
-    audience: rawAudience = "",
-    goal: rawGoal = "",
-    tone: rawTone = "",
-    extra: rawExtra = "",
-    location: rawLocation = "",
+    niche = "",
+    audience = "",
+    goal = "",
+    tone = "",
+    extra = "",
+    location = "",
     mode = "conversao",
     totalPosts = 16,
     reels = 6,
     carousels = 6,
     singlePosts = 4
   } = req.body || {};
-
-  const niche = cleanText(rawNiche, 140);
-  const audience = cleanText(rawAudience, 140);
-  const goal = cleanText(rawGoal, 140);
-  const tone = cleanText(rawTone, 140);
-  const extra = cleanText(rawExtra, 1200);
-  const location = cleanText(rawLocation, 140);
 
   const account = getAccountFromSession(req, igId);
   if (!account) return res.status(404).json({ error: "Conta não encontrada." });
