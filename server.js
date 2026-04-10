@@ -54,7 +54,10 @@ const clientSchema = new mongoose.Schema({
     what_works: [String],
     what_doesnt_work: [String],
     strong_angles: [String]
-  }
+  },
+  saved_diagnostics: { type: Array, default: [] },
+  saved_planners: { type: Array, default: [] },
+  swipe_file: { type: Array, default: [] }
 }, { timestamps: true });
 
 const Client = mongoose.model('Client', clientSchema);
@@ -150,6 +153,18 @@ app.post("/api/auth", async (req, res) => {
 
 app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
 
+app.get("/api/memory/:username", async (req, res) => {
+  try {
+    const mem = await getClientMemory(req.params.username);
+    res.json({
+      diagnostics: mem.saved_diagnostics || [],
+      planners: mem.saved_planners || [],
+      swipe_file: mem.swipe_file || [],
+      forbidden: mem.forbidden_words || []
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get("/api/dashboard/:igId", async (req, res) => {
   const acc = (req.session.accounts || []).find(a => a.id === req.params.igId);
   if (!acc) return res.status(404).send();
@@ -184,14 +199,69 @@ app.post("/api/quick-verdict", async (req, res) => {
 app.post("/api/intelligence", async (req, res) => {
   const { igId, niche, audience } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Account not found" });
+  
   const mem = await getClientMemory(acc.username);
+  mem.niche = niche; mem.audience = audience;
+  await mem.save();
   
-  const prompt = `Analise @${acc.username}. Nicho: ${niche}. Público: ${audience}. 
-  Palavras proibidas: ${mem.forbidden_words.join(", ")}.
-  Retorne JSON: { "executive_summary": "", "priority_actions": [], "bio_suggestions": [] }`;
+  let postsContext = "";
+  try {
+    const r = await axios.get(`https://graph.instagram.com/v21.0/${acc.id}/media`, {
+      params: { fields: "caption,media_type,like_count", limit: 15, access_token: acc.ig_token }
+    });
+    postsContext = (r.data.data || []).map(p => `[${p.media_type}] ${p.caption ? p.caption.substring(0, 100) : ''}...`).join(' | ');
+  } catch(e) {}
+
+  const prompt = `Faça uma AUDITORIA PROFUNDA para @${acc.username}. Nicho: ${niche}. Público: ${audience}.
+  Conteúdo recente do feed: ${postsContext}
+  Regras (Proibidas): ${mem.forbidden_words.join(", ")}.
+  Identifique falhas no engajamento e crie uma linha estratégica.
+  Retorne JSON EXATAMENTE ESTE: { "executive_summary": "resumo atual", "bio_analysis": "o que está errado na bio atual e como ajeitar", "bio_suggestions": ["nova bio 1", "nova bio 2"], "strengths": ["ponto forte 1"], "weaknesses": ["fraco 1", "fraco 2"], "pillars": ["pilar editorial 1"], "priority_actions": ["ação 1"] }`;
   
-  const data = await callAI({ system: "Estrategista sénior.", user: prompt });
-  res.json(data);
+  try {
+    const data = await callAI({ system: "Você é o Estrategista-Chefe da Ideale Agency. Seja incisivo, cirúrgico e focado em vendas e branding premium.", user: prompt });
+    mem.saved_diagnostics.push({ date: new Date(), ...data });
+    await mem.save();
+    res.json(data);
+  } catch(e) {
+    res.status(500).json({ error: "Erro na geração do diagnóstico." });
+  }
+});
+
+app.post("/api/export-diagnostic", async (req, res) => {
+  const { payload, username } = req.body;
+  const doc = new PDFDocument({ margin: 50 });
+  res.setHeader("Content-Type", "application/pdf");
+  doc.pipe(res);
+  
+  doc.rect(0, 0, doc.page.width, 100).fill("#051A22");
+  doc.fillColor("#22ceb5").fontSize(28).text("IDEALE", 50, 40);
+  doc.fillColor("#ffffff").fontSize(14).text("DIAGNÓSTICO ESTRATÉGICO", 50, 70);
+  
+  doc.moveDown(3);
+  doc.fillColor("#000000").fontSize(20).text(`Análise: @${username}`, { underline: true }).moveDown();
+  
+  doc.fontSize(14).fillColor("#22ceb5").text("Resumo Executivo");
+  doc.fontSize(11).fillColor("#333333").text(payload.executive_summary, { align: 'justify' }).moveDown();
+  
+  if (payload.bio_analysis) {
+    doc.fontSize(14).fillColor("#e74c3c").text("Análise da Bio & Falhas Críticas");
+    doc.fontSize(11).fillColor("#333333").text(payload.bio_analysis, { align: 'justify' }).moveDown();
+    (payload.weaknesses || []).forEach(w => doc.text(`• ${w}`));
+    doc.moveDown();
+  }
+  
+  doc.fontSize(14).fillColor("#27ae60").text("Sugestões de Nova Bio");
+  (payload.bio_suggestions || []).forEach(b => doc.text(`• ${b}`));
+  doc.moveDown();
+  
+  doc.fontSize(14).fillColor("#2980b9").text("Pilares Editoriais Recomendados");
+  (payload.pillars || []).forEach(p => doc.text(`• ${p}`));
+  doc.moveDown();
+  
+  doc.fontSize(10).fillColor("#999999").text("Relatório Confidencial - Ideale Agency", 50, doc.page.height - 50, { align: 'center' });
+  doc.end();
 });
 
 app.post("/api/competitors", async (req, res) => {
@@ -209,27 +279,110 @@ app.post("/api/competitors", async (req, res) => {
   finally { await context.close(); }
 });
 
+app.post("/api/suggest-competitors", async (req, res) => {
+  const { niche, city } = req.body;
+  const prompt = `Sugira 3 arrobas do Instagram (perfil real ou benchmark) no nicho de '${niche}' na região '${city}'. 
+  Retorne JSON: { "competitors": ["@nome1", "@nome2"] }`;
+  try {
+    const data = await callAI({ system: "Especialista em pesquisa de mercado.", user: prompt });
+    res.json(data);
+  } catch(e) {
+    res.status(500).json({ error: "Erro buscando recomendação." });
+  }
+});
+
 app.post("/api/generate", async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Acct not found" });
   const mem = await getClientMemory(acc.username);
 
-  const prompt = `Plano 30 dias para @${acc.username}. Objetivo principal: ${goal}. Tom de Voz: ${tone}.
-  Mix: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
-  Proibido usar: ${mem.forbidden_words.join(", ")}.
-  Retorne JSON EXATAMENTE neste formato: { "posts": [{ "n": 1, "format": "", "pillar": "", "title": "", "hook": "", "copy": "" }] }`;
+  const prompt = `Crie um planejamento de conteúdo altamente estratégico para @${acc.username}.
+  Objetivo: ${goal}. Tom de Voz: ${tone}.
+  Distribuição solicitada: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
+  PROIBIDO usar as palavras: ${mem.forbidden_words.join(", ")}.
+  Para Reels: forneça roteiro script (0-3s, 3-15s, etc), sugestão de áudio/cenário.
+  Para Carrossel: Forneça descrição de cada tela.
+  Sempre incluir legenda pronta (caption).
+  Retorne JSON ESTRITO E VÁLIDO:
+  {
+    "posts": [
+      {
+        "n": 1,
+        "format": "reels",
+        "theme": "Assunto",
+        "visual_audio_direction": "Instruções do vídeo/arte/áudio",
+        "script_or_slides": ["0-3s: Gancho...", "3-15s: Corpo...", "CTA..."],
+        "caption": "Legenda persuasiva pronta"
+      }
+    ]
+  }`;
   
-  const data = await callAI({ system: "Estrategista de funil de vendas. Você só retorna JSON válido.", user: prompt });
-  res.json(data);
+  try {
+    const data = await callAI({ system: "Você é um Co-Produtor Sênior de Lançamentos e Estrategista. Apenas JSON válido.", user: prompt });
+    mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
+    await mem.save();
+    res.json(data);
+  } catch(e) {
+    res.status(500).json({ error: "Erro gerando planejamento." });
+  }
+});
+
+app.post("/api/single-post", async (req, res) => {
+  const { igId, format, subject, angle, intensity } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Acct not found" });
+  const mem = await getClientMemory(acc.username);
+  
+  const prompt = `Crie exatamente UM POST para @${acc.username}. 
+  Formato: ${format}. Assunto: ${subject}. Ângulo: ${angle}. Intensidade de Venda: ${intensity}/10.
+  Palavras proibidas: ${mem.forbidden_words.join(", ")}.
+  Para Reels: roteiro script (0-3s, etc). Para Carrosséis: telas separadas.
+  Retorne JSON VÁLIDO:
+  {
+    "format": "${format}",
+    "theme": "${subject}",
+    "visual_audio_direction": "...",
+    "script_or_slides": ["..."],
+    "caption": "..."
+  }`;
+  
+  try {
+    const data = await callAI({ system: "Crie a copy e roteiro perfeitos. Apenas JSON válido.", user: prompt });
+    res.json(data);
+  } catch(e) {
+    res.status(500).json({ error: "Erro gerando post único." });
+  }
 });
 
 app.post("/api/export-report", (req, res) => {
   const { payload, username } = req.body;
-  const doc = new PDFDocument();
+  const doc = new PDFDocument({ margin: 50 });
   res.setHeader("Content-Type", "application/pdf");
   doc.pipe(res);
-  doc.fontSize(20).text(`@${username} - Planeamento`, { align: "center" });
-  doc.moveDown().fontSize(10).text(JSON.stringify(payload, null, 2));
+  
+  doc.rect(0, 0, doc.page.width, 100).fill("#051A22");
+  doc.fillColor("#22ceb5").fontSize(28).text("IDEALE", 50, 40);
+  doc.fillColor("#ffffff").fontSize(14).text("PLANEJAMENTO TÁTICO", 50, 70);
+  
+  doc.moveDown(3);
+  doc.fillColor("#000000").fontSize(20).text(`Cliente: @${username}`, { underline: true }).moveDown();
+  
+  (payload.posts || []).forEach(p => {
+    doc.fontSize(14).fillColor("#22ceb5").text(`Post ${p.n} - ${p.format.toUpperCase()} | Tema: ${p.theme}`);
+    doc.fontSize(11).fillColor("#e74c3c").text(`Direção Visual/Áudio:`, { continued: true }).fillColor("#333333").text(` ${p.visual_audio_direction}`);
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor("#2980b9").text("Roteiro / Telas:");
+    (p.script_or_slides || []).forEach(s => doc.fillColor("#333333").text(`• ${s}`));
+    doc.moveDown(0.5);
+    
+    doc.fontSize(11).fillColor("#27ae60").text("Legenda (Copy):");
+    doc.fillColor("#333333").text(p.caption, { align: 'justify' });
+    doc.moveDown(2);
+  });
+  
+  doc.fontSize(10).fillColor("#999999").text("Relatório Confidencial - Ideale Agency", 50, doc.page.height - 50, { align: 'center' });
   doc.end();
 });
 
