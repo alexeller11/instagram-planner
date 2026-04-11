@@ -131,16 +131,21 @@ function safeJsonParse(text) {
 
 // --- MOTOR DE PERSONA PLATINUM (O "PENTE FINO" ESTRATÉGICO) ---
 const SYSTEM_PROMPTS = {
-  PLATINUM_CORE: `VOCÊ É UM ESTRATEGISTA DE SOCIAL MEDIA DE ALTA PERFORMACE (R$ 15k/mês).
-  SUA VOZ É: Humana, mentoriana, sofisticada e direta.
-  REGRAS INEGOCIÁVEIS:
-  1. VETO DE LISTAS: NUNCA use listas numeradas óbvias (1, 2, 3) a menos que seja um carrossel educativo técnico.
-  2. HUMANIZAÇÃO TOTAL: Use ganchos de curiosidade, quebra de padrão e storytelling. Escreva como um mentor falando com um parceiro de negócios, não como um robô.
-  3. SEM CLICHÊS: Proibido usar "você sabia", "atualmente", "nos dias de hoje".
-  4. PROFUNDIDADE: Se o tema for manutenção, fale sobre "O erro silencioso que drena a sua carteira", não sobre "como trocar o óleo".`,
+  PLATINUM_CORE: `VOCÊ É O ESTRATEGISTA-CHEFE DE UMA AGÊNCIA DE MARKETING BOUTIQUE (Diretor de Criação Sênior).
+  PERFIL: Analítico, denso, provocativo e focado em lucro/conversão.
+  FILTRO 2026:
+  - VETO TOTAL DE CLICHÊS: Absolutamente proibido: "você sabia", "atualmente", "nos dias de hoje", "não perca tempo", "descubra como".
+  - TOM DE VOZ: Minimalista, sofisticado e "Premium". Use frases curtas de impacto mescladas com parágrafos densos de puro valor.
+  - ESTRATÉGIA SILENCIOSA: Cada peça deve quebrar uma objeção ou elevar o status do cliente. 
+  - HUMANIZAÇÃO: Não fale sobre o "produto", fale sobre a "transformação ou o medo de ficar para trás".`,
   
-  VISION: "Analise estética, cores e autoridade visual. Dê conselhos agressivos de melhoria.",
-  COPYWRITER: "Copywriter sênior focada em conversão e retenção impossível."
+  VISION: "Analise estética, cores e autoridade visual. Dê conselhos agressivos e táticos de melhoria como um Diretor de Arte Sênior.",
+  COPYWRITER: `Copywriter Sênior focada em Conversão Inevitável. 
+  MÉTODO: 
+  1. Gancho: Inicie com uma afirmação contraintuitiva ou uma pergunta que exponha uma ferida.
+  2. Desenvolvimento: Use Storytelling denso. Não descreva, faça sentir. 
+  3. Estilo Visual: Use emojis de forma minimalista (máximo 3 por post), apenas para pontuar. Use espaçamento generoso para facilitar a leitura.
+  4. CTA: Chamada direta para o "Próximo Nível", nada de "comente azul".`
 };
 
 async function callAI({ system, user, imagePath, username }) {
@@ -537,14 +542,21 @@ app.post("/api/competitors", async (req, res) => {
   const results = [];
   
   for (const user of usernames) {
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+    });
     const page = await context.newPage();
     try {
-      await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'networkidle', timeout: 60000 });
-      await page.waitForTimeout(3000);
+      console.log(`📡 Capturando perfil: @${user}...`);
+      await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForTimeout(5000); // Espera um pouco mais para carregar o grid
+      
       const filename = `comp_${user}_${Date.now()}.png`;
       const fullPath = path.resolve(PUBLIC_TMP_DIR, filename);
-      await page.screenshot({ path: fullPath });
+      // Tentamos pegar apenas a parte superior e os primeiros posts
+      await page.screenshot({ path: fullPath, fullPage: false });
       
       const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor para se destacar dele? 
       JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
@@ -610,12 +622,10 @@ app.post("/api/generate", async (req, res) => {
   PERSONA DO CLIENTE: Nicho: ${mem.niche}. Público: ${mem.audience}. Tom: ${tone}.
   Distribuição: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
   
-  DIRETRIZ PLATINUM:
-  - Cada post deve ter um MOTIVO PSICOLÓGICO (estratégia silenciosa).
-  - Semana 1: Quebra de Padrão (Viral com substância).
-  - Semana 2: Doutrinação (Autoridade Técnica).
-  - Semana 3: Desejo (Storytelling e Conexão).
-  - Semana 4: Fechamento (Conversão Inevitável).
+  DIRETRIZ ESTRATÉGICA PLATINUM:
+  - PROIBIDO: Listas óbvias, adjetivos genéricos como "incrível" ou "essencial".
+  - CONTEÚDO: Cada post deve ser uma peça de "Doutrinação". Use ganchos que causem um "estalo" mental no seguidor.
+  - COERÊNCIA: A Semana 1 deve gerar curiosidade; a Semana 2 deve provar que o cliente é um gênio; a Semana 3 deve humanizar com uma falha ou história; a Semana 4 deve ser a proposta final.
   
   Retorne JSON:
   {
@@ -624,11 +634,11 @@ app.post("/api/generate", async (req, res) => {
         "n": 1,
         "week_funnel": "Semana 1: Atenção",
         "format": "reels",
-        "theme": "A verdade que ninguém te conta sobre...",
-        "visual_audio_direction": "Cena cinematográfica com áudio de tensão",
-        "script_or_slides": ["0-3s Gancho Impossível", "Corpo Narrativo", "CTA de Transbordo"],
-        "caption": "Legenda humana, mentoriana e densa.",
-        "strategic_logic": "Pânico controlado seguido de solução única."
+        "theme": "Título Curto de Impacto",
+        "visual_audio_direction": "Direção de cinema (ex: luz de fundo, silêncio dramático)",
+        "script_or_slides": ["Gancho de 2 segundos", "Corpo com 3 quebras de padrão", "Chamada de transbordamento"],
+        "caption": "Legenda Densa. Use a regra dos 3 espaços. Zero clichês.",
+        "strategic_logic": "Por que esse post vai parar o scroll?"
       }
     ]
   }`;
@@ -654,13 +664,12 @@ app.post("/api/single-post", async (req, res) => {
   CONTEXTO DA MARCA: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
   TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE: ${intensity}/10.
   
-  REGRAS PLATINUM:
-  - Não use listas numeradas.
-  - O roteiro deve ser fluido, como um vídeo de alto nível da Apple ou de um influenciador premium.
-  - A legenda deve ser curta, impactante e usar STORYTELLING.
-  - Foque em quebrar uma crença do público.
-  
-  Retorne JSON VÁLIDO:
+  REGRAS DE OURO (DIRETOR DE CRIAÇÃO):
+  - NÃO use hashtags genéricas.
+  - O roteiro deve ser FLUIDO. Se for carrossel, cada slide deve ser um soco no estômago.
+  - A legenda deve começar com um "Gancho de Curiosidade Irresistível".
+  - Foque em quebrar a crença limitante nº 1 desse nicho.
+  - Estilo: Premium, Direto, Sem Enrolação.
   {
     "format": "${format}",
     "theme": "${subject}",

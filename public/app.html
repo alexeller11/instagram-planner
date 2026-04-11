@@ -651,7 +651,11 @@ async function suggestCompetitors() {
   try {
     const res = await fetch('/api/suggest-competitors', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({niche, city})});
     const d = await res.json();
-    document.getElementById('suggest-result').innerHTML = (d.competitors||[]).map(c => `<span class="badge" style="cursor:pointer;" onclick="document.getElementById('s-username').value='${c}';">${c}</span>`).join('');
+    document.getElementById('suggest-result').innerHTML = (d.competitors||[]).map(c => `
+      <span class="badge" style="cursor:pointer; transition: all 0.2s;" 
+        onclick="const inp=document.getElementById('s-username'); const val=inp.value.trim(); inp.value = val ? val + ', ' + '${c}' : '${c}'; inp.focus(); this.style.opacity='0.5';">
+        ${c}
+      </span>`).join('');
   } finally { document.getElementById('btn-suggest').textContent = "Buscar Referências"; }
 }
 
