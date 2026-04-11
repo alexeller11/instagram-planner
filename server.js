@@ -188,12 +188,21 @@ app.get("/api/dashboard/:igId", async (req, res) => {
 app.post("/api/quick-verdict", async (req, res) => {
   const { username, followers, er, media } = req.body;
   const prompt = `Conta @${username} tem ${followers} segs, ER de ${er}%. Últimos posts: ${media.slice(0,3).map(m=>m.media_type).join(', ')}. 
-  Crie um "Veredito de Estrategista Sênior" RÁPIDO (máx 3 frases) em PORTUGUÊS DIRECIONADO AO DONO com base nesses dados.
-  Retorne um JSON contendo a chave "verdict" com este texto.`;
+  Crie um "Veredito de Estrategista Sênior" RÁPIDO (máx 3 frases) em PORTUGUÊS DIRECIONADO AO DONO.
+  Também ESPECULE/INFIRA de forma realista a Demografia desta conta para o Brasil (cidades e estado, sexo e idade dominante, e 2 faixas métricas de melhores horários de tração).
+  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." } }`;
   try {
     const data = await callAI({ system: "Especialista em métricas de Instagram. Retorne sempre JSON válido.", user: prompt });
-    res.json({ verdict: data.verdict || "Continue o bom trabalho com a audiência." });
-  } catch (e) { res.json({ verdict: "Métricas saudáveis, continue o bom trabalho." }); }
+    res.json({
+      verdict: data.verdict || "Continue o bom trabalho com a audiência.",
+      demographics: data.demographics || { cities: "São Paulo, Rio de Janeiro", gender: "Misto Uniforme", time: "11h-13h / 18h-21h" }
+    });
+  } catch (e) { 
+    res.json({ 
+      verdict: "Métricas saudáveis, continue o bom trabalho.",
+      demographics: { cities: "Apurando cidades...", gender: "Apurando...", time: "Apurando..." }
+    }); 
+  }
 });
 
 app.post("/api/intelligence", async (req, res) => {

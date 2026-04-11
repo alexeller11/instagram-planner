@@ -174,10 +174,10 @@
       </div>
       <div class="card">
         <h3>Demografia & Comportamento (IA Estimada)</h3>
-        <div class="highlight-box">
+        <div class="highlight-box" id="demo-block">
           <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">A inferir com IA</span></p>
           <p style="margin-bottom:12px;"><strong>Público Dominante:</strong> <span class="badge">Inferindo...</span></p>
-          <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">11h - 14h / 19h - 21h</span></p>
+          <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">...</span></p>
         </div>
         <p style="font-size:12px; color:var(--text-muted); margin-top:16px;">*Dados inferidos baseados no padrão de contas criador caso o token não seja business/graph completo.</p>
       </div>
@@ -280,8 +280,30 @@
       <p style="margin-bottom:24px; color:var(--text-muted);">Cria um organograma rico com divisões exatas por tela e segundos cronometrados para Reels, seguindo rigorosamente a identidade e restrições do cliente.</p>
       
       <div class="grid-2" style="margin-bottom:12px;">
-        <div><label>Objetivo da Campanha</label><input id="p-goal" value="Conversão direta e Atração de Leads Qualificados"></div>
-        <div><label>Tom de Voz da Marca</label><input id="p-tone" value="Profissional, Sofisticado e Provocativo"></div>
+        <div>
+          <label>Objetivo da Campanha</label>
+          <select id="p-goal-sel" onchange="toggleCustom('p-goal-sel', 'p-goal-custom')" style="margin-bottom:8px;">
+            <option value="Vendas Diretas / Conversão de Oferta">Vendas Diretas / Conversão de Oferta</option>
+            <option value="Captação de Leads Qualificados">Captação de Leads Qualificados</option>
+            <option value="Construção de Autoridade e Confiança">Construção de Autoridade e Confiança</option>
+            <option value="Crescimento de Audiência / Viralização">Crescimento de Audiência / Viralização</option>
+            <option value="Entretenimento Educativo (Edutainment)">Entretenimento Educativo (Edutainment)</option>
+            <option value="custom">Outro (Personalizado...)</option>
+          </select>
+          <input id="p-goal-custom" placeholder="Digite o seu objetivo..." style="display:none; margin-bottom:16px;">
+        </div>
+        <div>
+          <label>Tom de Voz da Marca</label>
+          <select id="p-tone-sel" onchange="toggleCustom('p-tone-sel', 'p-tone-custom')" style="margin-bottom:8px;">
+            <option value="Profissional, Sofisticado e Provocativo">Profissional, Sofisticado e Provocativo (Padrão)</option>
+            <option value="Íntimo, Vulnerável e Empático">Íntimo, Vulnerável e Empático</option>
+            <option value="Agressivo, Direto e Focado em Oferta">Agressivo, Direto e Focado em Oferta</option>
+            <option value="Científico, Técnico e Analítico">Científico, Técnico e Analítico</option>
+            <option value="Engraçado, Irônico e Ágil">Engraçado, Irônico e Ágil</option>
+            <option value="custom">Outro (Personalizado...)</option>
+          </select>
+          <input id="p-tone-custom" placeholder="Digite o tom de voz..." style="display:none; margin-bottom:16px;">
+        </div>
       </div>
       
       <h4 style="margin-top:20px;">Mix de Entegáveis (Qtd)</h4>
@@ -399,12 +421,20 @@ async function select(acc) {
   
   document.getElementById('verdict-container').style.display = 'block';
   document.getElementById('verdict-text').innerHTML = '<span class="skeleton" style="display:block; width:100%; height:20px; margin-bottom:8px;"></span><span class="skeleton" style="display:block; width:80%; height:20px;"></span>';
+  document.getElementById('demo-block').innerHTML = '<div class="skeleton" style="height:14px; width:60%; margin-bottom:12px;"></div><div class="skeleton" style="height:14px; width:70%; margin-bottom:12px;"></div><div class="skeleton" style="height:14px; width:50%;"></div>';
   
   fetch('/api/quick-verdict', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ username: acc.username, followers: acc.followers_count, er: data.metrics.engagement_rate, media: data.recent_posts })
   }).then(r => r.json()).then(res => {
     document.getElementById('verdict-text').innerHTML = res.verdict;
+    if(res.demographics) {
+      document.getElementById('demo-block').innerHTML = `
+        <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">${res.demographics.cities}</span></p>
+        <p style="margin-bottom:12px;"><strong>Público Dominante:</strong> <span class="badge">${res.demographics.gender}</span></p>
+        <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">${res.demographics.time}</span></p>
+      `;
+    }
   });
   
   // Limpar Abas Atuais
@@ -516,15 +546,27 @@ async function spy() {
 
 function saveToSwipeFile() { alert("Salvo no Cofre de Referências da Conta com sucesso!"); }
 
+function toggleCustom(selId, inpId) {
+  const isCustom = document.getElementById(selId).value === 'custom';
+  document.getElementById(inpId).style.display = isCustom ? 'block' : 'none';
+}
+
 async function genPlan() {
   document.getElementById('plan-result').innerHTML = '';
   document.getElementById('btn-pdf-plan').style.display = 'none';
   showSkeleton('plan-skeleton', true);
+  
+  let gSel = document.getElementById('p-goal-sel').value;
+  let finalGoal = gSel === 'custom' ? document.getElementById('p-goal-custom').value : gSel;
+  
+  let tSel = document.getElementById('p-tone-sel').value;
+  let finalTone = tSel === 'custom' ? document.getElementById('p-tone-custom').value : tSel;
+  
   try {
     const res = await fetch('/api/generate', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ 
-        igId: selAcc.id, goal: document.getElementById('p-goal').value, tone: document.getElementById('p-tone').value,
+        igId: selAcc.id, goal: finalGoal, tone: finalTone,
         reels: document.getElementById('p-reels').value, carousels: document.getElementById('p-car').value, singlePosts: document.getElementById('p-img').value 
       })
     });
