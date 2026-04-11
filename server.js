@@ -240,6 +240,7 @@ app.get("/api/auth/logout", (req, res) => {
   res.json({ success: true });
 });
 
+app.get("/api/version", (req, res) => res.json({ version: "2026.04.11-Platinum-Evolution" }));
 app.get("/api/debug-status", (req, res) => {
   res.json({
     env: process.env.NODE_ENV || "development",
