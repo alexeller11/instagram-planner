@@ -117,9 +117,17 @@
     
     .mini-action { background: rgba(34, 206, 181, 0.1); color: var(--brand); border: 1px solid var(--brand); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.2s;}
     .mini-action:hover { background: var(--brand); color: #000; }
+    
+    /* Overlay Modal etc */
+    #overlay { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
+      backdrop-filter: blur(8px); display: none; z-index: 100; justify-content: center; align-items: center; 
+    }
+    .modal { background: var(--sidebar); border: 1px solid var(--border); width: 90%; max-width: 600px; padding: 32px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
   </style>
 </head>
 <body>
+<div id="overlay" onclick="this.style.display='none'"><div class="modal" onclick="event.stopPropagation()" id="modal-content"></div></div>
 
 <aside>
   <div class="logo-container">
@@ -168,10 +176,10 @@
     </div>
     
     <div class="grid-4">
-      <div class="card" style="margin:0;"><h4>Seguidores Globais</h4><p id="d-followers" style="font-size:32px; font-weight:700;">-</p></div>
-      <div class="card" style="margin:0;"><h4>Engajamento Real</h4><p id="d-er" style="font-size:32px; font-weight:700; color:var(--brand);">-</p></div>
-      <div class="card" style="margin:0;"><h4>Média de Likes</h4><p id="d-likes" style="font-size:32px; font-weight:700;">-</p></div>
-      <div class="card" style="margin:0;"><h4>Média Comentários</h4><p id="d-comms" style="font-size:32px; font-weight:700;">-</p></div>
+      <div class="card" style="margin:0;"><h4>Seguidores</h4><p id="d-followers" style="font-size:32px; font-weight:700;">-</p></div>
+      <div class="card" style="margin:0;"><h4>Alcance (30d)</h4><p id="d-reach" style="font-size:32px; font-weight:700; color:var(--brand);">-</p></div>
+      <div class="card" style="margin:0;"><h4>Impressões</h4><p id="d-impressions" style="font-size:32px; font-weight:700;">-</p></div>
+      <div class="card" style="margin:0;"><h4>Engajamento</h4><p id="d-er" style="font-size:32px; font-weight:700; color:var(--brand);">-</p></div>
     </div>
     
     <div class="grid-2">
@@ -198,7 +206,10 @@
     </div>
 
     <div class="card" id="verdict-container" style="display:none;">
-      <h3><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> Leitura Instantânea (IA Ideale)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <h3><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> Leitura Estratégica v2</h3>
+        <span id="health-badge" class="badge" style="padding: 8px 16px; font-size:14px;">Analisando Saúde...</span>
+      </div>
       <div class="highlight-box">
         <p id="verdict-text" style="line-height: 1.6; color: var(--text);">Gerando leitura...</p>
       </div>
@@ -454,8 +465,8 @@ async function select(acc) {
   const r = await fetch(`/api/dashboard/${acc.id}`);
   const data = await r.json();
   document.getElementById('d-er').textContent = data.metrics.engagement_rate + '%';
-  document.getElementById('d-likes').textContent = data.metrics.avg_likes;
-  document.getElementById('d-comms').textContent = data.metrics.avg_comments;
+  document.getElementById('d-reach').textContent = "...";
+  document.getElementById('d-impressions').textContent = "...";
   renderChart(data.recent_posts);
   
   document.getElementById('verdict-container').style.display = 'block';
@@ -464,9 +475,13 @@ async function select(acc) {
   
   fetch('/api/quick-verdict', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ username: acc.username, followers: acc.followers_count, er: data.metrics.engagement_rate, media: data.recent_posts })
+    body: JSON.stringify({ username: acc.username, followers: acc.followers_count, er: data.metrics.engagement_rate, media: data.recent_posts, igId: acc.id })
   }).then(r => r.json()).then(res => {
     document.getElementById('verdict-text').innerHTML = res.verdict;
+    document.getElementById('health-badge').textContent = res.health_status || "Estável";
+    document.getElementById('d-reach').textContent = res.real_metrics?.reach || "N/A*";
+    document.getElementById('d-impressions').textContent = res.real_metrics?.impressions || "N/A*";
+    
     if(res.demographics) {
       document.getElementById('demo-block').innerHTML = `
         <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">${res.demographics.cities}</span></p>
@@ -524,8 +539,8 @@ function renderPostCard(p, isSingle = false) {
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span class="badge" style="background:#fff; color:#000;">${isSingle ? 'POST ÚNICO' : (p.week_funnel || 'POST ' + p.n)} • ${p.format.toUpperCase()}</span>
         <div style="display:flex; gap:8px;">
+          <button class="mini-action" onclick='evaluatePost(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Avaliar Nota IA</button>
           <button class="mini-action" onclick="alert('Funcionalidade de Copiar Ativada!')">Copiar Tudo</button>
-          <button class="mini-action" style="background:#27ae60; border-color:#27ae60; color:#fff;" onclick="alert('Post Aprovado e Salvo')">Aprovar Post</button>
         </div>
       </div>
       <h3 style="margin-top:16px; margin-bottom:8px; display:block;">${p.theme}</h3>
@@ -716,6 +731,40 @@ function show(id) {
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   event.currentTarget.classList.add('active');
   if(id === 'memory') loadMemory();
+}
+
+async function evaluatePost(p) {
+  const overlay = document.getElementById('overlay');
+  const modal = document.getElementById('modal-content');
+  overlay.style.display = 'flex';
+  modal.innerHTML = `<h3>Analisando Criativo...</h3><div class="skeleton block"></div>`;
+  
+  try {
+    const res = await fetch('/api/evaluate-post', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ theme: p.theme, script_or_slides: p.script_or_slides, caption: p.caption })
+    });
+    const d = await res.json();
+    modal.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">Score Ideale: <span style="color:var(--brand);">${d.score}/10</span></h2>
+        <button class="mini-action" onclick="document.getElementById('overlay').style.display='none'">Fechar</button>
+      </div>
+      <div class="grid-2" style="gap:16px;">
+        <div class="highlight-box" style="margin:0; border-left-color:var(--brand);">
+          <h4 style="color:var(--brand)">Feedback de Retenção</h4>
+          <p style="font-size:13px;"><strong>Hook:</strong> ${d.analysis.hook}</p>
+          <p style="font-size:13px; margin:8px 0;"><strong>Body:</strong> ${d.analysis.body}</p>
+          <p style="font-size:13px;"><strong>CTA:</strong> ${d.analysis.cta}</p>
+        </div>
+        <div class="highlight-box" style="margin:0; border-left-color:#f1c40f; background:rgba(241,196,15,0.05);">
+          <h4 style="color:#f1c40f">Legenda Refinada (Combo Algoritmo)</h4>
+          <p style="font-size:13px; line-height:1.5; white-space:pre-wrap;">${d.refined_caption}</p>
+          <button class="btn btn-outline" style="margin-top:12px; padding:6px; font-size:11px;" onclick="alert('Copiado!')">Copiar Refinamento</button>
+        </div>
+      </div>
+    `;
+  } catch(e) { modal.innerHTML = "Erro na análise."; }
 }
 
 function logout() { fetch('/api/auth/logout').then(() => location.href='/'); }

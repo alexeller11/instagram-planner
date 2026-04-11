@@ -153,11 +153,34 @@ app.post("/api/auth", async (req, res) => {
   try {
     const accounts = [];
     for (const token of IG_TOKENS) {
-      const r = await axios.get("https://graph.instagram.com/v21.0/me", {
-        params: { fields: "id,name,username,followers_count,media_count,biography", access_token: token }
-      });
-      accounts.push({ ...r.data, ig_token: token });
-      await getClientMemory(r.data.username);
+      try {
+        // TENTA BUSINESS API (via Facebook Graph)
+        const pagesRes = await axios.get("https://graph.facebook.com/v21.0/me/accounts", {
+          params: { fields: "instagram_business_account{id,username,name,followers_count,biography,media_count}", access_token: token }
+        });
+        
+        const pages = pagesRes.data.data || [];
+        for (const p of pages) {
+          if (p.instagram_business_account) {
+            accounts.push({ 
+              ...p.instagram_business_account, 
+              name: p.instagram_business_account.name || p.name,
+              ig_token: token,
+              is_business: true 
+            });
+            await getClientMemory(p.instagram_business_account.username);
+          }
+        }
+      } catch (e) {
+        // FALLBACK: BASIC DISPLAY
+        try {
+          const r = await axios.get("https://graph.instagram.com/v21.0/me", {
+            params: { fields: "id,name,username,followers_count,media_count,biography", access_token: token }
+          });
+          accounts.push({ ...r.data, ig_token: token, is_business: false });
+          await getClientMemory(r.data.username);
+        } catch (err) {}
+      }
     }
     req.session.logged = true;
     req.session.accounts = accounts;
@@ -212,23 +235,61 @@ app.get("/api/dashboard/:igId", async (req, res) => {
 });
 
 app.post("/api/quick-verdict", async (req, res) => {
-  const { username, followers, er, media } = req.body;
-  const prompt = `Conta @${username} tem ${followers} segs, ER de ${er}%. Últimos posts: ${media.slice(0,3).map(m=>m.media_type).join(', ')}. 
+  const { username, followers, er, media, igId } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  
+  let realInsights = {};
+  if (acc && acc.is_business) {
+    try {
+      const insightRes = await axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+        params: { metric: "reach,impressions,profile_views,follower_count", period: "day", access_token: acc.ig_token }
+      });
+      // Audience para pegar cidade
+      const audienceRes = await axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+        params: { metric: "audience_city", period: "lifetime", access_token: acc.ig_token }
+      });
+      realInsights = {
+        reach: (insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0) * 30, // est 30 dias
+        impressions: (insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0) * 30,
+        cities: Object.keys(audienceRes.data.data[0]?.values[0]?.value || {}).slice(0, 3).join(", ")
+      };
+    } catch(e) {}
+  }
+
+  const prompt = `Conta @${username}. Seguidores: ${followers}. ER: ${er}%. 
+  Dados Reais (se houver): Reach: ${realInsights.reach || 'N/A'}. Cidades: ${realInsights.cities || 'A inferir'}.
   Crie um "Veredito de Estrategista Sênior" RÁPIDO (máx 3 frases) em PORTUGUÊS DIRECIONADO AO DONO.
-  Também ESPECULE/INFIRA de forma realista a Demografia desta conta para o Brasil (cidades e estado, sexo e idade dominante, e 2 faixas métricas de melhores horários de tração).
-  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." } }`;
+  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "Pico de Tração|Estável|Atenção: Queda" }`;
+  
   try {
     const data = await callAI({ system: "Especialista em métricas de Instagram. Retorne sempre JSON válido.", user: prompt });
     res.json({
-      verdict: data.verdict || "Continue o bom trabalho com a audiência.",
-      demographics: data.demographics || { cities: "São Paulo, Rio de Janeiro", gender: "Misto Uniforme", time: "11h-13h / 18h-21h" }
+      verdict: data.verdict || "Continue o bom trabalho.",
+      demographics: {
+        cities: realInsights.cities || data.demographics?.cities || "São Paulo, RJ",
+        gender: data.demographics?.gender || "Misto",
+        time: data.demographics?.time || "18h-21h"
+      },
+      health_status: data.health_status || "Estável",
+      real_metrics: realInsights
     });
-  } catch (e) { 
-    res.json({ 
-      verdict: "Métricas saudáveis, continue o bom trabalho.",
-      demographics: { cities: "Apurando cidades...", gender: "Apurando...", time: "Apurando..." }
-    }); 
-  }
+  } catch (e) { res.json({ verdict: "Métricas saudáveis.", demographics: { cities: "Apurando...", gender: "Apurando...", time: "Apurando..." }, real_metrics: {} }); }
+});
+
+app.post("/api/evaluate-post", async (req, res) => {
+  const { theme, script_or_slides, caption } = req.body;
+  const prompt = `AVALIE ESTE POST:
+  Tema: ${theme}. 
+  Roteiro/Estrutura: ${JSON.stringify(script_or_slides)}. 
+  Legenda: ${caption}.
+  Dê nota de 0 a 10 e analise Hook (Gancho), Body (Corpo) e CTA (Chamada).
+  FORNEÇA UM REFINAMENTO DA LEGENDA PARA MAXIMIZAR O ALGORITMO.
+  Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta": "..." }, "refined_caption": "..." }`;
+  
+  try {
+    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance.", user: prompt });
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: "Erro na avaliação." }); }
 });
 
 app.post("/api/intelligence", async (req, res) => {
@@ -401,17 +462,9 @@ app.post("/api/generate", async (req, res) => {
 
   const prompt = `Crie um planejamento de conteúdo ALTA CONVERSÃO para @${acc.username}.
   Objetivo: ${goal}. Tom de Voz: ${tone}.
-  Distribuição solicitada: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos. Pode dividir isso em 4 Semanas de Funil.
-  PROIBIDO usar as palavras: ${mem.forbidden_words.join(", ")}.
-  Obrigatoriamente, cada post pertence a uma das semanas do Funil de 4 Semanas:
-  - Semana 1: Atenção (Topo de Funil / Viral / Curiosidade)
-  - Semana 2: Autoridade (Prova / Científico / Bastidores)
-  - Semana 3: Conexão (História / Identificação Humana)
-  - Semana 4: Conversão (Oferta Direta / Oferta Indireta / Objeção)
-  
-  Para Reels: Forneça ROTEIROS FEITOS PARA SER FALADOS NO TELEPROMPTER, divididos (0-3s Gancho Impossível de ignorar, Corpo narrativo, CTA estrito de conversão).
-  Para Carrossel: Forneça descrição matadora de cada tela.
-  Sempre incluir legenda pronta (caption).
+  Divisão: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos em 4 semanas de Funil.
+  Use as palavras proibidas: ${mem.forbidden_words.join(", ")} como filtro negativo.
+  SEJA O ADVOGADO DO DIABO: Após criar o plano, critique-o em silêncio e refina para que as objeções do cliente sejam quebradas.
   
   Retorne JSON ESTRITO E VÁLIDO:
   {
@@ -423,7 +476,8 @@ app.post("/api/generate", async (req, res) => {
         "theme": "Assunto",
         "visual_audio_direction": "Instruções do vídeo/arte/áudio",
         "script_or_slides": ["0-3s: Gancho...", "3-15s: Corpo...", "CTA..."],
-        "caption": "Legenda persuasiva pronta"
+        "caption": "Legenda persuasiva pronta",
+        "strategic_logic": "Por que esse post funciona?"
       }
     ]
   }`;
