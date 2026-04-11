@@ -257,9 +257,18 @@
       <div class="grid-2">
         <div>
           <h4>Descobrir Alvos (Recomendação IA)</h4>
+          
+          <label style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:4px;">
+            Sua Região Alvo <span class="mini-action" onclick="autofill('s-city', 'city')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
+          </label>
           <input id="s-city" placeholder="Cidade (ex: São Paulo)">
+          
+          <label style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:4px;">
+            Sua Categoria <span class="mini-action" onclick="autofill('s-niche-spy', 'niche')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
+          </label>
           <input id="s-niche-spy" placeholder="Nicho (ex: Clínicas Odontológicas)">
-          <button class="btn btn-outline" style="padding:10px;" id="btn-suggest" onclick="suggestCompetitors()">Buscar Referências</button>
+          
+          <button class="btn btn-outline" style="padding:10px;" id="btn-suggest" onclick="suggestCompetitors()">🔎 Buscar Referências Fortes</button>
           <div id="suggest-result" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
         <div>

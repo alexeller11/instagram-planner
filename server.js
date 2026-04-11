@@ -341,6 +341,7 @@ app.post("/api/autofill", async (req, res) => {
   else if (field_type === 'audience') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Qual é o público-alvo que essa conta obviamente tenta atrair e vender? (Resumo em 5 palavras). Retorne JSON: {"suggestion": "..."}`;
   else if (field_type === 'subject') prompt = `A conta @${acc.username} atua em ${mem.niche || 'conteúdo'}. Nos forneça UMA (1) excelente ideia ESPECÍFICA de "Assunto Tático" para postar hoje, baseada no que esse mercado gosta de ler e comprar. Retorne JSON: {"suggestion": "..."}`;
   else if (field_type === 'angle') prompt = `Para @${acc.username} vendedo seu serviço, qual seria um gatilho/ângulo criativo forte? Ex (Polêmica do mercado, Erro ignorado, Quebra de crença limitante). Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'city') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Sugira em MAX 3 palavras a LOCALIZAÇÃO MAIS PROVÁVEL ou PRINCIPAL (Cidade/Estado). Se for puramente digital/nacional, responda "Brasil". Retorne JSON: {"suggestion": "..."}`;
   
   try {
     const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt });
