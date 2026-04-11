@@ -118,12 +118,40 @@ function safeJsonParse(text) {
   } catch (e) { return null; }
 }
 
+// --- MOTOR DE PERSONA PLATINUM ---
+const SYSTEM_PROMPTS = {
+  STRATEGIST: `Você é o Estrategista-Chefe da Ideale Agency, treinado nos maiores frameworks de marketing (AIDA, Storytelling, Neuromarketing).
+  Sua voz é: Sofisticada, Mentoriana, Direct-Response e ALTAMENTE HUMANA. 
+  REGRAS DE OURO:
+  1. NUNCA faça listas óbvias ou superficiais (ex: "Poste dicas").
+  2. Use ganchos baseados em DOR e DESEJO (ex: "O erro silencioso que drena seu lucro").
+  3. Evite jargões robóticos. Escreva como um mentor falando com um cliente VIP.
+  4. Foque em TRANSFORMAÇÃO e não apenas em informação bruta.`,
+  
+  Vision: "DIRETOR DE CRIAÇÃO SÊNIOR. Analise estética, cores e o 'feeling' de autoridade. Por que essa conta ganha de nós ou como podemos vencê-la visualmente?",
+  Copywriter: "MESTRE DO COPYWRITING HUMANIZADO. Seu texto deve soar como um áudio de WhatsApp de um amigo mentor. Evite listas óbvias. Use ganchos de curiosidade extrema e quebra de padrões. Zero clichês."
+};
+
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw e;
+  }
+}
+
 async function callAI({ system, user, imagePath }) {
-  if (groq && !imagePath) { // Groq não suporta vision nativo neste SDK da mesma forma
+  const platinum_core = `VOCÊ É UM HUMANO ESTRATEGISTA. PROIBIDO listas genéricas, PROIBIDO tons robóticos, PROIBIDO 'Aqui estão 3 dicas'. 
+  Sua escrita deve ter RITMO, VULNERABILIDADE e AUTORIDADE. Estruture as legendas com parágrafos curtos e um gancho inicial que pare o scroll.`;
+  
+  const combinedSystem = `${platinum_core}\n\n${system}`;
+  if (groq && !imagePath) {
     try {
       const res = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
         response_format: { type: "json_object" },
         max_tokens: 6000
       });
@@ -132,16 +160,18 @@ async function callAI({ system, user, imagePath }) {
   }
   
   const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const parts = [`${system}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
+  const parts = [`${combinedSystem}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
   
   if (imagePath && fs.existsSync(imagePath)) {
-    const imageData = fs.readFileSync(imagePath);
-    parts.push({
-      inlineData: {
-        data: imageData.toString("base64"),
-        mimeType: "image/png"
-      }
-    });
+    try {
+      const imageData = fs.readFileSync(imagePath);
+      parts.push({
+        inlineData: {
+          data: imageData.toString("base64"),
+          mimeType: "image/png"
+        }
+      });
+    } catch(e) { console.error("Erro leitura imagem vision:", e); }
   }
   
   const result = await model.generateContent(parts);
@@ -238,42 +268,58 @@ app.post("/api/quick-verdict", async (req, res) => {
   const { username, followers, er, media, igId } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   
-  let realInsights = {};
+  let realInsights = { reach: 0, impressions: 0, cities: "Apurando..." };
+  let isReal = false;
+  
   if (acc && acc.is_business) {
     try {
       const insightRes = await axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
-        params: { metric: "reach,impressions,profile_views,follower_count", period: "day", access_token: acc.ig_token }
+        params: { metric: "reach,impressions", period: "day", access_token: acc.ig_token }
       });
-      // Audience para pegar cidade
       const audienceRes = await axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
         params: { metric: "audience_city", period: "lifetime", access_token: acc.ig_token }
       });
-      realInsights = {
-        reach: (insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0) * 30, // est 30 dias
-        impressions: (insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0) * 30,
-        cities: Object.keys(audienceRes.data.data[0]?.values[0]?.value || {}).slice(0, 3).join(", ")
-      };
+      
+      const rVal = insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0;
+      const iVal = insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0;
+      
+      if (rVal > 0) {
+        realInsights.reach = rVal * 30; // Est. mensal
+        realInsights.impressions = iVal * 30;
+        isReal = true;
+      }
+      
+      const citiesMap = audienceRes.data.data[0]?.values[0]?.value || {};
+      realInsights.cities = Object.keys(citiesMap).slice(0, 3).join(", ") || "Apurando...";
     } catch(e) {}
   }
 
+  // Fallback Inteligente baseado em ER e Seguidores se o Reach for 0 ou N/A
+  if (!isReal) {
+    realInsights.reach = Math.round(followers * (er/50) * 1.5); 
+    realInsights.impressions = Math.round(realInsights.reach * 1.8);
+  }
+
   const prompt = `Conta @${username}. Seguidores: ${followers}. ER: ${er}%. 
-  Dados Reais (se houver): Reach: ${realInsights.reach || 'N/A'}. Cidades: ${realInsights.cities || 'A inferir'}.
-  Crie um "Veredito de Estrategista Sênior" RÁPIDO (máx 3 frases) em PORTUGUÊS DIRECIONADO AO DONO.
-  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "Pico de Tração|Estável|Atenção: Queda" }`;
+  STATUS: ${isReal ? 'DADOS REAIS DA META' : 'ESTIMATIVA IA (API BUSY)'}.
+  Crie um Veredito PLATINUM (Sênior, Humano, Mentoriano). MÁX 3 frases. 
+  Analise o 'Health Status' (Pico de Tração, Estável ou Queda) com base no engajamento de ${er}%.
+  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "..." }`;
   
   try {
-    const data = await callAI({ system: "Especialista em métricas de Instagram. Retorne sempre JSON válido.", user: prompt });
+    const data = await callAI({ system: "Especialista em métricas premium.", user: prompt });
     res.json({
-      verdict: data.verdict || "Continue o bom trabalho.",
+      verdict: data.verdict,
       demographics: {
-        cities: realInsights.cities || data.demographics?.cities || "São Paulo, RJ",
+        cities: realInsights.cities !== "Apurando..." ? realInsights.cities : (data.demographics?.cities || "Brasil"),
         gender: data.demographics?.gender || "Misto",
         time: data.demographics?.time || "18h-21h"
       },
-      health_status: data.health_status || "Estável",
-      real_metrics: realInsights
+      health_status: data.health_status || (er > 3 ? "Pico de Tração" : "Estável"),
+      real_metrics: realInsights,
+      is_real: isReal
     });
-  } catch (e) { res.json({ verdict: "Métricas saudáveis.", demographics: { cities: "Apurando...", gender: "Apurando...", time: "Apurando..." }, real_metrics: {} }); }
+  } catch (e) { res.json({ verdict: "Métricas dentro do padrão.", demographics: { cities: "Brasil", gender: "Misto", time: "19h" }, real_metrics: realInsights, is_real: isReal }); }
 });
 
 app.post("/api/evaluate-post", async (req, res) => {
@@ -309,31 +355,31 @@ app.post("/api/intelligence", async (req, res) => {
     postsContext = (r.data.data || []).map(p => `[${p.media_type}] ${p.caption ? p.caption.substring(0, 100) : ''}...`).join(' | ');
   } catch(e) {}
 
-  const prompt = `Faça uma AUDITORIA DIGITAL PROFUNDA E HUMANIZADA para @${acc.username}.
-  Você deve deduzir o 'nicho verdadeiro' e o 'tom de voz atual' baseado no feed.
-  Conteúdo recente do feed: ${postsContext}
-  Nicho Sugerido Pela Agência: ${niche}. Público: ${audience}.
-  (Se o feed divergir do sugerido, imponha a realidade da sua leitura).
-  Regras (Proibidas): ${mem.forbidden_words.join(", ")}.
-  Retorne JSON EXATAMENTE ESTE: 
+  const prompt = `AUDITORIA DIGITAL PLATINUM para @${acc.username}.
+  Você é o Estrategista-Chefe da Ideale. Analise o feed e seja incisivo.
+  Feed Atual: ${postsContext}
+  Regras: Nicho ${niche}, Público ${audience}.
+  Foco: Diferenciação, Autoridade e Branding Humano.
+  
+  Retorne JSON: 
   { 
-    "executive_summary": "resumo profundo", 
+    "executive_summary": "Análise densa, sem clichês, foco em branding.", 
     "detected_niche": "nicho lido",
     "detected_tone": "tom de voz lido",
-    "bio_analysis": "O que está errado", 
+    "bio_analysis": "O que mudar para converter mais.", 
     "bio_suggestions_3D": {
-      "authority": "Bio focada em gerar respeito e autoridade + Emojis",
-      "connection": "Bio focada em vulnerabilidade e conexão humana",
-      "conversion": "Bio agressiva focada em CTA e vendas rápidas"
+      "authority": "Bio Autoridade Inquestionável",
+      "connection": "Bio Conexão Humana",
+      "conversion": "Bio Máquina de Vendas"
     },
-    "strengths": ["ponto forte 1"], 
-    "weaknesses": ["fraco 1"], 
-    "pillars": ["pilar editorial 1"], 
-    "priority_actions": ["ação 1"] 
+    "strengths": ["...", "..."], 
+    "weaknesses": ["...", "..."], 
+    "pillars": ["3 pilares táticos únicos"], 
+    "priority_actions": ["Ação imediata"] 
   }`;
   
   try {
-    const data = await callAI({ system: "Você é o Estrategista-Chefe da Ideale Agency. Seja incisivo, cirúrgico e focado em vendas e branding premium.", user: prompt });
+    const data = await callAI({ system: "Estrategista de Elite. Inale Storytelling e Exale Resultados.", user: prompt });
     mem.saved_diagnostics.push({ date: new Date(), ...data });
     await mem.save();
     res.json(data);
@@ -390,19 +436,17 @@ app.post("/api/competitors", async (req, res) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
-      await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForTimeout(2000);
+      await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.waitForTimeout(3000);
       const filename = `comp_${user}_${Date.now()}.png`;
-      const fullPath = path.join(PUBLIC_TMP_DIR, filename);
+      const fullPath = path.resolve(PUBLIC_TMP_DIR, filename);
       await page.screenshot({ path: fullPath });
       
-      const prompt = `Analise visualmente este perfil do Instagram de @${user}. 
-      Quais cores dominam? Qual a "vibe" do conteúdo (ex: luxo, educacional, memes)? 
-      Dê 1 conselho tático: O que podemos fazer para sermos melhores que este concorrente?
-      Retorne JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
+      const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor? 
+      JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
       
       const vision = await callAI({ 
-        system: "Você é um espião de marketing digital com visão computacional aguçada.", 
+        system: "Espião de Marketing com visão afiada.", 
         user: prompt, 
         imagePath: fullPath 
       });
@@ -414,11 +458,9 @@ app.post("/api/competitors", async (req, res) => {
       });
     } catch (e) {
       results.push({ username: user, screenshot: null, analysis: { vibe: "Erro na captura", counter_attack: "Tentar manualmente." } });
-    } finally { 
-      await context.close(); 
-    }
+    } finally { await context.close(); }
   }
-  res.json({ results, analysis: "Varredura de Visão concluída." });
+  res.json({ results, analysis: "Varredura concluída." });
 });
 
 app.post("/api/suggest-competitors", async (req, res) => {
@@ -440,11 +482,11 @@ app.post("/api/autofill", async (req, res) => {
   const mem = await getClientMemory(acc.username);
   
   let prompt = "";
-  if (field_type === 'niche') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Sugira em até 6 palavras o "Nicho e Diferencial Exato" desta conta. Retorne JSON: {"suggestion": "..."}`;
-  else if (field_type === 'audience') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Qual é o público-alvo que essa conta obviamente tenta atrair e vender? (Resumo em 5 palavras). Retorne JSON: {"suggestion": "..."}`;
-  else if (field_type === 'subject') prompt = `A conta @${acc.username} atua em ${mem.niche || 'conteúdo'}. Nos forneça UMA (1) excelente ideia ESPECÍFICA de "Assunto Tático" para postar hoje, baseada no que esse mercado gosta de ler e comprar. Retorne JSON: {"suggestion": "..."}`;
-  else if (field_type === 'angle') prompt = `Para @${acc.username} vendedo seu serviço, qual seria um gatilho/ângulo criativo forte? Ex (Polêmica do mercado, Erro ignorado, Quebra de crença limitante). Retorne JSON: {"suggestion": "..."}`;
-  else if (field_type === 'city') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Sugira em MAX 3 palavras a LOCALIZAÇÃO MAIS PROVÁVEL ou PRINCIPAL (Cidade/Estado). Se for puramente digital/nacional, responda "Brasil". Retorne JSON: {"suggestion": "..."}`;
+  if (field_type === 'niche') prompt = `Analise a bio: "${acc.biography || ''}". Sugira o "Nicho e Diferencial Único" (sem clichês). Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'audience') prompt = `Analise a bio: "${acc.biography || ''}". Qual o público-alvo exato (demografia e dor)? Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'subject') prompt = `Baseado em ${mem.niche || 'este perfil'}, dê uma ideia de post 'fora da caixa' que gere autoridade imediata. Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'angle') prompt = `Qual gatilho mental (Polêmica, Erro, Desejo Oculto) seria perfeito para esse nicho hoje? Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'city') prompt = `Analise a bio: "${acc.biography || ''}". Localize a cidade/estado principal ou responda "Brasil (Nacional)". Retorne JSON: {"suggestion": "..."}`;
   
   try {
     const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt });
@@ -460,24 +502,29 @@ app.post("/api/generate", async (req, res) => {
   if (!acc) return res.status(404).json({ error: "Acct not found" });
   const mem = await getClientMemory(acc.username);
 
-  const prompt = `Crie um planejamento de conteúdo ALTA CONVERSÃO para @${acc.username}.
-  Objetivo: ${goal}. Tom de Voz: ${tone}.
-  Divisão: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos em 4 semanas de Funil.
-  Use as palavras proibidas: ${mem.forbidden_words.join(", ")} como filtro negativo.
-  SEJA O ADVOGADO DO DIABO: Após criar o plano, critique-o em silêncio e refina para que as objeções do cliente sejam quebradas.
+  const prompt = `Crie um Planejamento de Lançamento Eterno (Funil 4 Semanas) para @${acc.username}.
+  PERSONA DO CLIENTE: Nicho: ${mem.niche}. Público: ${mem.audience}. Tom: ${tone}.
+  Distribuição: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
   
-  Retorne JSON ESTRITO E VÁLIDO:
+  DIRETRIZ PLATINUM:
+  - Cada post deve ter um MOTIVO PSICOLÓGICO (estratégia silenciosa).
+  - Semana 1: Quebra de Padrão (Viral com substância).
+  - Semana 2: Doutrinação (Autoridade Técnica).
+  - Semana 3: Desejo (Storytelling e Conexão).
+  - Semana 4: Fechamento (Conversão Inevitável).
+  
+  Retorne JSON:
   {
     "posts": [
       {
         "n": 1,
         "week_funnel": "Semana 1: Atenção",
         "format": "reels",
-        "theme": "Assunto",
-        "visual_audio_direction": "Instruções do vídeo/arte/áudio",
-        "script_or_slides": ["0-3s: Gancho...", "3-15s: Corpo...", "CTA..."],
-        "caption": "Legenda persuasiva pronta",
-        "strategic_logic": "Por que esse post funciona?"
+        "theme": "A verdade que ninguém te conta sobre...",
+        "visual_audio_direction": "Cena cinematográfica com áudio de tensão",
+        "script_or_slides": ["0-3s Gancho Impossível", "Corpo Narrativo", "CTA de Transbordo"],
+        "caption": "Legenda humana, mentoriana e densa.",
+        "strategic_logic": "Pânico controlado seguido de solução única."
       }
     ]
   }`;
@@ -495,24 +542,31 @@ app.post("/api/generate", async (req, res) => {
 app.post("/api/single-post", async (req, res) => {
   const { igId, format, subject, angle, intensity } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
-  if (!acc) return res.status(404).json({ error: "Acct not found" });
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada" });
   const mem = await getClientMemory(acc.username);
   
-  const prompt = `Crie exatamente UM POST para @${acc.username}. 
-  Formato: ${format}. Assunto: ${subject}. Ângulo: ${angle}. Intensidade de Venda: ${intensity}/10.
-  Palavras proibidas: ${mem.forbidden_words.join(", ")}.
-  Para Reels: roteiro script (0-3s, etc). Para Carrosséis: telas separadas.
+  const prompt = `Crie exatamente UM POST ESTRATÉGICO para @${acc.username}. 
+  CONTEXTO DA MARCA: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
+  TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE: ${intensity}/10.
+  
+  REGRAS PLATINUM:
+  - Não use listas numeradas.
+  - O roteiro deve ser fluido, como um vídeo de alto nível da Apple ou de um influenciador premium.
+  - A legenda deve ser curta, impactante e usar STORYTELLING.
+  - Foque em quebrar uma crença do público.
+  
   Retorne JSON VÁLIDO:
   {
     "format": "${format}",
     "theme": "${subject}",
-    "visual_audio_direction": "...",
-    "script_or_slides": ["..."],
-    "caption": "..."
+    "visual_audio_direction": "direção de arte épica",
+    "script_or_slides": ["parte 1", "parte 2", "..."],
+    "caption": "legenda humanizada",
+    "strategic_logic": "por que isso vende?"
   }`;
   
   try {
-    const data = await callAI({ system: "Crie a copy e roteiro perfeitos. Apenas JSON válido.", user: prompt });
+    const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt });
     res.json(data);
   } catch(e) {
     res.status(500).json({ error: "Erro gerando post único." });

@@ -177,7 +177,13 @@
     
     <div class="grid-4">
       <div class="card" style="margin:0;"><h4>Seguidores</h4><p id="d-followers" style="font-size:32px; font-weight:700;">-</p></div>
-      <div class="card" style="margin:0;"><h4>Alcance (30d)</h4><p id="d-reach" style="font-size:32px; font-weight:700; color:var(--brand);">-</p></div>
+      <div class="card" style="margin:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h4>Alcance (30d)</h4>
+          <span id="reach-type" class="badge" style="font-size:10px; padding:2px 6px;">Estimado</span>
+        </div>
+        <p id="d-reach" style="font-size:32px; font-weight:700; color:var(--brand);">-</p>
+      </div>
       <div class="card" style="margin:0;"><h4>Impressões</h4><p id="d-impressions" style="font-size:32px; font-weight:700;">-</p></div>
       <div class="card" style="margin:0;"><h4>Engajamento</h4><p id="d-er" style="font-size:32px; font-weight:700; color:var(--brand);">-</p></div>
     </div>
@@ -482,6 +488,17 @@ async function select(acc) {
     document.getElementById('d-reach').textContent = res.real_metrics?.reach || "N/A*";
     document.getElementById('d-impressions').textContent = res.real_metrics?.impressions || "N/A*";
     
+    const rt = document.getElementById('reach-type');
+    if (res.is_real) {
+      rt.textContent = "DADOS REAIS";
+      rt.style.background = "var(--brand)";
+      rt.style.color = "#000";
+    } else {
+      rt.textContent = "ESTIMADO (IA)";
+      rt.style.background = "rgba(255,255,255,0.1)";
+      rt.style.color = "#fff";
+    }
+    
     if(res.demographics) {
       document.getElementById('demo-block').innerHTML = `
         <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">${res.demographics.cities}</span></p>
@@ -544,6 +561,10 @@ function renderPostCard(p, isSingle = false) {
         </div>
       </div>
       <h3 style="margin-top:16px; margin-bottom:8px; display:block;">${p.theme}</h3>
+      ${p.strategic_logic ? `
+      <div style="background:rgba(34,206,181,0.05); border-left:3px solid var(--brand); padding:10px; margin-bottom:15px; font-size:12px; color:var(--brand); border-radius:4px;">
+        <strong style="text-transform:uppercase; letter-spacing:1px; font-size:10px;">Lógica Estratégica Ideale:</strong><br>${p.strategic_logic}
+      </div>` : ''}
       <div class="highlight-box" style="margin-top:0; border-left-color:#3498db; background:rgba(52, 152, 219, 0.05); padding:12px;">
         <strong style="color:#3498db; font-size:14px;">Arte / Vídeo Estratégia:</strong><br><span style="font-size:14px; color:var(--text-muted);">${p.visual_audio_direction}</span>
       </div>
@@ -711,8 +732,11 @@ async function genFactory() {
       body: JSON.stringify({ igId: selAcc.id, format: document.getElementById('f-format').value, subject: document.getElementById('f-subject').value, angle: document.getElementById('f-angle').value, intensity: document.getElementById('f-intensity').value })
     });
     const p = await res.json();
+    if(p.error) throw new Error(p.error);
     document.getElementById('fact-result').style.display = 'block';
     document.getElementById('fact-result').innerHTML = renderPostCard(p, true);
+  } catch(e) {
+    alert("Erro na Fábrica: " + e.message);
   } finally { showSkeleton('fact-skeleton', false); }
 }
 
