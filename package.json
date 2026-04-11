@@ -4,7 +4,8 @@
   "description": "Ferramenta estratégica de Instagram com IA e MongoDB",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
     "@google/genai": "^0.3.0",
@@ -13,10 +14,10 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.0",
     "express-session": "^1.18.0",
-    "memorystore": "^1.6.7",
-    "mongoose": "^8.3.0",
     "groq-sdk": "^0.9.1",
     "helmet": "^7.1.0",
+    "memorystore": "^1.6.7",
+    "mongoose": "^8.3.0",
     "pdfkit": "^0.15.0",
     "playwright": "^1.45.0"
   }

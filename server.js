@@ -108,45 +108,35 @@ async function getBrowser() {
   return _browser;
 }
 
-// --- UTILITÁRIOS DE IA ---
+// --- UTILITÁRIOS RESILIENTES ---
 function safeJsonParse(text) {
   try {
-    let cleaned = text.trim().replace(/^```json/i, "").replace(/```$/i, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    return JSON.parse(cleaned.slice(start, end + 1));
-  } catch (e) { return null; }
-}
-
-// --- MOTOR DE PERSONA PLATINUM ---
-const SYSTEM_PROMPTS = {
-  STRATEGIST: `Você é o Estrategista-Chefe da Ideale Agency, treinado nos maiores frameworks de marketing (AIDA, Storytelling, Neuromarketing).
-  Sua voz é: Sofisticada, Mentoriana, Direct-Response e ALTAMENTE HUMANA. 
-  REGRAS DE OURO:
-  1. NUNCA faça listas óbvias ou superficiais (ex: "Poste dicas").
-  2. Use ganchos baseados em DOR e DESEJO (ex: "O erro silencioso que drena seu lucro").
-  3. Evite jargões robóticos. Escreva como um mentor falando com um cliente VIP.
-  4. Foque em TRANSFORMAÇÃO e não apenas em informação bruta.`,
-  
-  Vision: "DIRETOR DE CRIAÇÃO SÊNIOR. Analise estética, cores e o 'feeling' de autoridade. Por que essa conta ganha de nós ou como podemos vencê-la visualmente?",
-  Copywriter: "MESTRE DO COPYWRITING HUMANIZADO. Seu texto deve soar como um áudio de WhatsApp de um amigo mentor. Evite listas óbvias. Use ganchos de curiosidade extrema e quebra de padrões. Zero clichês."
-};
-
-function safeJsonParse(text) {
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    const match = text.match(/\{[\s\S]*\}/);
+    const cleaned = text.trim().replace(/^```json/i, "").replace(/```$/i, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
-    throw e;
+    return JSON.parse(cleaned);
+  } catch (e) { 
+    console.error("Falha no Parse JSON IA:", e.message);
+    return null; 
   }
 }
 
-async function callAI({ system, user, imagePath }) {
-  const platinum_core = `VOCÊ É UM HUMANO ESTRATEGISTA. PROIBIDO listas genéricas, PROIBIDO tons robóticos, PROIBIDO 'Aqui estão 3 dicas'. 
-  Sua escrita deve ter RITMO, VULNERABILIDADE e AUTORIDADE. Estruture as legendas com parágrafos curtos e um gancho inicial que pare o scroll.`;
+// --- MOTOR DE PERSONA PLATINUM (O "PENTE FINO" ESTRATÉGICO) ---
+const SYSTEM_PROMPTS = {
+  PLATINUM_CORE: `VOCÊ É UM ESTRATEGISTA DE SOCIAL MEDIA DE ALTA PERFORMACE (R$ 15k/mês).
+  SUA VOZ É: Humana, mentoriana, sofisticada e direta.
+  REGRAS INEGOCIÁVEIS:
+  1. VETO DE LISTAS: NUNCA use listas numeradas óbvias (1, 2, 3) a menos que seja um carrossel educativo técnico.
+  2. HUMANIZAÇÃO TOTAL: Use ganchos de curiosidade, quebra de padrão e storytelling. Escreva como um mentor falando com um parceiro de negócios, não como um robô.
+  3. SEM CLICHÊS: Proibido usar "você sabia", "atualmente", "nos dias de hoje".
+  4. PROFUNDIDADE: Se o tema for manutenção, fale sobre "O erro silencioso que drena a sua carteira", não sobre "como trocar o óleo".`,
   
-  const combinedSystem = `${platinum_core}\n\n${system}`;
+  VISION: "Analise estética, cores e autoridade visual. Dê conselhos agressivos de melhoria.",
+  COPYWRITER: "Copywriter sênior focada em conversão e retenção impossível."
+};
+
+async function callAI({ system, user, imagePath }) {
+  const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}`;
   if (groq && !imagePath) {
     try {
       const res = await groq.chat.completions.create({
@@ -165,13 +155,8 @@ async function callAI({ system, user, imagePath }) {
   if (imagePath && fs.existsSync(imagePath)) {
     try {
       const imageData = fs.readFileSync(imagePath);
-      parts.push({
-        inlineData: {
-          data: imageData.toString("base64"),
-          mimeType: "image/png"
-        }
-      });
-    } catch(e) { console.error("Erro leitura imagem vision:", e); }
+      parts.push({ inlineData: { data: imageData.toString("base64"), mimeType: "image/png" } });
+    } catch(e) {}
   }
   
   const result = await model.generateContent(parts);
@@ -219,6 +204,10 @@ app.post("/api/auth", async (req, res) => {
 });
 
 app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
+app.get("/api/auth/logout", (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
 
 app.get("/api/memory/:username", async (req, res) => {
   try {
@@ -296,22 +285,23 @@ app.post("/api/quick-verdict", async (req, res) => {
 
   // Fallback Inteligente baseado em ER e Seguidores se o Reach for 0 ou N/A
   if (!isReal) {
-    realInsights.reach = Math.round(followers * (er/50) * 1.5); 
+    realInsights.reach = Math.round(followers * (er/10) * 1.5) || 150; 
     realInsights.impressions = Math.round(realInsights.reach * 1.8);
   }
 
-  const prompt = `Conta @${username}. Seguidores: ${followers}. ER: ${er}%. 
-  STATUS: ${isReal ? 'DADOS REAIS DA META' : 'ESTIMATIVA IA (API BUSY)'}.
-  Crie um Veredito PLATINUM (Sênior, Humano, Mentoriano). MÁX 3 frases. 
-  Analise o 'Health Status' (Pico de Tração, Estável ou Queda) com base no engajamento de ${er}%.
-  Retorne JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "..." }`;
+  const prompt = `AUDITORIA MÉTRICA PLATINUM para @${username}. 
+  Seguidores: ${followers}. ER: ${er}%. 
+  STATUS: ${isReal ? 'DADOS REAIS' : 'ESTIMATIVA PREDITIVA IDEALE'}.
+  Crie um Veredito EXPERT (Humanizado, Direto, Mentoriano). MÁX 3 frases. 
+  Determine o 'Health Status' (Pico de Tração, Estável, Alerta de Queda ou Em Maturação).
+  RETORNE JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "..." }`;
   
   try {
-    const data = await callAI({ system: "Especialista em métricas premium.", user: prompt });
+    const data = await callAI({ system: "Estrategista de Dados Premium. Fale como um consultor humano.", user: prompt });
     res.json({
       verdict: data.verdict,
       demographics: {
-        cities: realInsights.cities !== "Apurando..." ? realInsights.cities : (data.demographics?.cities || "Brasil"),
+        cities: realInsights.cities !== "Apurando..." ? realInsights.cities : (data.demographics?.cities || "Brasil (Estimado)"),
         gender: data.demographics?.gender || "Misto",
         time: data.demographics?.time || "18h-21h"
       },
@@ -319,7 +309,7 @@ app.post("/api/quick-verdict", async (req, res) => {
       real_metrics: realInsights,
       is_real: isReal
     });
-  } catch (e) { res.json({ verdict: "Métricas dentro do padrão.", demographics: { cities: "Brasil", gender: "Misto", time: "19h" }, real_metrics: realInsights, is_real: isReal }); }
+  } catch (e) { res.json({ verdict: "Análise Preditiva: Sua conta está em fase de aquecimento de base. Focar em retenção.", demographics: { cities: "Brasil", gender: "Misto", time: "19h" }, real_metrics: realInsights, is_real: isReal }); }
 });
 
 app.post("/api/evaluate-post", async (req, res) => {
