@@ -10,7 +10,7 @@ const PDFDocument = require("pdfkit");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const Groq = require("groq-sdk");
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { chromium } = require("playwright");
 const mongoose = require("mongoose");
 
@@ -26,7 +26,7 @@ const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).fi
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
-const gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+const gemini = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // ==========================================
 // 1. CONEXÃO COM O MONGODB ATLAS (PERSISTÊNCIA)
