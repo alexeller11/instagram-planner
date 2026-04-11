@@ -118,20 +118,33 @@ function safeJsonParse(text) {
   } catch (e) { return null; }
 }
 
-async function callAI({ system, user }) {
-  if (groq) {
+async function callAI({ system, user, imagePath }) {
+  if (groq && !imagePath) { // Groq não suporta vision nativo neste SDK da mesma forma
     try {
       const res = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
         response_format: { type: "json_object" },
-        max_tokens: 6000 // AUMENTADO PARA NÃO CORTAR O JSON!
+        max_tokens: 6000
       });
       return JSON.parse(res.choices[0].message.content);
     } catch (err) { if (!gemini) throw err; }
   }
+  
   const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`${system}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`);
+  const parts = [`${system}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
+  
+  if (imagePath && fs.existsSync(imagePath)) {
+    const imageData = fs.readFileSync(imagePath);
+    parts.push({
+      inlineData: {
+        data: imageData.toString("base64"),
+        mimeType: "image/png"
+      }
+    });
+  }
+  
+  const result = await model.generateContent(parts);
   return safeJsonParse(result.response.text());
 }
 
@@ -162,6 +175,18 @@ app.get("/api/memory/:username", async (req, res) => {
       planners: mem.saved_planners || [],
       swipe_file: mem.swipe_file || [],
       forbidden: mem.forbidden_words || []
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/identity/:username", async (req, res) => {
+  try {
+    const mem = await getClientMemory(req.params.username);
+    res.json({
+      niche: mem.niche || "Aguardando Diagnóstico...",
+      audience: mem.audience || "Aguardando...",
+      tone: mem.tone || "Aguardando...",
+      last_update: mem.updatedAt
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -307,15 +332,32 @@ app.post("/api/competitors", async (req, res) => {
       await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(2000);
       const filename = `comp_${user}_${Date.now()}.png`;
-      await page.screenshot({ path: path.join(PUBLIC_TMP_DIR, filename) });
-      results.push({ username: user, screenshot: `/tmp/${filename}`, analysis: `Análise extraída da conta de ${user}` });
+      const fullPath = path.join(PUBLIC_TMP_DIR, filename);
+      await page.screenshot({ path: fullPath });
+      
+      const prompt = `Analise visualmente este perfil do Instagram de @${user}. 
+      Quais cores dominam? Qual a "vibe" do conteúdo (ex: luxo, educacional, memes)? 
+      Dê 1 conselho tático: O que podemos fazer para sermos melhores que este concorrente?
+      Retorne JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
+      
+      const vision = await callAI({ 
+        system: "Você é um espião de marketing digital com visão computacional aguçada.", 
+        user: prompt, 
+        imagePath: fullPath 
+      });
+
+      results.push({ 
+        username: user, 
+        screenshot: `/tmp/${filename}`, 
+        analysis: vision || { vibe: "Inconsistente", counter_attack: "Focar em conteúdo autoral." }
+      });
     } catch (e) {
-      results.push({ username: user, screenshot: null, analysis: `Erro ao capturar ${user}.` });
+      results.push({ username: user, screenshot: null, analysis: { vibe: "Erro na captura", counter_attack: "Tentar manualmente." } });
     } finally { 
       await context.close(); 
     }
   }
-  res.json({ results, analysis: "Varredura 360 concluída." });
+  res.json({ results, analysis: "Varredura de Visão concluída." });
 });
 
 app.post("/api/suggest-competitors", async (req, res) => {

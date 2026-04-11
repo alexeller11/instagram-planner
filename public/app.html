@@ -76,6 +76,13 @@
     
     .post-card { border-left: 4px solid var(--brand); padding-left: 20px; background: rgba(3, 17, 22, 0.3); margin-bottom: 20px; }
     
+    /* Teleprompter Ready Styles */
+    .tp-block { 
+      background: #020a0d; border-radius: 8px; padding: 12px; margin-bottom: 12px; border-left: 3px solid var(--brand); 
+      font-size: 15px; line-height: 1.5; color: #fff;
+    }
+    .tp-label { font-size: 11px; text-transform: uppercase; color: var(--brand); font-weight: 700; margin-bottom: 4px; display:block;}
+    
     /* Loading Skeleton (Efeito Jarvis) */
     .skeleton-container { display: none; }
     .skeleton { 
@@ -179,7 +186,14 @@
           <p style="margin-bottom:12px;"><strong>Público Dominante:</strong> <span class="badge">Inferindo...</span></p>
           <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">...</span></p>
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin-top:16px;">*Dados inferidos baseados no padrão de contas criador caso o token não seja business/graph completo.</p>
+      </div>
+      <div class="card">
+        <h3>DNA da Marca (Detectado)</h3>
+        <div class="highlight-box" id="dna-block" style="border-left-color:#f1c40f;">
+          <p style="margin-bottom:12px; font-size:13px;"><strong>Nicho:</strong> <span id="dna-niche" style="color:var(--brand);">Aguardando Auditoria...</span></p>
+          <p style="margin-bottom:12px; font-size:13px;"><strong>Tom de Voz:</strong> <span id="dna-tone" style="color:var(--brand);">Aguardando...</span></p>
+          <p style="font-size:13px;"><strong>Target:</strong> <span id="dna-audience" style="color:var(--brand);">Aguardando...</span></p>
+        </div>
       </div>
     </div>
 
@@ -462,6 +476,13 @@ async function select(acc) {
     }
   });
   
+  // Buscar Identidade / DNA
+  fetch(`/api/identity/${acc.username}`).then(r => r.json()).then(res => {
+    document.getElementById('dna-niche').textContent = res.niche;
+    document.getElementById('dna-tone').textContent = res.tone;
+    document.getElementById('dna-audience').textContent = res.audience;
+  });
+  
   // Limpar Abas Atuais
   document.getElementById('intel-result').style.display = 'none';
   document.getElementById('spy-result').style.display = 'none';
@@ -489,7 +510,15 @@ function showSkeleton(id, show) {
 }
 
 function renderPostCard(p, isSingle = false) {
-  const screensHtml = (p.script_or_slides || []).map(s => `<li style="margin-bottom:6px;">${s}</li>`).join('');
+  const screensHtml = (p.script_or_slides || []).map(s => {
+    let label = "DIREÇÃO";
+    if(s.includes("0-3s")) label = "GANCHO (0-3s)";
+    else if(s.includes("CTA")) label = "CHAMADA PARA AÇÃO";
+    else if(p.format === 'reels') label = "DESENVOLVIMENTO";
+    
+    return `<div class="tp-block"><span class="tp-label">${label}</span>${s}</div>`;
+  }).join('');
+  
   return `
     <div class="card post-card" style="margin-bottom:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -578,9 +607,20 @@ async function spy() {
     document.getElementById('spy-result').style.display = 'block';
     
     document.getElementById('spy-content-area').innerHTML = (lastSpy.results||[]).map(r => `
-      <div style="margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:16px;">
-        <h4 style="color:#fff;">O que a IA está vendo em: @${r.username}</h4>
-        ${r.screenshot ? `<img src="${r.screenshot}" style="width:100%; border-radius:12px; border: 1px solid var(--border); margin-top:8px;">` : `<p style="color:#e74c3c">Falha na captura web.</p>`}
+      <div style="margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:24px;">
+        <h3 style="color:#fff; margin-bottom:16px;">🔍 Dossiê Visual: @${r.username}</h3>
+        <div class="grid-2" style="grid-template-columns: 1.2fr 1fr; gap:20px;">
+          ${r.screenshot ? `<img src="${r.screenshot}" style="width:100%; border-radius:12px; border: 1px solid var(--border);">` : `<p style="color:#e74c3c">Falha na captura web.</p>`}
+          <div class="highlight-box" style="margin-top:0; border-left-color: var(--brand);">
+            <h4 style="color:var(--brand); margin-bottom:12px;">Análise por Visão IA</h4>
+            <p style="font-size:14px; margin-bottom:12px;"><strong>Vibe:</strong> ${r.analysis.vibe || "Não detectada"}</p>
+            <p style="font-size:14px; margin-bottom:12px;"><strong>Cores Ativas:</strong> <span class="badge">${r.analysis.colors || "Mistas"}</span></p>
+            <div style="background:rgba(34, 206, 181, 0.05); padding:12px; border-radius:8px; border: 1px dashed var(--brand);">
+              <strong style="color:var(--brand); font-size:13px;">🛡️ Sugestão de Contra-ataque:</strong>
+              <p style="font-size:13px; margin-top:6px; line-height:1.5;">${r.analysis.counter_attack || "Fortalecer branding autoral."}</p>
+            </div>
+          </div>
+        </div>
       </div>
     `).join('');
   } finally { showSkeleton('spy-skeleton', false); }
