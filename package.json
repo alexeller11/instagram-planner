@@ -4,7 +4,8 @@
   "description": "Ferramenta estratégica de Instagram com IA e MongoDB",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
     "@google/genai": "^0.3.0",
