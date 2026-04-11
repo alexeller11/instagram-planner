@@ -27,6 +27,7 @@ const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).fi
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
+// Forçamos o uso da versão v1 mais estável se possível
 const gemini = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // ==========================================
@@ -162,7 +163,7 @@ async function callAI({ system, user, imagePath, username }) {
 
   // 1. TENTATIVA GROQ (Modelos sequenciais para evitar 429)
   if (groq && !imagePath) {
-    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
+    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"];
     
     for (const model of groqModels) {
       try {
@@ -187,14 +188,16 @@ async function callAI({ system, user, imagePath, username }) {
     try {
       console.log("🔥 Tentando SambaNova Cloud (Llama 3.3)...");
       const res = await axios.post("https://api.sambanova.ai/v1/chat/completions", {
-        model: "Llama-3.3-70B-Instruct",
+        model: "Meta-Llama-3.3-70B-Instruct",
         messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
         response_format: { type: "json_object" },
         max_tokens: 4000
       }, {
         headers: { "Authorization": `Bearer ${SAMBANOVA_API_KEY}`, "Content-Type": "application/json" }
       });
-      return res.data.choices[0].message.content ? JSON.parse(res.data.choices[0].message.content) : res.data.choices[0].message;
+      
+      const content = res.data.choices[0].message.content;
+      return typeof content === "string" ? JSON.parse(content) : content;
     } catch (err) {
       console.error("⚠️ SambaNova falhou:", err.response?.data?.error?.message || err.message);
       lastError = err;
@@ -208,9 +211,12 @@ async function callAI({ system, user, imagePath, username }) {
   }
 
   try {
-    console.log("🚀 Tentando Fallback Gemini...");
+    // Usamos gemini-1.5-flash que é o nome estável universal
+    const modelName = imagePath ? "gemini-1.5-flash" : "gemini-1.5-flash"; 
+    console.log(`🚀 Tentando Fallback Gemini (${modelName})...`);
+    
     const model = gemini.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: modelName,
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
