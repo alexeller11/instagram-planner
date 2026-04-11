@@ -22,6 +22,7 @@ const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 const SESSION_SECRET = process.env.SESSION_SECRET || "agency-secret-123";
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
+const SAMBANOVA_API_KEY = (process.env.SAMBANOVA_API_KEY || "").trim();
 const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).filter(Boolean);
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
@@ -149,35 +150,75 @@ async function callAI({ system, user, imagePath, username }) {
       const mem = await getClientMemory(username);
       const successes = (mem.evolutionary_dna?.top_successes || []).slice(-3);
       if (successes.length) {
-        evolutionaryContext = `\nVIGILÂNCIA DE SUCESSO ANTERIOR (Aprenda com estes exemplos reais do cliente): \n${successes.map(s => `- TEMA: ${s.subject} | PONTUAÇÃO: ${s.rating}/10 | CONTEÚDO APROVADO: ${s.content.substring(0, 150)}...`).join("\n")}`;
+        evolutionaryContext = `\nVIGILÂNCIA DE SUCESSO ANTERIOR: \n${successes.map(s => `- TEMA: ${s.subject} | PONTUAÇÃO: ${s.rating}/10 | CONTEÚDO APROVADO: ${s.content.substring(0, 150)}...`).join("\n")}`;
       }
     } catch(e) {}
   }
 
   const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}\n\n${evolutionaryContext}\n\nCONSELHO DE ESPECIALISTAS 2026: Simule o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Premium antes de retornar a resposta final em JSON.`;
   
-  // LOGIC DE RETRY E FALLBACK
   let lastError = null;
+  console.log(`🧠 Chamada IA iniciada | Provedores Ativos: [Groq: ${!!groq}] [SambaNova: ${!!SAMBANOVA_API_KEY}] [Gemini: ${!!gemini}]`);
 
+  // 1. TENTATIVA GROQ (Modelos sequenciais para evitar 429)
   if (groq && !imagePath) {
+    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
+    
+    for (const model of groqModels) {
+      try {
+        console.log(`🤖 Tentando Groq: ${model}`);
+        const res = await groq.chat.completions.create({
+          model: model,
+          messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
+          response_format: { type: "json_object" },
+          max_tokens: 6000
+        });
+        return JSON.parse(res.choices[0].message.content);
+      } catch (err) { 
+        console.error(`⚠️ Groq (${model}) falhou:`, err.message);
+        lastError = err;
+        if (err.status !== 429) break; 
+      }
+    }
+  }
+
+  // 1.5 TENTATIVA SAMBANOVA (Fallback de Alta Performance)
+  if (SAMBANOVA_API_KEY && !imagePath) {
     try {
-      const res = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+      console.log("🔥 Tentando SambaNova Cloud (Llama 3.3)...");
+      const res = await axios.post("https://api.sambanova.ai/v1/chat/completions", {
+        model: "Llama-3.3-70B-Instruct",
         messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
         response_format: { type: "json_object" },
-        max_tokens: 6000
+        max_tokens: 4000
+      }, {
+        headers: { "Authorization": `Bearer ${SAMBANOVA_API_KEY}`, "Content-Type": "application/json" }
       });
-      return JSON.parse(res.choices[0].message.content);
-    } catch (err) { 
-      console.error("⚠️ Groq falhou, tentando Gemini...", err.message);
+      return res.data.choices[0].message.content ? JSON.parse(res.data.choices[0].message.content) : res.data.choices[0].message;
+    } catch (err) {
+      console.error("⚠️ SambaNova falhou:", err.response?.data?.error?.message || err.message);
       lastError = err;
     }
   }
   
-  if (!gemini) throw new Error(`IA Offline. Erro Groq: ${lastError?.message || "Chave ausente"}. Gemini: Chave ausente.`);
+  // 2. TENTATIVA GEMINI (Fallback Final ou Visão)
+  if (!gemini) {
+    const errorMsg = lastError?.status === 429 ? "Limite de Uso do Groq atingido. Configure o Gemini no Render." : `IA Offline. Erro: ${lastError?.message || "Chave ausente"}`;
+    throw new Error(errorMsg);
+  }
 
   try {
-    const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log("🚀 Tentando Fallback Gemini...");
+    const model = gemini.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+      ]
+    });
+    
     const parts = [`${combinedSystem}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
     
     if (imagePath && fs.existsSync(imagePath)) {
@@ -186,11 +227,18 @@ async function callAI({ system, user, imagePath, username }) {
     }
     
     const result = await model.generateContent(parts);
-    const parsed = safeJsonParse(result.response.text());
-    if (!parsed) throw new Error("Falha no parse JSON da Gemini.");
+    const text = result.response.text();
+    const parsed = safeJsonParse(text);
+    
+    if (!parsed) {
+      console.error("❌ Resposta Gemini não é JSON válido:", text.substring(0, 200));
+      throw new Error("Falha no parse JSON da Gemini.");
+    }
     return parsed;
   } catch (err) {
-    throw new Error(`Falha Crítica IA 2026: ${err.message}. Verifique suas chaves no Render.`);
+    const isRateLimit = err.message?.includes("429") || err.status === 429;
+    const finalMsg = isRateLimit ? "Limite de cota Gemini atingido." : (err.message || "Erro desconhecido");
+    throw new Error(`Falha Crítica IA 2026: ${finalMsg}. Verifique suas chaves no Render.`);
   }
 }
 
@@ -246,6 +294,7 @@ app.get("/api/debug-status", (req, res) => {
     env: process.env.NODE_ENV || "development",
     groq: !!GROQ_API_KEY,
     gemini: !!GEMINI_API_KEY,
+    sambanova: !!SAMBANOVA_API_KEY,
     mongodb: mongoose.connection.readyState === 1,
     tokens: IG_TOKENS.length,
     timestamp: new Date()
@@ -432,7 +481,8 @@ app.post("/api/intelligence", async (req, res) => {
     await mem.save();
     res.json(data);
   } catch(e) {
-    res.status(500).json({ error: "Erro na geração do diagnóstico." });
+    console.error("❌ Erro /api/intelligence:", e.message);
+    res.status(500).json({ error: `Falha no Diagnóstico: ${e.message}` });
   }
 });
 
@@ -583,7 +633,8 @@ app.post("/api/generate", async (req, res) => {
     await mem.save();
     res.json(data);
   } catch(e) {
-    res.status(500).json({ error: "Erro gerando planejamento." });
+    console.error("❌ Erro /api/generate:", e.message);
+    res.status(500).json({ error: `Falha no Planejamento: ${e.message}` });
   }
 });
 
@@ -617,7 +668,8 @@ app.post("/api/single-post", async (req, res) => {
     const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
     res.json(data);
   } catch(e) {
-    res.status(500).json({ error: "Erro gerando post único." });
+    console.error("❌ Erro /api/single-post:", e.message);
+    res.status(500).json({ error: `Falha no Post Único: ${e.message}` });
   }
 });
 

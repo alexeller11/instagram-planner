@@ -164,8 +164,11 @@
   </div>
   
   <div style="padding:15px; border-top:1px solid var(--border); margin-top:10px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted); margin-bottom:4px;">
+      <span id="st-ai" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MOTOR GROQ/GEMINI
+    </div>
     <div style="display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted); margin-bottom:8px;">
-      <span id="st-ai" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MOTOR IA 2026
+      <span id="st-sn" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MOTOR SAMBANOVA
     </div>
     <div style="display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted);">
       <span id="st-db" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MEMÓRIA ATLAS
@@ -481,6 +484,7 @@ async function checkStatus() {
     const r = await fetch('/api/debug-status');
     const d = await r.json();
     document.getElementById('st-ai').style.background = (d.groq || d.gemini) ? '#27ae60' : '#e74c3c';
+    document.getElementById('st-sn').style.background = d.sambanova ? '#27ae60' : '#e74c3c';
     document.getElementById('st-db').style.background = d.mongodb ? '#27ae60' : '#e74c3c';
   } catch(e) {}
 }
@@ -694,9 +698,15 @@ async function autofill(inputId, fieldType) {
       body: JSON.stringify({ igId: selAcc.id, field_type: fieldType })
     });
     const data = await res.json();
-    document.getElementById(inputId).value = data.suggestion || "";
-    document.getElementById(inputId).style.borderColor = "#22ceb5";
-    setTimeout(() => document.getElementById(inputId).style.borderColor = "var(--border)", 1500);
+    const val = data.suggestion || "";
+    document.getElementById(inputId).value = val;
+    
+    if (val.includes("Erro")) {
+      document.getElementById(inputId).style.borderColor = "#e74c3c";
+    } else {
+      document.getElementById(inputId).style.borderColor = "#22ceb5";
+      setTimeout(() => document.getElementById(inputId).style.borderColor = "var(--border)", 1500);
+    }
   } finally {
     btn.textContent = originalText;
   }
@@ -726,9 +736,13 @@ async function genPlan() {
         reels: document.getElementById('p-reels').value, carousels: document.getElementById('p-car').value, singlePosts: document.getElementById('p-img').value 
       })
     });
-    lastPlan = await res.json();
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    lastPlan = data;
     document.getElementById('plan-result').innerHTML = (lastPlan.posts||[]).map(p => renderPostCard(p)).join('');
     document.getElementById('btn-pdf-plan').style.display = 'block';
+  } catch(e) {
+    document.getElementById('plan-result').innerHTML = `<div class="card" style="border-left-color:#e74c3c; color:#e74c3c;"><strong>⚠️ Erro de IA:</strong> ${e.message}</div>`;
   } finally { showSkeleton('plan-skeleton', false); }
 }
 
@@ -756,7 +770,8 @@ async function genFactory() {
     document.getElementById('fact-result').style.display = 'block';
     document.getElementById('fact-result').innerHTML = renderPostCard(p, true);
   } catch(e) {
-    alert("Erro na Fábrica: " + e.message);
+    document.getElementById('fact-result').style.display = 'block';
+    document.getElementById('fact-result').innerHTML = `<div class="card" style="border-left-color:#e74c3c; color:#e74c3c;"><strong>⚠️ Falha na Fábrica:</strong> ${e.message}</div>`;
   } finally { showSkeleton('fact-skeleton', false); }
 }
 
