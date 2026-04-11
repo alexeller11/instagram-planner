@@ -161,6 +161,15 @@
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
     Sair do Painel
   </div>
+  
+  <div style="padding:15px; border-top:1px solid var(--border); margin-top:10px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted); margin-bottom:8px;">
+      <span id="st-ai" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MOTOR IA 2026
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted);">
+      <span id="st-db" style="width:8px; height:8px; border-radius:50%; background:#95a5a6;"></span> MEMÓRIA ATLAS
+    </div>
+  </div>
 </aside>
 
 <main>
@@ -463,6 +472,16 @@ async function init() {
     container.appendChild(btn);
   });
   if(accounts.length) select(accounts[0]);
+  checkStatus();
+}
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/debug-status');
+    const d = await r.json();
+    document.getElementById('st-ai').style.background = (d.groq || d.gemini) ? '#27ae60' : '#e74c3c';
+    document.getElementById('st-db').style.background = d.mongodb ? '#27ae60' : '#e74c3c';
+  } catch(e) {}
 }
 
 async function select(acc) {
@@ -761,34 +780,41 @@ async function evaluatePost(p) {
   const overlay = document.getElementById('overlay');
   const modal = document.getElementById('modal-content');
   overlay.style.display = 'flex';
-  modal.innerHTML = `<h3>Analisando Criativo...</h3><div class="skeleton block"></div>`;
+  modal.innerHTML = `<h3 style="color:#fff;">Simulando Reação Humana 2026...</h3><div class="skeleton block"></div>`;
   
   try {
     const res = await fetch('/api/evaluate-post', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ theme: p.theme, script_or_slides: p.script_or_slides, caption: p.caption })
+      body: JSON.stringify({ theme: p.theme, script_or_slides: p.script_or_slides, caption: p.caption, username: selAcc.username })
     });
     const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    
     modal.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="margin:0;">Score Ideale: <span style="color:var(--brand);">${d.score}/10</span></h2>
-        <button class="mini-action" onclick="document.getElementById('overlay').style.display='none'">Fechar</button>
+        <button class="mini-action" onclick="document.getElementById('overlay').style.display='none'">Fechar e Salvar DNA</button>
+      </div>
+      <div style="background:rgba(34,206,181,0.1); padding:8px; border-radius:4px; margin-bottom:15px; font-size:11px; color:var(--brand); text-align:center;">
+        🧠 <strong>Auto-Melhoramento:</strong> Este post foi salvo como referência de sucesso para a conta.
       </div>
       <div class="grid-2" style="gap:16px;">
         <div class="highlight-box" style="margin:0; border-left-color:var(--brand);">
-          <h4 style="color:var(--brand)">Feedback de Retenção</h4>
-          <p style="font-size:13px;"><strong>Hook:</strong> ${d.analysis.hook}</p>
-          <p style="font-size:13px; margin:8px 0;"><strong>Body:</strong> ${d.analysis.body}</p>
-          <p style="font-size:13px;"><strong>CTA:</strong> ${d.analysis.cta}</p>
+          <h4 style="color:var(--brand)">Feedback de Retenção (Simulado)</h4>
+          <p style="font-size:13px;"><strong>Hook (0-3s):</strong> ${d.analysis.hook}</p>
+          <p style="font-size:13px; margin:8px 0;"><strong>Retenção de Corpo:</strong> ${d.analysis.body}</p>
+          <p style="font-size:13px;"><strong>Poder de CTA:</strong> ${d.analysis.cta}</p>
         </div>
         <div class="highlight-box" style="margin:0; border-left-color:#f1c40f; background:rgba(241,196,15,0.05);">
-          <h4 style="color:#f1c40f">Legenda Refinada (Combo Algoritmo)</h4>
+          <h4 style="color:#f1c40f">Legenda Refinada (2026 SEO)</h4>
           <p style="font-size:13px; line-height:1.5; white-space:pre-wrap;">${d.refined_caption}</p>
-          <button class="btn btn-outline" style="margin-top:12px; padding:6px; font-size:11px;" onclick="alert('Copiado!')">Copiar Refinamento</button>
+          <button class="btn btn-outline" style="margin-top:12px; padding:6px; font-size:11px;" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText); alert('Copiado!')">Copiar Refinamento SEO</button>
         </div>
       </div>
     `;
-  } catch(e) { modal.innerHTML = "Erro na análise."; }
+  } catch(e) { 
+    modal.innerHTML = `<h3 style="color:#e74c3c">Erro na Análise 2026</h3><p style="font-size:14px; color:var(--text-muted);">${e.message}</p><button class="btn" style="margin-top:10px" onclick="document.getElementById('overlay').style.display='none'">Fechar</button>`; 
+  }
 }
 
 function logout() { fetch('/api/auth/logout').then(() => location.href='/'); }

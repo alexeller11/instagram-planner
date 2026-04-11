@@ -55,6 +55,12 @@ const clientSchema = new mongoose.Schema({
     what_doesnt_work: [String],
     strong_angles: [String]
   },
+  evolutionary_dna: {
+    preferred_tone: { type: String, default: "" },
+    forbidden_styles: [String],
+    writing_patterns: [String],
+    top_successes: [{ subject: String, content: String, rating: Number, date: Date }]
+  },
   saved_diagnostics: { type: Array, default: [] },
   saved_planners: { type: Array, default: [] },
   swipe_file: { type: Array, default: [] }
@@ -135,8 +141,24 @@ const SYSTEM_PROMPTS = {
   COPYWRITER: "Copywriter sênior focada em conversão e retenção impossível."
 };
 
-async function callAI({ system, user, imagePath }) {
-  const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}`;
+async function callAI({ system, user, imagePath, username }) {
+  // 🧠 CONTEXTO EVOLUTIVO (2026 Edition)
+  let evolutionaryContext = "";
+  if (username) {
+    try {
+      const mem = await getClientMemory(username);
+      const successes = (mem.evolutionary_dna?.top_successes || []).slice(-3);
+      if (successes.length) {
+        evolutionaryContext = `\nVIGILÂNCIA DE SUCESSO ANTERIOR (Aprenda com estes exemplos reais do cliente): \n${successes.map(s => `- TEMA: ${s.subject} | PONTUAÇÃO: ${s.rating}/10 | CONTEÚDO APROVADO: ${s.content.substring(0, 150)}...`).join("\n")}`;
+      }
+    } catch(e) {}
+  }
+
+  const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}\n\n${evolutionaryContext}\n\nCONSELHO DE ESPECIALISTAS 2026: Simule o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Premium antes de retornar a resposta final em JSON.`;
+  
+  // LOGIC DE RETRY E FALLBACK
+  let lastError = null;
+
   if (groq && !imagePath) {
     try {
       const res = await groq.chat.completions.create({
@@ -146,21 +168,30 @@ async function callAI({ system, user, imagePath }) {
         max_tokens: 6000
       });
       return JSON.parse(res.choices[0].message.content);
-    } catch (err) { if (!gemini) throw err; }
+    } catch (err) { 
+      console.error("⚠️ Groq falhou, tentando Gemini...", err.message);
+      lastError = err;
+    }
   }
   
-  const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const parts = [`${combinedSystem}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
-  
-  if (imagePath && fs.existsSync(imagePath)) {
-    try {
+  if (!gemini) throw new Error(`IA Offline. Erro Groq: ${lastError?.message || "Chave ausente"}. Gemini: Chave ausente.`);
+
+  try {
+    const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const parts = [`${combinedSystem}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
+    
+    if (imagePath && fs.existsSync(imagePath)) {
       const imageData = fs.readFileSync(imagePath);
       parts.push({ inlineData: { data: imageData.toString("base64"), mimeType: "image/png" } });
-    } catch(e) {}
+    }
+    
+    const result = await model.generateContent(parts);
+    const parsed = safeJsonParse(result.response.text());
+    if (!parsed) throw new Error("Falha no parse JSON da Gemini.");
+    return parsed;
+  } catch (err) {
+    throw new Error(`Falha Crítica IA 2026: ${err.message}. Verifique suas chaves no Render.`);
   }
-  
-  const result = await model.generateContent(parts);
-  return safeJsonParse(result.response.text());
 }
 
 // --- ROTAS DA API ---
@@ -207,6 +238,17 @@ app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accoun
 app.get("/api/auth/logout", (req, res) => {
   req.session.destroy();
   res.json({ success: true });
+});
+
+app.get("/api/debug-status", (req, res) => {
+  res.json({
+    env: process.env.NODE_ENV || "development",
+    groq: !!GROQ_API_KEY,
+    gemini: !!GEMINI_API_KEY,
+    mongodb: mongoose.connection.readyState === 1,
+    tokens: IG_TOKENS.length,
+    timestamp: new Date()
+  });
 });
 
 app.get("/api/memory/:username", async (req, res) => {
@@ -313,7 +355,7 @@ app.post("/api/quick-verdict", async (req, res) => {
 });
 
 app.post("/api/evaluate-post", async (req, res) => {
-  const { theme, script_or_slides, caption } = req.body;
+  const { theme, script_or_slides, caption, username } = req.body;
   const prompt = `AVALIE ESTE POST:
   Tema: ${theme}. 
   Roteiro/Estrutura: ${JSON.stringify(script_or_slides)}. 
@@ -323,9 +365,24 @@ app.post("/api/evaluate-post", async (req, res) => {
   Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta": "..." }, "refined_caption": "..." }`;
   
   try {
-    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance.", user: prompt });
+    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance.", user: prompt, username });
+    
+    // 🧠 SALVAR DNA EVOLUTIVO SE A NOTA FOR ALTA
+    if (username && data.score >= 8) {
+      const mem = await getClientMemory(username);
+      mem.evolutionary_dna.top_successes.push({
+        subject: theme,
+        content: caption,
+        rating: data.score,
+        date: new Date()
+      });
+      // Poda para não estourar o banco
+      if (mem.evolutionary_dna.top_successes.length > 20) mem.evolutionary_dna.top_successes.shift();
+      await mem.save();
+    }
+    
     res.json(data);
-  } catch(e) { res.status(500).json({ error: "Erro na avaliação." }); }
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post("/api/intelligence", async (req, res) => {
@@ -432,7 +489,7 @@ app.post("/api/competitors", async (req, res) => {
       const fullPath = path.resolve(PUBLIC_TMP_DIR, filename);
       await page.screenshot({ path: fullPath });
       
-      const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor? 
+      const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor para se destacar dele? 
       JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
       
       const vision = await callAI({ 
@@ -479,10 +536,10 @@ app.post("/api/autofill", async (req, res) => {
   else if (field_type === 'city') prompt = `Analise a bio: "${acc.biography || ''}". Localize a cidade/estado principal ou responda "Brasil (Nacional)". Retorne JSON: {"suggestion": "..."}`;
   
   try {
-    const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt });
+    const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt, username: acc.username });
     res.json(data);
   } catch(e) {
-    res.json({ suggestion: "Valor Genérico (Tente Novamente)" });
+    res.json({ suggestion: `Erro Técnico: ${e.message}` });
   }
 });
 
@@ -520,7 +577,7 @@ app.post("/api/generate", async (req, res) => {
   }`;
   
   try {
-    const data = await callAI({ system: "Você é um Co-Produtor Sênior de Lançamentos e Estrategista. Apenas JSON válido.", user: prompt });
+    const data = await callAI({ system: "Você é um Co-Produtor Sênior de Lançamentos e Estrategista. Apenas JSON válido.", user: prompt, username: acc.username });
     mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
     await mem.save();
     res.json(data);
@@ -556,7 +613,7 @@ app.post("/api/single-post", async (req, res) => {
   }`;
   
   try {
-    const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt });
+    const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
     res.json(data);
   } catch(e) {
     res.status(500).json({ error: "Erro gerando post único." });
