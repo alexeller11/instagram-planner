@@ -222,21 +222,22 @@
       <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton block"></div>
     </div>
 
-    <!-- Contender Result -->
-    <div id="intel-result" style="display:none;">
+      <div id="intel-result" style="display:none;">
       <div class="card">
         <h3 style="color:#fff; margin-bottom:12px;">Visão do Estrategista</h3>
         <p id="intel-exec" style="line-height:1.6; color:var(--text-muted);"></p>
         
         <div class="grid-2" style="margin-top:24px;">
           <div class="highlight-box" style="border-left-color: #e74c3c; margin-top:0;">
-            <h4 style="color:#e74c3c">Erros Visíveis (Bio e Feed)</h4>
+            <h4 style="color:#e74c3c">Diagnóstico e Falhas</h4>
+            <p style="margin-bottom:8px; font-size:13px;"><strong>Nicho Identificado:</strong> <span id="intel-niche" class="badge"></span></p>
+            <p style="margin-bottom:12px; font-size:13px;"><strong>Tom Detectado:</strong> <span id="intel-tone" class="badge"></span></p>
             <p id="intel-bio-err" style="font-size:14px; margin-bottom:12px;"></p>
             <ul id="intel-weaknesses" style="padding-left:20px; font-size:14px;"></ul>
           </div>
           <div class="highlight-box" style="border-left-color: #27ae60; margin-top:0;">
-            <h4 style="color:#27ae60">Solução & Bio Otimizada</h4>
-            <ul id="intel-bio-sug" style="padding-left:20px; font-size:14px; margin-bottom:12px;"></ul>
+            <h4 style="color:#27ae60">Solução & Bio Tridimensional (A/B/C)</h4>
+            <div id="intel-bio-sug" style="font-size:14px; margin-bottom:12px; line-height: 1.6;"></div>
             <h4 style="color:#22ceb5">Pilares Sugeridos</h4>
             <ul id="intel-pillars" style="padding-left:20px; font-size:14px;"></ul>
           </div>
@@ -483,7 +484,7 @@ function renderPostCard(p, isSingle = false) {
   return `
     <div class="card post-card" style="margin-bottom:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="badge" style="background:#fff; color:#000;">${isSingle ? 'POST ÚNICO' : 'DIA '+p.n} • ${p.format.toUpperCase()}</span>
+        <span class="badge" style="background:#fff; color:#000;">${isSingle ? 'POST ÚNICO' : (p.week_funnel || 'POST ' + p.n)} • ${p.format.toUpperCase()}</span>
         <div style="display:flex; gap:8px;">
           <button class="mini-action" onclick="alert('Funcionalidade de Copiar Ativada!')">Copiar Tudo</button>
           <button class="mini-action" style="background:#27ae60; border-color:#27ae60; color:#fff;" onclick="alert('Post Aprovado e Salvo')">Aprovar Post</button>
@@ -516,8 +517,20 @@ async function getIntel() {
     document.getElementById('intel-result').style.display = 'block';
     document.getElementById('intel-exec').textContent = lastDiagnostic.executive_summary;
     document.getElementById('intel-bio-err').textContent = lastDiagnostic.bio_analysis;
+    document.getElementById('intel-niche').textContent = lastDiagnostic.detected_niche || "-";
+    document.getElementById('intel-tone').textContent = lastDiagnostic.detected_tone || "-";
     document.getElementById('intel-weaknesses').innerHTML = (lastDiagnostic.weaknesses||[]).map(w => `<li>${w}</li>`).join('');
-    document.getElementById('intel-bio-sug').innerHTML = (lastDiagnostic.bio_suggestions||[]).map(s => `<li style="margin-bottom:8px;">${s}</li>`).join('');
+    
+    if (lastDiagnostic.bio_suggestions_3D) {
+      document.getElementById('intel-bio-sug').innerHTML = `
+        <div style="margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px;"><strong>👑 Autoridade:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.authority}</span></div>
+        <div style="margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px;"><strong>🫂 Conexão:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.connection}</span></div>
+        <div><strong>🔥 Conversão:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.conversion}</span></div>
+      `;
+    } else {
+      document.getElementById('intel-bio-sug').innerHTML = "Gerado no modelo antigo.";
+    }
+    
     document.getElementById('intel-pillars').innerHTML = (lastDiagnostic.pillars||[]).map(p => `<li>${p}</li>`).join('');
   } finally { showSkeleton('intel-skeleton', false); }
 }

@@ -223,11 +223,28 @@ app.post("/api/intelligence", async (req, res) => {
     postsContext = (r.data.data || []).map(p => `[${p.media_type}] ${p.caption ? p.caption.substring(0, 100) : ''}...`).join(' | ');
   } catch(e) {}
 
-  const prompt = `Faça uma AUDITORIA PROFUNDA para @${acc.username}. Nicho: ${niche}. Público: ${audience}.
+  const prompt = `Faça uma AUDITORIA DIGITAL PROFUNDA E HUMANIZADA para @${acc.username}.
+  Você deve deduzir o 'nicho verdadeiro' e o 'tom de voz atual' baseado no feed.
   Conteúdo recente do feed: ${postsContext}
+  Nicho Sugerido Pela Agência: ${niche}. Público: ${audience}.
+  (Se o feed divergir do sugerido, imponha a realidade da sua leitura).
   Regras (Proibidas): ${mem.forbidden_words.join(", ")}.
-  Identifique falhas no engajamento e crie uma linha estratégica.
-  Retorne JSON EXATAMENTE ESTE: { "executive_summary": "resumo atual", "bio_analysis": "o que está errado na bio atual e como ajeitar", "bio_suggestions": ["nova bio 1", "nova bio 2"], "strengths": ["ponto forte 1"], "weaknesses": ["fraco 1", "fraco 2"], "pillars": ["pilar editorial 1"], "priority_actions": ["ação 1"] }`;
+  Retorne JSON EXATAMENTE ESTE: 
+  { 
+    "executive_summary": "resumo profundo", 
+    "detected_niche": "nicho lido",
+    "detected_tone": "tom de voz lido",
+    "bio_analysis": "O que está errado", 
+    "bio_suggestions_3D": {
+      "authority": "Bio focada em gerar respeito e autoridade + Emojis",
+      "connection": "Bio focada em vulnerabilidade e conexão humana",
+      "conversion": "Bio agressiva focada em CTA e vendas rápidas"
+    },
+    "strengths": ["ponto forte 1"], 
+    "weaknesses": ["fraco 1"], 
+    "pillars": ["pilar editorial 1"], 
+    "priority_actions": ["ação 1"] 
+  }`;
   
   try {
     const data = await callAI({ system: "Você é o Estrategista-Chefe da Ideale Agency. Seja incisivo, cirúrgico e focado em vendas e branding premium.", user: prompt });
@@ -262,8 +279,11 @@ app.post("/api/export-diagnostic", async (req, res) => {
     doc.moveDown();
   }
   
-  doc.fontSize(14).fillColor("#27ae60").text("Sugestões de Nova Bio");
-  (payload.bio_suggestions || []).forEach(b => doc.text(`• ${b}`));
+  doc.fontSize(14).fillColor("#27ae60").text("Bio Tridimensional (Variações)");
+  doc.fontSize(12).fillColor("#333").text("Autoridade: ", { continued: true }).fontSize(11).text(payload.bio_suggestions_3D?.authority || "-");
+  doc.fontSize(12).fillColor("#333").text("Conexão: ", { continued: true }).fontSize(11).text(payload.bio_suggestions_3D?.connection || "-");
+  doc.fontSize(12).fillColor("#333").text("Conversão: ", { continued: true }).fontSize(11).text(payload.bio_suggestions_3D?.conversion || "-");
+  doc.moveDown();
   doc.moveDown();
   
   doc.fontSize(14).fillColor("#2980b9").text("Pilares Editoriais Recomendados");
@@ -336,18 +356,26 @@ app.post("/api/generate", async (req, res) => {
   if (!acc) return res.status(404).json({ error: "Acct not found" });
   const mem = await getClientMemory(acc.username);
 
-  const prompt = `Crie um planejamento de conteúdo altamente estratégico para @${acc.username}.
+  const prompt = `Crie um planejamento de conteúdo ALTA CONVERSÃO para @${acc.username}.
   Objetivo: ${goal}. Tom de Voz: ${tone}.
-  Distribuição solicitada: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
+  Distribuição solicitada: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos. Pode dividir isso em 4 Semanas de Funil.
   PROIBIDO usar as palavras: ${mem.forbidden_words.join(", ")}.
-  Para Reels: forneça roteiro script (0-3s, 3-15s, etc), sugestão de áudio/cenário.
-  Para Carrossel: Forneça descrição de cada tela.
+  Obrigatoriamente, cada post pertence a uma das semanas do Funil de 4 Semanas:
+  - Semana 1: Atenção (Topo de Funil / Viral / Curiosidade)
+  - Semana 2: Autoridade (Prova / Científico / Bastidores)
+  - Semana 3: Conexão (História / Identificação Humana)
+  - Semana 4: Conversão (Oferta Direta / Oferta Indireta / Objeção)
+  
+  Para Reels: Forneça ROTEIROS FEITOS PARA SER FALADOS NO TELEPROMPTER, divididos (0-3s Gancho Impossível de ignorar, Corpo narrativo, CTA estrito de conversão).
+  Para Carrossel: Forneça descrição matadora de cada tela.
   Sempre incluir legenda pronta (caption).
+  
   Retorne JSON ESTRITO E VÁLIDO:
   {
     "posts": [
       {
         "n": 1,
+        "week_funnel": "Semana 1: Atenção",
         "format": "reels",
         "theme": "Assunto",
         "visual_audio_direction": "Instruções do vídeo/arte/áudio",
@@ -408,7 +436,7 @@ app.post("/api/export-report", (req, res) => {
   doc.fillColor("#000000").fontSize(20).text(`Cliente: @${username}`, { underline: true }).moveDown();
   
   (payload.posts || []).forEach(p => {
-    doc.fontSize(14).fillColor("#22ceb5").text(`Post ${p.n} - ${p.format.toUpperCase()} | Tema: ${p.theme}`);
+    doc.fontSize(14).fillColor("#22ceb5").text(`${p.week_funnel || 'Planejamento'} | Post ${p.n} - ${p.format.toUpperCase()} | Temática: ${p.theme}`);
     doc.fontSize(11).fillColor("#e74c3c").text(`Direção Visual/Áudio:`, { continued: true }).fillColor("#333333").text(` ${p.visual_audio_direction}`);
     doc.moveDown(0.5);
     
