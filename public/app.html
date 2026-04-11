@@ -621,12 +621,30 @@ async function getIntel() {
     
     if (lastDiagnostic.bio_suggestions_3D) {
       document.getElementById('intel-bio-sug').innerHTML = `
-        <div style="margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px;"><strong>👑 Autoridade:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.authority}</span></div>
-        <div style="margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px;"><strong>🫂 Conexão:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.connection}</span></div>
-        <div><strong>🔥 Conversão:</strong> <br><span style="color:var(--text-muted);">${lastDiagnostic.bio_suggestions_3D.conversion}</span></div>
+        <div class="bio-option">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <strong style="color:var(--brand); font-size:11px;">👑 OPÇÃO A: AUTORIDADE</strong>
+            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText); alert('Bio Autoridade Copiada!')">Copiar</button>
+          </div>
+          <div class="bio-text" style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.authority}</div>
+        </div>
+        <div class="bio-option" style="margin-top:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <strong style="color:#a29bfe; font-size:11px;">🫂 OPÇÃO B: CONEXÃO</strong>
+            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText); alert('Bio Conexão Copiada!')">Copiar</button>
+          </div>
+          <div class="bio-text" style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.connection}</div>
+        </div>
+        <div class="bio-option" style="margin-top:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <strong style="color:#fd79a8; font-size:11px;">🔥 OPÇÃO C: VENDAS (CTA)</strong>
+            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText); alert('Bio Vendas Copiada!')">Copiar</button>
+          </div>
+          <div class="bio-text" style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.conversion}</div>
+        </div>
       `;
     } else {
-      document.getElementById('intel-bio-sug').innerHTML = "Gerado no modelo antigo.";
+      document.getElementById('intel-bio-sug').innerHTML = "Aguardando novo Diagnóstico...";
     }
     
     document.getElementById('intel-pillars').innerHTML = (lastDiagnostic.pillars||[]).map(p => `<li>${p}</li>`).join('');

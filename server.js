@@ -105,13 +105,19 @@ app.use(session({
   cookie: { httpOnly: true, secure: IS_PROD, maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// --- SINGLETON BROWSER (POUPANÇA DE RAM) ---
+// --- SINGLETON BROWSER (POUPANÇA DE RAM COM RESILIÊNCIA) ---
 let _browser = null;
 async function getBrowser() {
-  if (!_browser) {
-    _browser = await chromium.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--single-process"]
-    });
+  try {
+    if (!_browser || !_browser.isConnected()) {
+      console.log("🕸️ Iniciando nova instância do navegador Playwright...");
+      _browser = await chromium.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--single-process"]
+      });
+    }
+  } catch (err) {
+    console.error("❌ Falha ao iniciar Browser:", err.message);
+    _browser = null;
   }
   return _browser;
 }
@@ -162,13 +168,17 @@ async function callAI({ system, user, imagePath, username }) {
   }
 
   const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}\n\n${evolutionaryContext}\n\nCONSELHO DE ESPECIALISTAS 2026: Simule o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Premium antes de retornar a resposta final em JSON.`;
+  const estimatedTokens = (combinedSystem.length + user.length) / 3.5;
   
   let lastError = null;
-  console.log(`🧠 Chamada IA iniciada | Provedores Ativos: [Groq: ${!!groq}] [SambaNova: ${!!SAMBANOVA_API_KEY}] [Gemini: ${!!gemini}]`);
+  console.log(`🧠 Chamada IA iniciada | Provedores Ativos: [Groq: ${!!groq}] [SambaNova: ${!!SAMBANOVA_API_KEY}] [Gemini: ${!!gemini}] | Est. Tokens: ${Math.round(estimatedTokens)}`);
 
-  // 1. TENTATIVA GROQ (Modelos sequenciais para evitar 429)
+  // 1. TENTATIVA GROQ (Modelos sequenciais para evitar 429 e 413)
   if (groq && !imagePath) {
-    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"];
+    const groqModels = [];
+    // Só tenta o modelo 8B se o payload for pequeno (limite TPM baixo do usuário)
+    if (estimatedTokens < 3500) groqModels.push("llama-3.1-8b-instant");
+    groqModels.push("llama-3.3-70b-versatile", "llama3-70b-8192");
     
     for (const model of groqModels) {
       try {
@@ -340,16 +350,34 @@ app.get("/api/dashboard/:igId", async (req, res) => {
   const acc = (req.session.accounts || []).find(a => a.id === req.params.igId);
   if (!acc) return res.status(404).send();
   try {
-    const r = await axios.get(`https://graph.instagram.com/v21.0/${acc.id}/media`, {
-      params: { fields: "id,caption,media_type,like_count,comments_count,timestamp", limit: 20, access_token: acc.ig_token }
+    // 💎 OTIMIZAÇÃO META (FIELD EXPANSION): Coleta mídia e insights em UMA chamada
+    const r = await axios.get(`https://graph.facebook.com/v21.0/${acc.id}/media`, {
+      params: { 
+        fields: "id,caption,media_type,like_count,comments_count,timestamp,insights.metric(reach,impressions,engagement)", 
+        limit: 15, 
+        access_token: acc.ig_token 
+      }
     });
+    
     const media = r.data.data || [];
     const likes = media.reduce((a, b) => a + (b.like_count || 0), 0);
     const comms = media.reduce((a, b) => a + (b.comments_count || 0), 0);
+    
+    // Cálculo de Alcance Estimado baseado nos insights integrados
+    const totalReach = media.reduce((a, b) => {
+      const reachVal = b.insights?.data?.find(m => m.name === 'reach')?.values[0]?.value || 0;
+      return a + reachVal;
+    }, 0);
+
     const er = (((likes + comms) / (media.length || 1)) / (acc.followers_count || 1) * 100).toFixed(2);
     
     res.json({
-      metrics: { engagement_rate: er, avg_likes: Math.round(likes/(media.length || 1)), avg_comments: Math.round(comms/(media.length || 1)) },
+      metrics: { 
+        engagement_rate: er, 
+        avg_likes: Math.round(likes/(media.length || 1)), 
+        avg_comments: Math.round(comms/(media.length || 1)),
+        total_reach_recent: totalReach
+      },
       format_mix: media.reduce((acc, m) => { acc[m.media_type] = (acc[m.media_type] || 0) + 1; return acc; }, {}),
       recent_posts: media.slice(0, 10)
     });
@@ -464,21 +492,22 @@ app.post("/api/intelligence", async (req, res) => {
   } catch(e) {}
 
   const prompt = `AUDITORIA DIGITAL PLATINUM para @${acc.username}.
-  Você é o Estrategista-Chefe da Ideale. Analise o feed e seja incisivo.
+  Você é o Estrategista-Chefe da Ideale. Analise o feed e o nicho.
   Feed Atual: ${postsContext}
-  Regras: Nicho ${niche}, Público ${audience}.
-  Foco: Diferenciação, Autoridade e Branding Humano.
+  Nicho: ${niche}, Público: ${audience}.
+  
+  MISSÃO ESPECIAL: Gere 3 variações de BIO PREMIUM (Instagram) para o cliente.
+  REGRAS: MÁXIMO 150 caracteres por Bio. Use técnica de Authority-Connection-Offer.
   
   Retorne JSON: 
   { 
     "executive_summary": "Análise densa, sem clichês, foco em branding.", 
     "detected_niche": "nicho lido",
     "detected_tone": "tom de voz lido",
-    "bio_analysis": "O que mudar para converter mais.", 
     "bio_suggestions_3D": {
-      "authority": "Bio Autoridade Inquestionável",
-      "connection": "Bio Conexão Humana",
-      "conversion": "Bio Máquina de Vendas"
+      "authority": "Bio focada em marcos, prova social e quem você atende. Máx 150 carac.",
+      "connection": "Bio focada em dor, conexão humana e transformação. Máx 150 carac.",
+      "conversion": "Bio focada em CTA agressivo, link/vendas. Máx 150 carac."
     },
     "strengths": ["...", "..."], 
     "weaknesses": ["...", "..."], 
