@@ -198,8 +198,20 @@
       <p style="margin-bottom:24px; color:var(--text-muted);">Realiza uma auditoria completa lendo a bio, posts recentes e palavras proibidas. Ideal para gerar relatórios comerciais persuasivos.</p>
       
       <div class="grid-2" style="margin-bottom:0;">
-        <div><label>Nicho Exato do Cliente</label><input id="i-niche" placeholder="Ex: Estética Avançada e Harmonização"></div>
-        <div><label>Público-Alvo Almejado</label><input id="i-audience" placeholder="Ex: Mulheres classes A/B, 30-50 anos"></div>
+        <div>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            Nicho Exato do Cliente 
+            <span class="mini-action" onclick="autofill('i-niche', 'niche')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
+          </label>
+          <input id="i-niche" placeholder="Ex: Estética Avançada e Harmonização">
+        </div>
+        <div>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            Público-Alvo Almejado 
+            <span class="mini-action" onclick="autofill('i-audience', 'audience')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
+          </label>
+          <input id="i-audience" placeholder="Ex: Mulheres classes A/B, 30-50 anos">
+        </div>
       </div>
       <button class="btn" id="btn-intel" onclick="getIntel()">Escanear e Gerar Auditoria</button>
     </div>
@@ -251,7 +263,7 @@
         </div>
         <div>
           <h4>Executar Varredura Playwright</h4>
-          <input id="s-username" placeholder="@nome_do_concorrente_aqui">
+          <input id="s-username" placeholder="@alvo1, @alvo2 (suporta múltiplos)">
           <button class="btn" id="btn-spy" onclick="spy()">Rodar Scanner Completo</button>
         </div>
       </div>
@@ -266,10 +278,7 @@
         <h3>Inteligência Visual Capturada</h3>
         <button class="mini-action" onclick="saveToSwipeFile()">Salvar no Cofre (Swipe File)</button>
       </div>
-      <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
-        <img id="spy-img" style="width:100%; border-radius:12px; border: 1px solid var(--border);">
-        <div id="spy-text" class="highlight-box" style="margin-top:0;"></div>
-      </div>
+      <div id="spy-content-area" style="max-height: 600px; overflow-y: auto;"></div>
     </div>
   </div>
 
@@ -344,10 +353,16 @@
         <select id="f-intensity"><option value="3">3 - Leve (Entretenimento/Valor)</option><option value="7" selected>7 - Moderado (Call to Action discreto)</option><option value="10">10 - Headshot (Venda agressiva/Oferta)</option></select></div>
       </div>
       
-      <label>Assunto Principal / Resumo do Conteúdo</label>
+      <label style="display:flex; justify-content:space-between; align-items:center;">
+        Assunto Principal / Resumo do Conteúdo
+        <span class="mini-action" onclick="autofill('f-subject', 'subject')" style="padding:2px 6px; font-size:10px;">✨ Sugerir com IA</span>
+      </label>
       <input id="f-subject" placeholder="Ex: 3 Mitos sobre o procedimento X que as pessoas acreditam">
       
-      <label>Qual o Ângulo?</label>
+      <label style="display:flex; justify-content:space-between; align-items:center;">
+        Qual o Ângulo?
+        <span class="mini-action" onclick="autofill('f-angle', 'angle')" style="padding:2px 6px; font-size:10px;">✨ Sugerir com IA</span>
+      </label>
       <input id="f-angle" placeholder="Ex: Polêmico, desmascarar concorrente, acolhedor, urgência...">
       
       <button class="btn" id="btn-fact" onclick="genFactory()">Gerar Post Agora</button>
@@ -539,12 +554,35 @@ async function spy() {
     });
     lastSpy = await res.json();
     document.getElementById('spy-result').style.display = 'block';
-    document.getElementById('spy-img').src = lastSpy.screenshot;
-    document.getElementById('spy-text').innerHTML = `<strong>Deduções Extraídas:</strong><br><p style="margin-top:8px; font-size:14px; line-height:1.6;">${lastSpy.analysis}</p>`;
+    
+    document.getElementById('spy-content-area').innerHTML = (lastSpy.results||[]).map(r => `
+      <div style="margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:16px;">
+        <h4 style="color:#fff;">O que a IA está vendo em: @${r.username}</h4>
+        ${r.screenshot ? `<img src="${r.screenshot}" style="width:100%; border-radius:12px; border: 1px solid var(--border); margin-top:8px;">` : `<p style="color:#e74c3c">Falha na captura web.</p>`}
+      </div>
+    `).join('');
   } finally { showSkeleton('spy-skeleton', false); }
 }
 
 function saveToSwipeFile() { alert("Salvo no Cofre de Referências da Conta com sucesso!"); }
+
+async function autofill(inputId, fieldType) {
+  const btn = event.currentTarget;
+  const originalText = btn.textContent;
+  btn.textContent = "⏳...";
+  try {
+    const res = await fetch('/api/autofill', { 
+      method: 'POST', HttpMethod: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ igId: selAcc.id, field_type: fieldType })
+    });
+    const data = await res.json();
+    document.getElementById(inputId).value = data.suggestion || "";
+    document.getElementById(inputId).style.borderColor = "#22ceb5";
+    setTimeout(() => document.getElementById(inputId).style.borderColor = "var(--border)", 1500);
+  } finally {
+    btn.textContent = originalText;
+  }
+}
 
 function toggleCustom(selId, inpId) {
   const isCustom = document.getElementById(selId).value === 'custom';

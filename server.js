@@ -124,13 +124,14 @@ async function callAI({ system, user }) {
       const res = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        max_tokens: 6000 // AUMENTADO PARA NÃO CORTAR O JSON!
       });
       return JSON.parse(res.choices[0].message.content);
     } catch (err) { if (!gemini) throw err; }
   }
   const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(`${system}\n\n${user}`);
+  const result = await model.generateContent(`${system}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`);
   return safeJsonParse(result.response.text());
 }
 
@@ -275,28 +276,57 @@ app.post("/api/export-diagnostic", async (req, res) => {
 
 app.post("/api/competitors", async (req, res) => {
   const { username } = req.body;
+  const usernames = username.split(',').map(u => u.trim().replace('@','')).filter(Boolean).slice(0, 3);
   const browser = await getBrowser();
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  try {
-    await page.goto(`https://www.instagram.com/${username.replace('@','')}/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
-    const filename = `comp_${Date.now()}.png`;
-    await page.screenshot({ path: path.join(PUBLIC_TMP_DIR, filename) });
-    res.json({ screenshot: `/tmp/${filename}`, analysis: "Análise visual concluída." });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-  finally { await context.close(); }
+  const results = [];
+  
+  for (const user of usernames) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(2000);
+      const filename = `comp_${user}_${Date.now()}.png`;
+      await page.screenshot({ path: path.join(PUBLIC_TMP_DIR, filename) });
+      results.push({ username: user, screenshot: `/tmp/${filename}`, analysis: `Análise extraída da conta de ${user}` });
+    } catch (e) {
+      results.push({ username: user, screenshot: null, analysis: `Erro ao capturar ${user}.` });
+    } finally { 
+      await context.close(); 
+    }
+  }
+  res.json({ results, analysis: "Varredura 360 concluída." });
 });
 
 app.post("/api/suggest-competitors", async (req, res) => {
   const { niche, city } = req.body;
-  const prompt = `Sugira 3 arrobas do Instagram (perfil real ou benchmark) no nicho de '${niche}' na região '${city}'. 
-  Retorne JSON: { "competitors": ["@nome1", "@nome2"] }`;
+  const prompt = `Sugira 3 arrobas reais do Instagram (benchmark ou negócio local) no nicho de '${niche}' na região '${city}'. 
+  Retorne JSON: { "competitors": ["@nome1", "@nome2", "@nome3"] }`;
   try {
     const data = await callAI({ system: "Especialista em pesquisa de mercado.", user: prompt });
     res.json(data);
   } catch(e) {
     res.status(500).json({ error: "Erro buscando recomendação." });
+  }
+});
+
+app.post("/api/autofill", async (req, res) => {
+  const { igId, field_type } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada" });
+  const mem = await getClientMemory(acc.username);
+  
+  let prompt = "";
+  if (field_type === 'niche') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Sugira em até 6 palavras o "Nicho e Diferencial Exato" desta conta. Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'audience') prompt = `Analise a bio original do cliente (@${acc.username}): "${acc.biography || ''}". Qual é o público-alvo que essa conta obviamente tenta atrair e vender? (Resumo em 5 palavras). Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'subject') prompt = `A conta @${acc.username} atua em ${mem.niche || 'conteúdo'}. Nos forneça UMA (1) excelente ideia ESPECÍFICA de "Assunto Tático" para postar hoje, baseada no que esse mercado gosta de ler e comprar. Retorne JSON: {"suggestion": "..."}`;
+  else if (field_type === 'angle') prompt = `Para @${acc.username} vendedo seu serviço, qual seria um gatilho/ângulo criativo forte? Ex (Polêmica do mercado, Erro ignorado, Quebra de crença limitante). Retorne JSON: {"suggestion": "..."}`;
+  
+  try {
+    const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt });
+    res.json(data);
+  } catch(e) {
+    res.json({ suggestion: "Valor Genérico (Tente Novamente)" });
   }
 });
 
