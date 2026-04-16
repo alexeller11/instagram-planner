@@ -27,6 +27,8 @@ Copie `.env.example` para `.env` e preencha:
 | `GROQ_API_KEY` | Chave da API Groq — [console.groq.com/keys](https://console.groq.com/keys) |
 | `GEMINI_API_KEY` | Chave da API Gemini — [aistudio.google.com](https://aistudio.google.com/app/apikey) |
 | `IG_TOKENS` | Tokens de acesso longos do Instagram, separados por vírgula |
+| `SAMBANOVA_API_KEY` | Chave SambaNova Cloud (fallback) — [cloud.sambanova.ai](https://cloud.sambanova.ai) |
+| `MONGODB_URI` | String de conexão MongoDB Atlas — [cloud.mongodb.com](https://cloud.mongodb.com) |
 
 ---
 
