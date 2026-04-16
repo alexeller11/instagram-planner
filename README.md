@@ -1,62 +1,101 @@
-# Instagram Marketing Planner — Inteligência Digital com IA
+# Ideale Instagram Planner — Agency Pro v8.5
 
-Este projeto é um planejador de marketing para Instagram que utiliza a API da Meta para obter dados reais do perfil e a **OpenAI (GPT-4o)** para gerar estratégias personalizadas e humanizadas.
+Ferramente estratégica de planejamento de Instagram para agências, com **IA multi-modelo** (Groq + Gemini), **Spy de concorrentes via Playwright**, **calendário editorial**, **gerador de hashtags** e **dashboard de métricas reais** via Instagram Graph API.
 
-## 🚀 Como Fazer o Deploy
+---
 
-### 1. Preparar o Repositório
-1. Faça um fork ou clone este repositório para o seu GitHub.
-2. Certifique-se de que o arquivo `Dockerfile` está na raiz.
+## 🚀 Deploy no Render
 
-### 2. Configurar Variáveis de Ambiente
+Este projeto está configurado para deploy via **Docker no Render**. O arquivo `render.yaml` define toda a infraestrutura.
 
-Crie um arquivo `.env` na raiz do projeto (ou configure as variáveis diretamente na sua plataforma de deploy, como Railway, Vercel, etc.) com as seguintes variáveis:
+1. Fork/clone este repositório para o seu GitHub.
+2. No Render, crie um novo Web Service a partir do GitHub e selecione este repositório.
+3. Configure as variáveis de ambiente abaixo (o `render.yaml` já define as chaves).
+
+---
+
+## ⚙️ Variáveis de Ambiente
+
+Copie `.env.example` para `.env` e preencha:
 
 | Variável | Descrição |
-|----------|-----------|
-| `PORT` | Porta em que o servidor irá rodar (ex: `3000`) |
-| `SESSION_SECRET` | Uma string longa e aleatória para segurança da sessão (ex: `sua-chave-secreta-super-longa-e-aleatoria`) |
-| `BASE_URL` | A URL pública do seu aplicativo (ex: `http://localhost:3000` ou `https://seu-app.up.railway.app`) |
-| `NODE_ENV` | Ambiente de execução (ex: `development` ou `production`) |
-| `OPENAI_API_KEY` | Sua chave da API da OpenAI. Obtenha em [platform.openai.com](https://platform.openai.com/) |
-| `IG_TOKENS` | Tokens de acesso de longa duração do Instagram, separados por vírgula. Gerados via [Meta for Developers](https://developers.facebook.com/apps/). |
+|---|---|
+| `PORT` | Porta local (padrão: `3000`) |
+| `SESSION_SECRET` | String longa aleatória para segurança de sessão (`openssl rand -base64 64`) |
+| `BASE_URL` | URL pública do app (ex: `https://meu-app.onrender.com`) |
+| `NODE_ENV` | `development` ou `production` |
+| `GROQ_API_KEY` | Chave da API Groq — [console.groq.com/keys](https://console.groq.com/keys) |
+| `GEMINI_API_KEY` | Chave da API Gemini — [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| `IG_TOKENS` | Tokens de acesso longos do Instagram, separados por vírgula |
 
-**Exemplo de `.env`:**
+---
+
+## 🖥️ Executar Localmente
+
+```bash
+npm install
+npx playwright install chromium
+npm start
 ```
-PORT=3000
-SESSION_SECRET=minha-chave-secreta-muito-segura-12345
-BASE_URL=http://localhost:3000
-NODE_ENV=development
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxx
-IG_TOKENS=EAA...,EAA...
+
+Acesse `http://localhost:3000`.
+
+---
+
+## 🧠 Funcionalidades
+
+- **Planejador de Conteúdo com IA** — 4 semanas de funil estratégico (Atenção → Autoridade → Conexão → Conversão)
+- **Spy de Concorrentes** — análise via Playwright stealth com Vision AI
+- **Bio 3D** — 3 variações (Autoridade, Conexão, Conversão) geradas por IA
+- **Calendário Editorial** — visualização e agendamento de posts
+- **Gerador de Hashtags** — sugestões estratégicas por nicho
+- **Dashboard de Métricas** — dados reais da Instagram Graph API
+- **Scripts de Reels** — roteiros com ganchos e CTAs fortes
+- **Simulador de Objeções** — preparação para vendas via DM
+- **Fallback de IA Quádruplo** — Groq → Gemini → fallback automático
+
+---
+
+## 🛠️ Stack Tecnológica
+
+| Camada | Tecnologia |
+|---|---|
+| Backend | Node.js + Express |
+| IA Principal | Groq (llama-3.3-70b-versatile) |
+| IA Secundária | Google Gemini 2.5 Flash |
+| Scraping | Playwright (Chromium headless) |
+| API Social | Instagram Graph API |
+| Sessões | express-session + memorystore |
+| Segurança | helmet + express-rate-limit |
+| Deploy | Docker + Render |
+| Frontend | HTML5 + CSS + JavaScript Vanilla |
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+instagram-planner/
+├── server.js              # Backend principal (Express + todas as rotas)
+├── package.json
+├── Dockerfile
+├── render.yaml            # Configuração de deploy no Render
+├── .env.example           # Template de variáveis de ambiente
+├── .gitignore
+├── api/
+│   └── competitors        # Módulo de spy de concorrentes
+├── data/
+│   └── clients/
+│       └── default.json   # Perfil padrão de cliente
+└── public/
+    ├── index.html         # Login / entrada
+    ├── app.html           # Interface principal da ferramenta
+    ├── dashboard.html     # Dashboard de métricas
+    └── privacy.html       # Política de privacidade
 ```
 
-### 3. Executar Localmente
-
-1. Instale as dependências:
-   ```bash
-   npm install
-   ```
-2. Inicie o servidor:
-   ```bash
-   npm start
-   ```
-3. Acesse `http://localhost:3000` no seu navegador.
-
-## 🧠 Inteligência Digital Humanizada
-
-O sistema oferece análises e planejamentos aprofundados:
-- **Análise de Nicho:** Identificação automática baseada nos posts reais.
-- **Tom de Voz:** Detecção do estilo de escrita para manter a consistência.
-- **Sugestões de Bio:** 3 variações (Autoridade, Conexão, Conversão) com emojis estratégicos.
-- **Plano de Conteúdo:** 4 semanas de funil estratégico (Atenção, Autoridade, Conexão, Conversão).
-- **Scripts de Reels:** Roteiros feitos para serem falados, com ganchos e CTAs fortes.
-
-## 🛠️ Tecnologias Utilizadas
-- **Backend:** Node.js + Express
-- **IA:** OpenAI (GPT-4o)
-- **API:** Instagram Graph API (v21.0)
-- **Frontend:** HTML5 + JavaScript (Vanilla) + CSS Customizado
+---
 
 ## 📄 Licença
-Este projeto está sob a licença MIT.
+
+MIT — uso livre para agências e freelancers.

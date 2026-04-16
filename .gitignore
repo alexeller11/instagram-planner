@@ -1,4 +1,39 @@
+# Dependências
 node_modules/
+
+# Variáveis de ambiente sensíveis
 .env
+.env.local
+.env.*.local
+
+# Logs
 *.log
+npm-debug.log*
+
+# Sistema operacional
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores e IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Dados de clientes (arquivos gerados em runtime)
+/storage/
+
+# Arquivos temporários gerados pelo app
+/public/tmp/
+/public/assets/
+
+# Build e dist
+dist/
+build/
