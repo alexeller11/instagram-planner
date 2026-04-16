@@ -20,3 +20,7 @@ services:
         sync: false
       - key: IG_TOKENS
         sync: false
+            - key: SAMBANOVA_API_KEY
+      sync: false
+    - key: MONGODB_URI
+      sync: false
