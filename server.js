@@ -201,63 +201,77 @@ async function callAI({ system, user, imagePath, username }) {
   }
 
   const combinedSystem = `${SYSTEM_PROMPTS.PLATINUM_CORE}\n\n${system}\n\n${evolutionaryContext}\n\nCONSELHO DE ESPECIALISTAS 2026: Simule o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Premium antes de retornar a resposta final em JSON.`;
-  const estimatedTokens = (combinedSystem.length + user.length) / 3.5;
+  const estimatedTokens = Math.round((combinedSystem.length + user.length) / 3.5);
 
   let lastError = null;
-  console.log(`🧠 Chamada IA iniciada | [Groq: ${!!groq}] [SambaNova: ${!!SAMBANOVA_API_KEY}] [Gemini: ${!!gemini}] | Est. Tokens: ${Math.round(estimatedTokens)}`);
+  console.log(`🧠 Chamada IA iniciada | [Groq: ${!!groq}] [SambaNova: ${!!SAMBANOVA_API_KEY}] [Gemini: ${!!gemini}] | Est. Tokens: ${estimatedTokens}`);
 
-  // 1. TENTATIVA GROQ
+  // 1. TENTATIVA GROQ — apenas modelos com limite >= 6000 TPM
+  // llama-3.1-8b-instant REMOVIDO: limite de 6000 TPM estoura com o system prompt Platinum
   if (groq && !imagePath) {
-    const groqModels = [];
-    if (estimatedTokens < 3500) groqModels.push("llama-3.1-8b-instant");
-    groqModels.push("llama-3.3-70b-versatile", "llama3-70b-8192");
+    const groqModels = ["llama-3.3-70b-versatile", "llama3-70b-8192"];
 
     for (const model of groqModels) {
       try {
         console.log(`🤖 Tentando Groq: ${model}`);
         const res = await groq.chat.completions.create({
-          model: model,
+          model,
           messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
           response_format: { type: "json_object" },
-          max_tokens: 6000
+          max_tokens: 4000
         });
+        console.log(`✅ Groq (${model}) respondeu com sucesso.`);
         return JSON.parse(res.choices[0].message.content);
       } catch (err) {
-        console.error(`⚠️ Groq (${model}) falhou:`, err.message);
+        const status = err.status || err.response?.status;
+        console.error(`⚠️ Groq (${model}) falhou [${status}]:`, err.message);
         lastError = err;
-        if (err.status !== 429) break;
+        // 413 = payload grande demais, 429 = rate limit — tenta próximo modelo
+        // qualquer outro erro interrompe o loop
+        if (status !== 413 && status !== 429) break;
       }
     }
   }
 
-  // 1.5 TENTATIVA SAMBANOVA
+  // 2. TENTATIVA SAMBANOVA
   if (SAMBANOVA_API_KEY && !imagePath) {
     try {
       console.log("🔥 Tentando SambaNova Cloud (Llama 3.3)...");
-      const res = await axios.post("https://api.sambanova.ai/v1/chat/completions", {
-        model: "Meta-Llama-3.3-70B-Instruct",
-        messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
-        response_format: { type: "json_object" },
-        max_tokens: 4000
-      }, {
-        headers: { "Authorization": `Bearer ${SAMBANOVA_API_KEY}`, "Content-Type": "application/json" }
-      });
+      const res = await axios.post(
+        "https://api.sambanova.ai/v1/chat/completions",
+        {
+          model: "Meta-Llama-3.3-70B-Instruct",
+          messages: [{ role: "system", content: combinedSystem }, { role: "user", content: user }],
+          response_format: { type: "json_object" },
+          max_tokens: 4000
+        },
+        {
+          headers: { "Authorization": `Bearer ${SAMBANOVA_API_KEY}`, "Content-Type": "application/json" },
+          timeout: 60000
+        }
+      );
       const content = res.data.choices[0].message.content;
+      console.log("✅ SambaNova respondeu com sucesso.");
       return typeof content === "string" ? JSON.parse(content) : content;
     } catch (err) {
-      console.error("⚠️ SambaNova falhou:", err.response?.data?.error?.message || err.message);
+      const status = err.response?.status;
+      const detail = err.response?.data?.error?.message || err.message;
+      console.error(`⚠️ SambaNova falhou [${status}]: ${detail}`);
       lastError = err;
     }
   }
 
-  // 2. TENTATIVA GEMINI (Fallback Final ou Visão)
+  // 3. FALLBACK GEMINI (também cobre imagePath)
   if (!gemini) {
-    const errorMsg = lastError?.status === 429 ? "Limite de Uso do Groq atingido. Configure o Gemini no Render." : `IA Offline. Erro: ${lastError?.message || "Chave ausente"}`;
-    throw new Error(errorMsg);
+    const isRate = lastError?.status === 429 || lastError?.response?.status === 429;
+    throw new Error(isRate
+      ? "Limite de uso Groq/SambaNova atingido. Configure GEMINI_API_KEY no Render."
+      : `IA Offline. Último erro: ${lastError?.message || "Chave ausente"}`
+    );
   }
 
   try {
-    const modelName = imagePath ? "gemini-2.5-flash" : "gemini-2.5-flash";
+    const modelName = "gemini-2.5-flash";
     console.log(`🚀 Tentando Fallback Gemini (${modelName})...`);
 
     const model = gemini.getGenerativeModel({
@@ -285,11 +299,12 @@ async function callAI({ system, user, imagePath, username }) {
       console.error("❌ Resposta Gemini não é JSON válido:", text.substring(0, 200));
       throw new Error("Falha no parse JSON da Gemini.");
     }
+    console.log("✅ Gemini respondeu com sucesso.");
     return parsed;
   } catch (err) {
     const isRateLimit = err.message?.includes("429") || err.status === 429;
     const finalMsg = isRateLimit ? "Limite de cota Gemini atingido." : (err.message || "Erro desconhecido");
-    throw new Error(`Falha Crítica IA 2026: ${finalMsg}. Verifique suas chaves no Render.`);
+    throw new Error(`Falha Crítica IA: ${finalMsg}. Verifique suas chaves no Render.`);
   }
 }
 
