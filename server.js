@@ -25,7 +25,6 @@ const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 const SAMBANOVA_API_KEY = (process.env.SAMBANOVA_API_KEY || "").trim();
 const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).filter(Boolean);
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
-// Senha de acesso ao app (define APP_PASSWORD no Render; se vazio, sem proteção)
 const APP_PASSWORD = (process.env.APP_PASSWORD || "").trim();
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
@@ -97,24 +96,25 @@ async function getClientMemory(username) {
 const PUBLIC_TMP_DIR = path.join(__dirname, "public", "tmp");
 if (!fs.existsSync(PUBLIC_TMP_DIR)) fs.mkdirSync(PUBLIC_TMP_DIR, { recursive: true });
 
-// Limpeza automática de screenshots antigos (> 2 horas)
+// [MELHORIA 5] Limpeza robusta: erros por arquivo não param o processo
 function cleanTmpDir() {
   try {
     const files = fs.readdirSync(PUBLIC_TMP_DIR);
     const cutoff = Date.now() - 2 * 60 * 60 * 1000;
     let removed = 0;
     for (const f of files) {
-      const fp = path.join(PUBLIC_TMP_DIR, f);
-      const stat = fs.statSync(fp);
-      if (stat.mtimeMs < cutoff) { fs.unlinkSync(fp); removed++; }
+      try {
+        const fp = path.join(PUBLIC_TMP_DIR, f);
+        if (fs.statSync(fp).mtimeMs < cutoff) { fs.unlinkSync(fp); removed++; }
+      } catch (_) {}
     }
     if (removed > 0) log.info(`🧹 Limpeza tmp: ${removed} arquivo(s) removido(s).`);
   } catch (e) {
     log.warn("Erro na limpeza tmp:", e.message);
   }
 }
-setInterval(cleanTmpDir, 30 * 60 * 1000); // roda a cada 30 min
-cleanTmpDir(); // roda no boot
+setInterval(cleanTmpDir, 30 * 60 * 1000);
+cleanTmpDir();
 
 app.set("trust proxy", 1);
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -126,7 +126,6 @@ app.get("/app", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "app.html"));
 });
 
-// Session: usa MongoDB se disponível, senão MemoryStore como fallback
 const sessionStore = MONGODB_URI
   ? MongoStore.create({ mongoUrl: MONGODB_URI, ttl: 60 * 60 * 24, touchAfter: 3600 })
   : new MemoryStore({ checkPeriod: 86400000 });
@@ -150,9 +149,8 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: "Não autenticado. Faça login primeiro." });
 }
 
-// Proteção por senha do app (opcional)
 app.post("/api/app-login", (req, res) => {
-  if (!APP_PASSWORD) return res.json({ success: true }); // sem senha configurada, libera
+  if (!APP_PASSWORD) return res.json({ success: true });
   const { password } = req.body;
   if (password === APP_PASSWORD) {
     req.session.app_unlocked = true;
@@ -167,7 +165,7 @@ function requireAppPassword(req, res, next) {
   return res.status(401).json({ error: "App bloqueado. Informe a senha de acesso." });
 }
 
-// --- SINGLETON BROWSER ---
+// [MELHORIA 1] Singleton Browser com recuperação de crash
 let _browser = null;
 async function getBrowser() {
   try {
@@ -229,7 +227,6 @@ function safeJsonParse(text) {
   }
 }
 
-// Trunca string mantendo no máximo N caracteres
 function truncate(str, max = 300) {
   if (!str) return "";
   return str.length > max ? str.substring(0, max) + "..." : str;
@@ -284,7 +281,6 @@ async function callAI({ system, user, imagePath, username }) {
 
   log.info(`🧠 Chamada IA | [Groq:${!!groq}] [SambaNova:${!!SAMBANOVA_API_KEY}] [Gemini:${!!gemini}] | ~${estimatedTokens} tokens`);
 
-  // Wrapper com timeout para qualquer Promise de IA
   const withTimeout = (promise, ms, label) =>
     Promise.race([
       promise,
@@ -293,7 +289,7 @@ async function callAI({ system, user, imagePath, username }) {
       )
     ]);
 
-  // 1. GROQ — modelos com limite suficiente para o Platinum prompt
+  // 1. GROQ
   if (groq && !imagePath) {
     for (const model of ["llama-3.3-70b-versatile", "llama3-70b-8192"]) {
       try {
@@ -352,7 +348,7 @@ async function callAI({ system, user, imagePath, username }) {
     }
   }
 
-  // 3. GEMINI (fallback final + visão)
+  // 3. GEMINI — [MELHORIA 4] usa gemini-1.5-flash como GA estável
   if (!gemini) {
     const isRate = lastError?.status === 429 || lastError?.response?.status === 429;
     throw new Error(isRate
@@ -362,9 +358,9 @@ async function callAI({ system, user, imagePath, username }) {
   }
 
   try {
-    log.info("🚀 Tentando Gemini (gemini-2.5-flash)...");
+    log.info("🚀 Tentando Gemini (gemini-1.5-flash)...");
     const model = gemini.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
@@ -392,10 +388,16 @@ async function callAI({ system, user, imagePath, username }) {
 }
 
 // ==========================================
+// [MELHORIA 7] CACHE DE DASHBOARD (TTL 5 min)
+// ==========================================
+const dashCache = new Map();
+const DASH_CACHE_TTL = 5 * 60 * 1000;
+
+// ==========================================
 // ROTAS DA API
 // ==========================================
 
-// Auth Instagram
+// [MELHORIA 2] Auth: não guarda ig_token na sessão — guarda apenas igId + username
 app.post("/api/auth", requireAppPassword, async (req, res) => {
   try {
     const accounts = [];
@@ -412,8 +414,8 @@ app.post("/api/auth", requireAppPassword, async (req, res) => {
             accounts.push({
               ...p.instagram_business_account,
               name: p.instagram_business_account.name || p.name,
-              ig_token: token,
               is_business: true
+              // ig_token NÃO vai para sessão — resolvido na hora via IG_TOKENS
             });
             await getClientMemory(p.instagram_business_account.username);
           }
@@ -423,20 +425,41 @@ app.post("/api/auth", requireAppPassword, async (req, res) => {
           const r = await axios.get("https://graph.instagram.com/v21.0/me", {
             params: { fields: "id,name,username,followers_count,media_count,biography", access_token: token }
           });
-          accounts.push({ ...r.data, ig_token: token, is_business: false });
+          accounts.push({ ...r.data, is_business: false });
           await getClientMemory(r.data.username);
         } catch (err) { }
       }
     }
     req.session.logged = true;
+    // Sessão guarda apenas metadados públicos (sem tokens)
     req.session.accounts = accounts;
     res.json({ success: true, accounts });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Helper interno: resolve token pelo igId sem expô-lo na sessão
+async function resolveToken(igId) {
+  for (const token of IG_TOKENS) {
+    try {
+      const r = await axios.get("https://graph.facebook.com/v21.0/me/accounts", {
+        params: { fields: "instagram_business_account{id}", access_token: token }
+      });
+      const found = (r.data.data || []).find(p => p.instagram_business_account?.id === igId);
+      if (found) return token;
+    } catch (_) { }
+    try {
+      const r = await axios.get("https://graph.instagram.com/v21.0/me", {
+        params: { fields: "id", access_token: token }
+      });
+      if (r.data.id === igId) return token;
+    } catch (_) { }
+  }
+  return null;
+}
+
 app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
 app.get("/api/auth/logout", (req, res) => { req.session.destroy(); res.json({ success: true }); });
-app.get("/api/version", (req, res) => res.json({ version: "2026.04-Ideale-v3.1-Platinum" }));
+app.get("/api/version", (req, res) => res.json({ version: "2026.04-Ideale-v3.2-Platinum" }));
 
 app.get("/api/debug-status", (req, res) => {
   const recentFbCalls = fbCallTimestamps.filter(t => Date.now() - t < FB_WINDOW_MS).length;
@@ -451,6 +474,7 @@ app.get("/api/debug-status", (req, res) => {
     tokens: IG_TOKENS.length,
     fb_calls_recent: recentFbCalls,
     fb_throttle_active: recentFbCalls >= FB_MAX_CALLS_PER_MIN,
+    dash_cache_entries: dashCache.size,
     timestamp: new Date()
   });
 });
@@ -480,16 +504,30 @@ app.get("/api/identity/:username", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// [MELHORIA 3] Dashboard: valida ownership + [MELHORIA 7] cache TTL 5min
 app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
-  const acc = (req.session.accounts || []).find(a => a.id === req.params.igId);
-  if (!acc) return res.status(404).send();
+  const igId = req.params.igId;
+  // Valida que o igId pertence à sessão do usuário logado
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(403).json({ error: "Acesso negado." });
+
+  // Cache hit
+  const cached = dashCache.get(igId);
+  if (cached && Date.now() - cached.ts < DASH_CACHE_TTL) {
+    log.info(`📦 Dashboard cache hit: ${igId}`);
+    return res.json(cached.data);
+  }
+
   try {
+    const token = await resolveToken(igId);
+    if (!token) return res.status(401).json({ error: "Token não encontrado para esta conta." });
+
     const r = await callFbApiWithRetry(() =>
-      axios.get(`https://graph.facebook.com/v21.0/${acc.id}/media`, {
+      axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
         params: {
           fields: "id,caption,media_type,like_count,comments_count,timestamp,insights.metric(reach,impressions,engagement)",
           limit: 15,
-          access_token: acc.ig_token
+          access_token: token
         }
       })
     );
@@ -502,7 +540,7 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
     }, 0);
     const er = (((likes + comms) / (media.length || 1)) / (acc.followers_count || 1) * 100).toFixed(2);
     const sorted = [...media].sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
-    res.json({
+    const result = {
       metrics: {
         engagement_rate: er,
         avg_likes: Math.round(likes / (media.length || 1)),
@@ -513,31 +551,39 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
       recent_posts: media.slice(0, 10),
       top_posts: sorted.slice(0, 3),
       worst_posts: sorted.slice(-3).reverse()
-    });
+    };
+    dashCache.set(igId, { ts: Date.now(), data: result });
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post("/api/quick-verdict", requireAuth, async (req, res) => {
   const { username, followers, er, igId } = req.body;
+  // [MELHORIA 3] valida ownership
   const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(403).json({ error: "Acesso negado." });
+
   let realInsights = { reach: 0, impressions: 0, cities: "Apurando..." };
   let isReal = false;
 
   if (acc && acc.is_business) {
     try {
-      const [insightRes, audienceRes] = await Promise.all([
-        callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
-          params: { metric: "reach,impressions", period: "day", access_token: acc.ig_token }
-        })),
-        callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
-          params: { metric: "audience_city", period: "lifetime", access_token: acc.ig_token }
-        }))
-      ]);
-      const rVal = insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0;
-      const iVal = insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0;
-      if (rVal > 0) { realInsights.reach = rVal * 30; realInsights.impressions = iVal * 30; isReal = true; }
-      const citiesMap = audienceRes.data.data[0]?.values[0]?.value || {};
-      realInsights.cities = Object.keys(citiesMap).slice(0, 3).join(", ") || "Apurando...";
+      const token = await resolveToken(igId);
+      if (token) {
+        const [insightRes, audienceRes] = await Promise.all([
+          callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+            params: { metric: "reach,impressions", period: "day", access_token: token }
+          })),
+          callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+            params: { metric: "audience_city", period: "lifetime", access_token: token }
+          }))
+        ]);
+        const rVal = insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0;
+        const iVal = insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0;
+        if (rVal > 0) { realInsights.reach = rVal * 30; realInsights.impressions = iVal * 30; isReal = true; }
+        const citiesMap = audienceRes.data.data[0]?.values[0]?.value || {};
+        realInsights.cities = Object.keys(citiesMap).slice(0, 3).join(", ") || "Apurando...";
+      }
     } catch (e) { }
   }
 
@@ -594,8 +640,9 @@ app.post("/api/evaluate-post", requireAuth, async (req, res) => {
 
 app.post("/api/intelligence", requireAuth, async (req, res) => {
   const { igId, niche, audience } = req.body;
+  // [MELHORIA 3] valida ownership
   const acc = (req.session.accounts || []).find(a => a.id === igId);
-  if (!acc) return res.status(404).json({ error: "Account not found" });
+  if (!acc) return res.status(403).json({ error: "Acesso negado." });
 
   const mem = await getClientMemory(acc.username);
   mem.niche = niche; mem.audience = audience;
@@ -603,16 +650,18 @@ app.post("/api/intelligence", requireAuth, async (req, res) => {
 
   let postsContext = "";
   try {
-    const r = await callFbApiWithRetry(() =>
-      axios.get(`https://graph.instagram.com/v21.0/${acc.id}/media`, {
-        params: { fields: "caption,media_type,like_count", limit: 10, access_token: acc.ig_token }
-      })
-    );
-    // Trunca cada legenda em 80 chars para não estourar o token count
-    postsContext = (r.data.data || [])
-      .map(p => `[${p.media_type}] ${truncate(p.caption, 80)}`)
-      .join(' | ')
-      .substring(0, 1500);
+    const token = await resolveToken(igId);
+    if (token) {
+      const r = await callFbApiWithRetry(() =>
+        axios.get(`https://graph.instagram.com/v21.0/${acc.id}/media`, {
+          params: { fields: "caption,media_type,like_count", limit: 10, access_token: token }
+        })
+      );
+      postsContext = (r.data.data || [])
+        .map(p => `[${p.media_type}] ${truncate(p.caption, 80)}`)
+        .join(' | ')
+        .substring(0, 1500);
+    }
   } catch (e) { }
 
   const prompt = `AUDITORIA DIGITAL PLATINUM para @${acc.username}.
@@ -642,7 +691,6 @@ app.post("/api/intelligence", requireAuth, async (req, res) => {
   try {
     const data = await callAI({ system: "Estrategista de Elite. Inale Storytelling e Exale Resultados.", user: prompt });
     mem.saved_diagnostics.push({ date: new Date(), ...data });
-    // Limite de 20 diagnósticos por conta
     if (mem.saved_diagnostics.length > 20) mem.saved_diagnostics.shift();
     await mem.save();
     res.json(data);
@@ -682,10 +730,12 @@ app.post("/api/export-diagnostic", requireAuth, async (req, res) => {
   doc.end();
 });
 
+// [MELHORIA 1] Competitors: try/finally garante reset do _browser em crash
 app.post("/api/competitors", requireAuth, async (req, res) => {
   const { username } = req.body;
   const usernames = username.split(',').map(u => u.trim().replace('@', '')).filter(Boolean).slice(0, 3);
   const browser = await getBrowser();
+  if (!browser) return res.status(500).json({ error: "Navegador indisponível. Tente novamente." });
   const results = [];
   for (const user of usernames) {
     const context = await browser.newContext({
@@ -706,8 +756,15 @@ app.post("/api/competitors", requireAuth, async (req, res) => {
       const vision = await callAI({ system: "Espião de Marketing com visão afiada.", user: prompt, imagePath: fullPath });
       results.push({ username: user, screenshot: `/tmp/${filename}`, analysis: vision || { vibe: "Inconsistente", counter_attack: "Focar em conteúdo autoral." } });
     } catch (e) {
+      log.error(`❌ Erro ao capturar @${user}:`, e.message);
+      // Reset browser em caso de crash
+      try { await context.close(); } catch (_) {}
+      _browser = null;
       results.push({ username: user, screenshot: null, analysis: { vibe: "Erro na captura", counter_attack: "Tentar manualmente." } });
-    } finally { await context.close(); }
+      continue;
+    } finally {
+      try { await context.close(); } catch (_) {}
+    }
   }
   res.json({ results, analysis: "Varredura concluída." });
 });
@@ -751,11 +808,19 @@ app.post("/api/hashtags", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// [MELHORIA 6] Swipe file: trunca campos antes de salvar no MongoDB
 app.post("/api/swipe-file/save", requireAuth, async (req, res) => {
   const { username, entry } = req.body;
   try {
     const mem = await getClientMemory(username);
-    mem.swipe_file.push({ date: new Date(), ...entry });
+    const safeEntry = {
+      date: new Date(),
+      ...entry,
+      caption: truncate(entry.caption || "", 500),
+      notes: truncate(entry.notes || "", 300),
+      screenshot: undefined // nunca persiste base64 no banco
+    };
+    mem.swipe_file.push(safeEntry);
     if (mem.swipe_file.length > 30) mem.swipe_file.shift();
     await mem.save();
     res.json({ success: true, total: mem.swipe_file.length });
@@ -783,10 +848,15 @@ app.post("/api/autofill", requireAuth, async (req, res) => {
   } catch (e) { res.json({ suggestion: `Erro Técnico: ${e.message}` }); }
 });
 
+// [MELHORIA 8] Validação de total de posts (máx 15)
 app.post("/api/generate", requireAuth, async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   if (!acc) return res.status(404).json({ error: "Acct not found" });
+
+  const totalPosts = (Number(reels) || 0) + (Number(carousels) || 0) + (Number(singlePosts) || 0);
+  if (totalPosts > 15) return res.status(400).json({ error: "Total de posts não pode exceder 15 por plano." });
+
   const mem = await getClientMemory(acc.username);
   const prompt = `Crie um Planejamento de Lançamento Eterno (Funil 4 Semanas) para @${acc.username}.
   PERSONA DO CLIENTE: Nicho: ${mem.niche}. Público: ${mem.audience}. Tom: ${tone}.
@@ -800,7 +870,6 @@ app.post("/api/generate", requireAuth, async (req, res) => {
   try {
     const data = await callAI({ system: "Você é um Co-Produtor Sênior de Lançamentos e Estrategista. Apenas JSON válido.", user: prompt, username: acc.username });
     mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
-    // Limite de 15 planners por conta
     if (mem.saved_planners.length > 15) mem.saved_planners.shift();
     await mem.save();
     res.json(data);
@@ -861,6 +930,12 @@ app.post("/api/export-report", requireAuth, (req, res) => {
   doc.end();
 });
 
-app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
+// [MELHORIA 9] Health com status do MongoDB
+app.get("/health", (req, res) => res.json({
+  status: "ok",
+  uptime: process.uptime(),
+  db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+  version: "2026.04-Ideale-v3.2-Platinum"
+}));
 
-app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v3.1 ativo em ${BASE_URL}`));
+app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v3.2 ativo em ${BASE_URL}`));
