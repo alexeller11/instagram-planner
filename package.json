@@ -1,6 +1,6 @@
 {
   "name": "instagram-planner-agency",
-  "version": "8.5.1-agency-pro",
+  "version": "8.6.0-agency-pro",
   "description": "Ferramenta estrat\u00e9gica de Instagram com IA e MongoDB",
   "main": "server.js",
   "engines": {
@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.11.0",
     "axios": "^1.7.2",
+    "connect-mongo": "^5.1.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.0",
