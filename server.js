@@ -19,15 +19,13 @@ const PORT = Number(process.env.PORT || 10000);
 const IS_PROD = process.env.NODE_ENV === "production";
 const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
-const SESSION_SECRET = process.env.SESSION_SECRET; // Removido fallback inseguro "agency-secret-123"const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
+const SESSION_SECRET = process.env.SESSION_SECRET; // Sem fallback inseguroconst GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 const SAMBANOVA_API_KEY = (process.env.SAMBANOVA_API_KEY || "").trim();
 const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).filter(Boolean);
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-
 // ==========================================
 // 1. CONEXÃO COM O MONGODB ATLAS (PERSISTÊNCIA)
 // ==========================================
