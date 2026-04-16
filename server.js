@@ -30,9 +30,6 @@ const APP_PASSWORD = (process.env.APP_PASSWORD || "").trim();
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-// ==========================================
-// LOGGER ESTRUTURADO
-// ==========================================
 const log = {
   info:  (...a) => console.log(`[${new Date().toISOString()}] [INFO]`, ...a),
   warn:  (...a) => console.warn(`[${new Date().toISOString()}] [WARN]`, ...a),
@@ -40,33 +37,20 @@ const log = {
   debug: (...a) => !IS_PROD && console.log(`[${new Date().toISOString()}] [DEBUG]`, ...a),
 };
 
-// ==========================================
-// 1. CONEXÃO COM O MONGODB ATLAS
-// ==========================================
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
-    .then(() => log.info("✅ MongoDB Conectado! Memória Permanente Ativada."))
+    .then(() => log.info("✅ MongoDB Conectado!"))
     .catch(err => log.error("❌ Erro MongoDB:", err));
 }
 
-// ==========================================
-// 2. MODELO DE DADOS DO CLIENTE
-// ==========================================
 const clientSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   niche: { type: String, default: "" },
   audience: { type: String, default: "" },
   location: { type: String, default: "" },
   tone: { type: String, default: "" },
-  forbidden_words: {
-    type: [String],
-    default: ["você sabia", "entenda", "saiba mais", "veja como"]
-  },
-  memory: {
-    what_works: [String],
-    what_doesnt_work: [String],
-    strong_angles: [String]
-  },
+  forbidden_words: { type: [String], default: ["você sabia", "entenda", "saiba mais", "veja como"] },
+  memory: { what_works: [String], what_doesnt_work: [String], strong_angles: [String] },
   evolutionary_dna: {
     preferred_tone: { type: String, default: "" },
     forbidden_styles: [String],
@@ -83,20 +67,13 @@ const Client = mongoose.model('Client', clientSchema);
 
 async function getClientMemory(username) {
   let client = await Client.findOne({ username });
-  if (!client) {
-    client = new Client({ username });
-    await client.save();
-  }
+  if (!client) { client = new Client({ username }); await client.save(); }
   return client;
 }
 
-// ==========================================
-// 3. CONFIGURAÇÕES DO SERVIDOR
-// ==========================================
 const PUBLIC_TMP_DIR = path.join(__dirname, "public", "tmp");
 if (!fs.existsSync(PUBLIC_TMP_DIR)) fs.mkdirSync(PUBLIC_TMP_DIR, { recursive: true });
 
-// [MELHORIA 5] Limpeza robusta: erros por arquivo não param o processo
 function cleanTmpDir() {
   try {
     const files = fs.readdirSync(PUBLIC_TMP_DIR);
@@ -109,9 +86,7 @@ function cleanTmpDir() {
       } catch (_) {}
     }
     if (removed > 0) log.info(`🧹 Limpeza tmp: ${removed} arquivo(s) removido(s).`);
-  } catch (e) {
-    log.warn("Erro na limpeza tmp:", e.message);
-  }
+  } catch (e) { log.warn("Erro na limpeza tmp:", e.message); }
 }
 setInterval(cleanTmpDir, 30 * 60 * 1000);
 cleanTmpDir();
@@ -122,15 +97,13 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/tmp", express.static(PUBLIC_TMP_DIR));
 
-app.get("/app", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "app.html"));
-});
+app.get("/app", (req, res) => res.sendFile(path.join(__dirname, "public", "app.html")));
 
 const sessionStore = MONGODB_URI
   ? MongoStore.create({ mongoUrl: MONGODB_URI, ttl: 60 * 60 * 24, touchAfter: 3600 })
   : new MemoryStore({ checkPeriod: 86400000 });
 
-if (!MONGODB_URI) log.warn("⚠️  MONGODB_URI não definida — sessões em memória (perdidas no restart).");
+if (!MONGODB_URI) log.warn("⚠️  MONGODB_URI não definida — sessões em memória.");
 
 app.use(session({
   name: "planner.sid",
@@ -141,9 +114,6 @@ app.use(session({
   cookie: { httpOnly: true, secure: IS_PROD, maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// ==========================================
-// MIDDLEWARE DE AUTENTICAÇÃO
-// ==========================================
 function requireAuth(req, res, next) {
   if (req.session?.logged) return next();
   return res.status(401).json({ error: "Não autenticado. Faça login primeiro." });
@@ -152,10 +122,7 @@ function requireAuth(req, res, next) {
 app.post("/api/app-login", (req, res) => {
   if (!APP_PASSWORD) return res.json({ success: true });
   const { password } = req.body;
-  if (password === APP_PASSWORD) {
-    req.session.app_unlocked = true;
-    return res.json({ success: true });
-  }
+  if (password === APP_PASSWORD) { req.session.app_unlocked = true; return res.json({ success: true }); }
   return res.status(401).json({ error: "Senha incorreta." });
 });
 
@@ -165,7 +132,6 @@ function requireAppPassword(req, res, next) {
   return res.status(401).json({ error: "App bloqueado. Informe a senha de acesso." });
 }
 
-// [MELHORIA 1] Singleton Browser com recuperação de crash
 let _browser = null;
 async function getBrowser() {
   try {
@@ -175,16 +141,10 @@ async function getBrowser() {
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--single-process"]
       });
     }
-  } catch (err) {
-    log.error("❌ Falha ao iniciar Browser:", err.message);
-    _browser = null;
-  }
+  } catch (err) { log.error("❌ Falha ao iniciar Browser:", err.message); _browser = null; }
   return _browser;
 }
 
-// ==========================================
-// 🛡️ FACEBOOK GRAPH API — RATE LIMIT
-// ==========================================
 const fbCallTimestamps = [];
 const FB_WINDOW_MS = 60 * 1000;
 const FB_MAX_CALLS_PER_MIN = 50;
@@ -193,8 +153,7 @@ async function callFbApiWithRetry(fn, maxRetries = 3) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const now = Date.now();
-      while (fbCallTimestamps.length > 0 && now - fbCallTimestamps[0] > FB_WINDOW_MS)
-        fbCallTimestamps.shift();
+      while (fbCallTimestamps.length > 0 && now - fbCallTimestamps[0] > FB_WINDOW_MS) fbCallTimestamps.shift();
       if (fbCallTimestamps.length >= FB_MAX_CALLS_PER_MIN) {
         const waitMs = FB_WINDOW_MS - (now - fbCallTimestamps[0]) + 200;
         log.warn(`⏳ FB Rate Limit preventivo. Aguardando ${Math.round(waitMs / 1000)}s...`);
@@ -214,17 +173,13 @@ async function callFbApiWithRetry(fn, maxRetries = 3) {
   }
 }
 
-// --- UTILITÁRIOS ---
 function safeJsonParse(text) {
   try {
     const cleaned = text.trim().replace(/^```json/i, "").replace(/```$/i, "").trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     return JSON.parse(cleaned);
-  } catch (e) {
-    log.error("Falha no Parse JSON IA:", e.message);
-    return null;
-  }
+  } catch (e) { log.error("Falha no Parse JSON IA:", e.message); return null; }
 }
 
 function truncate(str, max = 300) {
@@ -237,19 +192,39 @@ function truncate(str, max = 300) {
 // ==========================================
 const SYSTEM_PROMPTS = {
   PLATINUM_CORE: `VOCÊ É O ESTRATEGISTA-CHEFE DE UMA AGÊNCIA DE MARKETING BOUTIQUE (Diretor de Criação Sênior).
-  PERFIL: Analítico, denso, provocativo e focado em lucro/conversão.
-  FILTRO 2026:
-  - VETO TOTAL DE CLICHÊS: Absolutamente proibido: "você sabia", "atualmente", "nos dias de hoje", "não perca tempo", "descubra como".
-  - TOM DE VOZ: Minimalista, sofisticado e "Premium". Use frases curtas de impacto mescladas com parágrafos densos de puro valor.
-  - ESTRATÉGIA SILENCIOSA: Cada peça deve quebrar uma objeção ou elevar o status do cliente.
-  - HUMANIZAÇÃO: Não fale sobre o "produto", fale sobre a "transformação ou o medo de ficar para trás".`,
+PERFIL: Analítico, denso, provocativo e focado em lucro/conversão.
+FILTRO 2026:
+- VETO TOTAL DE CLICHÊS: Absolutamente proibido usar: "você sabia", "atualmente", "nos dias de hoje", "não perca tempo", "descubra como", "incrível", "essencial", "transforme sua vida".
+- TOM DE VOZ: Minimalista, sofisticado e Premium. Frases curtas de impacto + parágrafos densos de valor real.
+- ESTRATÉGIA SILENCIOSA: Cada peça quebra uma objeção ou eleva o status do cliente.
+- HUMANIZAÇÃO: Fale sobre TRANSFORMAÇÃO e MEDO DE FICAR PARA TRÁS, não sobre produto.`,
+
   VISION: "Analise estética, cores e autoridade visual. Dê conselhos agressivos e táticos de melhoria como um Diretor de Arte Sênior.",
+
   COPYWRITER: `Copywriter Sênior focada em Conversão Inevitável.
-  MÉTODO:
-  1. Gancho: Inicie com uma afirmação contraintuitiva ou uma pergunta que exponha uma ferida.
-  2. Desenvolvimento: Use Storytelling denso. Não descreva, faça sentir.
-  3. Estilo Visual: Use emojis de forma minimalista (máximo 3 por post), apenas para pontuar. Use espaçamento generoso para facilitar a leitura.
-  4. CTA: Chamada direta para o "Próximo Nível", nada de "comente azul".`
+MÉTODO:
+1. Gancho: Afirmação contraintuitiva ou pergunta que expõe uma ferida real.
+2. Desenvolvimento: Storytelling denso com fatos, números e imagens mentais. Não descreva, faça sentir.
+3. Estilo Visual: Use espaçamento generoso. Emojis ZERO ou máximo 2 por post, apenas para pontuar.
+4. CTA: Chamada direta para o 'Próximo Nível'. Proibido 'comente azul' ou CTAs genéricos.`,
+
+  PLANNER_CORE: `VOCÊ É O CO-PRODUTOR SÊNIOR DE LANÇAMENTOS DA IDEALE AGENCY.
+SUA MISSÃO: Criar roteiros e legendas que param o scroll, geram salvamentos e convertem.
+
+REGRAS ABSOLUTAS DE COPY:
+- Cada post começa com um GANCHO de 2 a 3 segundos que gera curiosidade, choque ou identificação imediata.
+- O roteiro/telas deve ter NO MÍNIMO 4 partes distintas: Gancho → Desenvolvimento (2-3 partes com informação real/história) → CTA de transbordamento.
+- A legenda deve ter: 1 frase de abertura impactante + corpo com quebra de linha a cada 2 frases + CTA final único.
+- PROIBIDO: posts genéricos, listas óbvias, adjetivos vazios, estrutura idêntica entre posts.
+- OBRIGATÓRIO: cada post usa um gatilho mental diferente (Polêmica, Prova Social, Escassez, Identificação, Autoridade, Curiosidade, Medo de Ficar Para Trás).
+- O script_or_slides deve ter entre 4 e 7 itens DETALHADOS — cada item com no mínimo 20 palavras descrevendo exatamente o que dizer ou mostrar.
+- A legenda deve ter entre 80 e 200 palavras, com espaçamento visual entre blocos.
+
+ESTRUTURA DO FUNIL 4 SEMANAS:
+- Semana 1 (Atenção): Gerar curiosidade intensa. O cliente ainda não sabe que precisa de você.
+- Semana 2 (Prova de Inteligência): Conteúdo que faz o seguidor se sentir mais inteligente ao consumir. Ele salva e manda para alguém.
+- Semana 3 (Humanização/Emoção): História real, falha, aprendizado. O cliente se enxerga no conteúdo.
+- Semana 4 (Proposta/CTA): A oferta chega de forma natural, o seguidor já confia. CTA de alta conversão.`
 };
 
 // ==========================================
@@ -284,9 +259,7 @@ async function callAI({ system, user, imagePath, username }) {
   const withTimeout = (promise, ms, label) =>
     Promise.race([
       promise,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout (${ms / 1000}s) em ${label}`)), ms)
-      )
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout (${ms / 1000}s) em ${label}`)), ms))
     ]);
 
   // 1. GROQ
@@ -348,7 +321,7 @@ async function callAI({ system, user, imagePath, username }) {
     }
   }
 
-  // 3. GEMINI — [MELHORIA 4] usa gemini-1.5-flash como GA estável
+  // 3. GEMINI
   if (!gemini) {
     const isRate = lastError?.status === 429 || lastError?.response?.status === 429;
     throw new Error(isRate
@@ -368,13 +341,11 @@ async function callAI({ system, user, imagePath, username }) {
         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
       ]
     });
-
     const parts = [`${combinedSystem}\n\nResponda ESTRITAMENTE em formato JSON. Não use Markdown.\n\n${user}`];
     if (imagePath && fs.existsSync(imagePath)) {
       const imageData = fs.readFileSync(imagePath);
       parts.push({ inlineData: { data: imageData.toString("base64"), mimeType: "image/png" } });
     }
-
     const result = await withTimeout(model.generateContent(parts), 60000, "Gemini");
     const text = result.response.text();
     const parsed = safeJsonParse(text);
@@ -383,21 +354,16 @@ async function callAI({ system, user, imagePath, username }) {
     return parsed;
   } catch (err) {
     const isRateLimit = err.message?.includes("429") || err.status === 429;
-    throw new Error(`Falha Crítica IA: ${isRateLimit ? "Cota Gemini esgotada." : err.message} Verifique suas chaves no Render.`);
+    throw new Error(`Falha Crítica IA: ${isRateLimit ? "Cota Gemini esgotada." : err.message}`);
   }
 }
 
-// ==========================================
-// [MELHORIA 7] CACHE DE DASHBOARD (TTL 5 min)
-// ==========================================
 const dashCache = new Map();
 const DASH_CACHE_TTL = 5 * 60 * 1000;
 
 // ==========================================
 // ROTAS DA API
 // ==========================================
-
-// [MELHORIA 2] Auth: não guarda ig_token na sessão — guarda apenas igId + username
 app.post("/api/auth", requireAppPassword, async (req, res) => {
   try {
     const accounts = [];
@@ -411,12 +377,7 @@ app.post("/api/auth", requireAppPassword, async (req, res) => {
         const pages = pagesRes.data.data || [];
         for (const p of pages) {
           if (p.instagram_business_account) {
-            accounts.push({
-              ...p.instagram_business_account,
-              name: p.instagram_business_account.name || p.name,
-              is_business: true
-              // ig_token NÃO vai para sessão — resolvido na hora via IG_TOKENS
-            });
+            accounts.push({ ...p.instagram_business_account, name: p.instagram_business_account.name || p.name, is_business: true });
             await getClientMemory(p.instagram_business_account.username);
           }
         }
@@ -431,13 +392,11 @@ app.post("/api/auth", requireAppPassword, async (req, res) => {
       }
     }
     req.session.logged = true;
-    // Sessão guarda apenas metadados públicos (sem tokens)
     req.session.accounts = accounts;
     res.json({ success: true, accounts });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Helper interno: resolve token pelo igId sem expô-lo na sessão
 async function resolveToken(igId) {
   for (const token of IG_TOKENS) {
     try {
@@ -459,15 +418,13 @@ async function resolveToken(igId) {
 
 app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
 app.get("/api/auth/logout", (req, res) => { req.session.destroy(); res.json({ success: true }); });
-app.get("/api/version", (req, res) => res.json({ version: "2026.04-Ideale-v3.2-Platinum" }));
+app.get("/api/version", (req, res) => res.json({ version: "2026.04-Ideale-v3.3-Platinum" }));
 
 app.get("/api/debug-status", (req, res) => {
   const recentFbCalls = fbCallTimestamps.filter(t => Date.now() - t < FB_WINDOW_MS).length;
   res.json({
     env: process.env.NODE_ENV || "development",
-    groq: !!GROQ_API_KEY,
-    gemini: !!GEMINI_API_KEY,
-    sambanova: !!SAMBANOVA_API_KEY,
+    groq: !!GROQ_API_KEY, gemini: !!GEMINI_API_KEY, sambanova: !!SAMBANOVA_API_KEY,
     mongodb: mongoose.connection.readyState === 1,
     session_store: MONGODB_URI ? "mongodb" : "memory",
     app_password_set: !!APP_PASSWORD,
@@ -504,14 +461,14 @@ app.get("/api/identity/:username", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// [MELHORIA 3] Dashboard: valida ownership + [MELHORIA 7] cache TTL 5min
+// ==========================================
+// DASHBOARD — resiliente: nunca quebra por falta de permissão da Graph API
+// ==========================================
 app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
   const igId = req.params.igId;
-  // Valida que o igId pertence à sessão do usuário logado
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   if (!acc) return res.status(403).json({ error: "Acesso negado." });
 
-  // Cache hit
   const cached = dashCache.get(igId);
   if (cached && Date.now() - cached.ts < DASH_CACHE_TTL) {
     log.info(`📦 Dashboard cache hit: ${igId}`);
@@ -522,30 +479,51 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
     const token = await resolveToken(igId);
     if (!token) return res.status(401).json({ error: "Token não encontrado para esta conta." });
 
-    const r = await callFbApiWithRetry(() =>
-      axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
-        params: {
-          fields: "id,caption,media_type,like_count,comments_count,timestamp,insights.metric(reach,impressions,engagement)",
-          limit: 15,
-          access_token: token
-        }
-      })
-    );
-    const media = r.data.data || [];
+    let media = [];
+    try {
+      const r = await callFbApiWithRetry(() =>
+        axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
+          params: {
+            fields: "id,caption,media_type,like_count,comments_count,timestamp,insights.metric(reach,impressions,engagement)",
+            limit: 15,
+            access_token: token
+          }
+        })
+      );
+      media = r.data.data || [];
+    } catch (mediaErr) {
+      log.warn(`⚠️ Falha ao buscar media insights detalhados (${mediaErr.message}). Tentando fallback básico...`);
+      // Fallback: busca sem insights (funciona em contas pessoais/básicas)
+      try {
+        const r2 = await callFbApiWithRetry(() =>
+          axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
+            params: { fields: "id,caption,media_type,like_count,comments_count,timestamp", limit: 15, access_token: token }
+          })
+        );
+        media = r2.data.data || [];
+      } catch (fallbackErr) {
+        log.error(`❌ Fallback de media também falhou: ${fallbackErr.message}`);
+      }
+    }
+
     const likes = media.reduce((a, b) => a + (b.like_count || 0), 0);
     const comms = media.reduce((a, b) => a + (b.comments_count || 0), 0);
     const totalReach = media.reduce((a, b) => {
-      const reachVal = b.insights?.data?.find(m => m.name === 'reach')?.values[0]?.value || 0;
+      const reachVal = b.insights?.data?.find(m => m.name === 'reach')?.values?.[0]?.value || 0;
       return a + reachVal;
     }, 0);
-    const er = (((likes + comms) / (media.length || 1)) / (acc.followers_count || 1) * 100).toFixed(2);
+    const er = media.length > 0
+      ? (((likes + comms) / media.length) / (acc.followers_count || 1) * 100).toFixed(2)
+      : "0.00";
     const sorted = [...media].sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
+
     const result = {
       metrics: {
         engagement_rate: er,
-        avg_likes: Math.round(likes / (media.length || 1)),
-        avg_comments: Math.round(comms / (media.length || 1)),
-        total_reach_recent: totalReach
+        avg_likes: media.length ? Math.round(likes / media.length) : 0,
+        avg_comments: media.length ? Math.round(comms / media.length) : 0,
+        total_reach_recent: totalReach,
+        posts_analyzed: media.length
       },
       format_mix: media.reduce((acc, m) => { acc[m.media_type] = (acc[m.media_type] || 0) + 1; return acc; }, {}),
       recent_posts: media.slice(0, 10),
@@ -554,80 +532,120 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
     };
     dashCache.set(igId, { ts: Date.now(), data: result });
     res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    log.error("❌ Erro /api/dashboard:", e.message);
+    // Retorna dados zerados mas sem quebrar o front
+    res.json({
+      metrics: { engagement_rate: "0.00", avg_likes: 0, avg_comments: 0, total_reach_recent: 0, posts_analyzed: 0 },
+      format_mix: {},
+      recent_posts: [],
+      top_posts: [],
+      worst_posts: [],
+      _warning: e.message
+    });
+  }
 });
 
+// ==========================================
+// QUICK VERDICT — resiliente para contas pessoais
+// ==========================================
 app.post("/api/quick-verdict", requireAuth, async (req, res) => {
   const { username, followers, er, igId } = req.body;
-  // [MELHORIA 3] valida ownership
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   if (!acc) return res.status(403).json({ error: "Acesso negado." });
 
-  let realInsights = { reach: 0, impressions: 0, cities: "Apurando..." };
+  let realInsights = { reach: 0, impressions: 0, cities: "Brasil (Principal)" };
   let isReal = false;
 
   if (acc && acc.is_business) {
     try {
       const token = await resolveToken(igId);
       if (token) {
-        const [insightRes, audienceRes] = await Promise.all([
-          callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+        // Busca insights de alcance separadamente para não quebrar tudo
+        try {
+          const insightRes = await callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
             params: { metric: "reach,impressions", period: "day", access_token: token }
-          })),
-          callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
+          }));
+          const rVal = insightRes.data.data.find(m => m.name === 'reach')?.values.slice(-1)[0]?.value || 0;
+          const iVal = insightRes.data.data.find(m => m.name === 'impressions')?.values.slice(-1)[0]?.value || 0;
+          if (rVal > 0) { realInsights.reach = rVal * 30; realInsights.impressions = iVal * 30; isReal = true; }
+        } catch (insErr) { log.warn(`⚠️ Insights reach/impressions indisponíveis: ${insErr.message}`); }
+
+        // Busca cidades separadamente — falha silenciosa
+        try {
+          const audienceRes = await callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
             params: { metric: "audience_city", period: "lifetime", access_token: token }
-          }))
-        ]);
-        const rVal = insightRes.data.data.find(m => m.name === 'reach')?.values.reverse()[0]?.value || 0;
-        const iVal = insightRes.data.data.find(m => m.name === 'impressions')?.values.reverse()[0]?.value || 0;
-        if (rVal > 0) { realInsights.reach = rVal * 30; realInsights.impressions = iVal * 30; isReal = true; }
-        const citiesMap = audienceRes.data.data[0]?.values[0]?.value || {};
-        realInsights.cities = Object.keys(citiesMap).slice(0, 3).join(", ") || "Apurando...";
+          }));
+          const citiesMap = audienceRes.data.data?.[0]?.values?.[0]?.value || {};
+          const topCities = Object.keys(citiesMap).slice(0, 3).join(", ");
+          if (topCities) realInsights.cities = topCities;
+        } catch (citErr) { log.warn(`⚠️ Cidades indisponíveis (permissão): ${citErr.message}`); }
       }
-    } catch (e) { }
+    } catch (e) { log.warn("⚠️ Erro geral quick-verdict insights:", e.message); }
   }
 
-  if (!isReal) {
-    realInsights.reach = Math.round(followers * (er / 10) * 1.5) || 150;
+  // Estimativa preditiva quando não tem dados reais
+  if (!isReal || realInsights.reach === 0) {
+    realInsights.reach = Math.round((followers || 100) * ((parseFloat(er) || 1) / 10) * 1.5);
     realInsights.impressions = Math.round(realInsights.reach * 1.8);
   }
 
   const prompt = `AUDITORIA MÉTRICA PLATINUM para @${username}.
-  Seguidores: ${followers}. ER: ${er}%.
-  STATUS: ${isReal ? 'DADOS REAIS' : 'ESTIMATIVA PREDITIVA IDEALE'}.
-  Crie um Veredito EXPERT (Humanizado, Direto, Mentoriano). MÁX 3 frases.
-  Determine o 'Health Status' (Pico de Tração, Estável, Alerta de Queda ou Em Maturação).
-  RETORNE JSON: { "verdict": "...", "demographics": { "cities": "...", "gender": "...", "time": "..." }, "health_status": "..." }`;
+Seguidores: ${followers}. Taxa de Engajamento: ${er}%.
+STATUS: ${isReal ? 'DADOS REAIS DA API' : 'ESTIMATIVA PREDITIVA IDEALE'}.
+
+MISSÃO: Gere um Veredito EXPERT — humanizado, direto e mentoriano. Máximo 3 frases densas.
+Determine o 'Health Status' (uma das opções: Pico de Tração | Em Maturação | Estável | Alerta de Queda).
+Na seção demographics, dê a melhor leitura possível mesmo sem dados reais.
+
+RETORNE JSON:
+{
+  "verdict": "Veredito de 2-3 frases densas e específicas...",
+  "demographics": {
+    "cities": "${realInsights.cities}",
+    "gender": "Estimado com base no nicho",
+    "time": "Melhor horário estimado (ex: 19h-21h)"
+  },
+  "health_status": "..."
+}`;
 
   try {
-    const data = await callAI({ system: "Estrategista de Dados Premium. Fale como um consultor humano.", user: prompt });
+    const data = await callAI({ system: "Estrategista de Dados Premium. Fale como um consultor humano sênior. Sem clichês.", user: prompt });
     res.json({
-      verdict: data.verdict,
+      verdict: data.verdict || "Conta em análise. Execute o Diagnóstico Avançado para leitura completa.",
       demographics: {
-        cities: realInsights.cities !== "Apurando..." ? realInsights.cities : (data.demographics?.cities || "Brasil (Estimado)"),
+        cities: realInsights.cities,
         gender: data.demographics?.gender || "Misto",
-        time: data.demographics?.time || "18h-21h"
+        time: data.demographics?.time || "19h-21h"
       },
-      health_status: data.health_status || (er > 3 ? "Pico de Tração" : "Estável"),
+      health_status: data.health_status || (parseFloat(er) > 3 ? "Pico de Tração" : "Estável"),
       real_metrics: realInsights,
       is_real: isReal
     });
   } catch (e) {
-    res.json({ verdict: "Análise Preditiva: Sua conta está em fase de aquecimento de base. Focar em retenção.", demographics: { cities: "Brasil", gender: "Misto", time: "19h" }, real_metrics: realInsights, is_real: isReal });
+    // Fallback total — nunca deixa o dashboard quebrado
+    res.json({
+      verdict: "Análise Preditiva: Conta em fase de aquecimento de base. Focar em retenção e consistência de postagem.",
+      demographics: { cities: realInsights.cities, gender: "Misto", time: "19h" },
+      health_status: parseFloat(er) > 3 ? "Pico de Tração" : "Estável",
+      real_metrics: realInsights,
+      is_real: isReal
+    });
   }
 });
 
 app.post("/api/evaluate-post", requireAuth, async (req, res) => {
   const { theme, script_or_slides, caption, username } = req.body;
   const prompt = `AVALIE ESTE POST:
-  Tema: ${theme}.
-  Roteiro/Estrutura: ${JSON.stringify(script_or_slides)}.
-  Legenda: ${caption}.
-  Dê nota de 0 a 10 e analise Hook (Gancho), Body (Corpo) e CTA (Chamada).
-  FORNEÇA UM REFINAMENTO DA LEGENDA PARA MAXIMIZAR O ALGORITMO.
-  Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta": "..." }, "refined_caption": "..." }`;
+Tema: ${theme}.
+Roteiro/Estrutura: ${JSON.stringify(script_or_slides)}.
+Legenda: ${caption}.
+
+Dê nota de 0 a 10 e analise Hook (Gancho), Body (Corpo) e CTA (Chamada).
+FORNEÇA UM REFINAMENTO DA LEGENDA com mais impacto, espaçamento visual e SEO 2026.
+Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta": "..." }, "refined_caption": "..." }`;
   try {
-    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance.", user: prompt, username });
+    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance e Retenção de Audiência.", user: prompt, username });
     if (username && data.score >= 8) {
       const mem = await getClientMemory(username);
       mem.evolutionary_dna.top_successes.push({ subject: theme, content: caption, rating: data.score, date: new Date() });
@@ -640,7 +658,6 @@ app.post("/api/evaluate-post", requireAuth, async (req, res) => {
 
 app.post("/api/intelligence", requireAuth, async (req, res) => {
   const { igId, niche, audience } = req.body;
-  // [MELHORIA 3] valida ownership
   const acc = (req.session.accounts || []).find(a => a.id === igId);
   if (!acc) return res.status(403).json({ error: "Acesso negado." });
 
@@ -662,31 +679,31 @@ app.post("/api/intelligence", requireAuth, async (req, res) => {
         .join(' | ')
         .substring(0, 1500);
     }
-  } catch (e) { }
+  } catch (e) { log.warn("⚠️ Não foi possível buscar posts para diagnóstico:", e.message); }
 
   const prompt = `AUDITORIA DIGITAL PLATINUM para @${acc.username}.
-  Você é o Estrategista-Chefe da Ideale. Analise o feed e o nicho.
-  Feed Atual: ${postsContext}
-  Nicho: ${niche}, Público: ${audience}.
+Você é o Estrategista-Chefe da Ideale. Analise o feed e o nicho.
+Feed Atual: ${postsContext || 'Indisponível (conta pessoal ou sem permissão)'}
+Nicho: ${niche}. Público: ${audience}.
 
-  MISSÃO ESPECIAL: Gere 3 variações de BIO PREMIUM (Instagram) para o cliente.
-  REGRAS: MÁXIMO 150 caracteres por Bio. Use técnica de Authority-Connection-Offer.
+MISSÃO ESPECIAL: Gere 3 variações de BIO PREMIUM (Instagram) para o cliente.
+REGRAS: MÁXIMO 150 caracteres por Bio. Use técnica de Authority-Connection-Offer.
 
-  Retorne JSON:
-  {
-    "executive_summary": "Análise densa, sem clichês, foco em branding.",
-    "detected_niche": "nicho lido",
-    "detected_tone": "tom de voz lido",
-    "bio_suggestions_3D": {
-      "authority": "Bio focada em marcos, prova social e quem você atende. Máx 150 carac.",
-      "connection": "Bio focada em dor, conexão humana e transformação. Máx 150 carac.",
-      "conversion": "Bio focada em CTA agressivo, link/vendas. Máx 150 carac."
-    },
-    "strengths": ["...", "..."],
-    "weaknesses": ["...", "..."],
-    "pillars": ["3 pilares táticos únicos"],
-    "priority_actions": ["Ação imediata"]
-  }`;
+Retorne JSON:
+{
+  "executive_summary": "Análise densa, sem clichês, foco em branding e pontos de alavancagem.",
+  "detected_niche": "nicho lido",
+  "detected_tone": "tom de voz lido",
+  "bio_suggestions_3D": {
+    "authority": "Bio focada em marcos, prova social e quem você atende. Máx 150 carac.",
+    "connection": "Bio focada em dor, conexão humana e transformação. Máx 150 carac.",
+    "conversion": "Bio focada em CTA agressivo, link/vendas. Máx 150 carac."
+  },
+  "strengths": ["...", "..."],
+  "weaknesses": ["...", "..."],
+  "pillars": ["3 pilares táticos únicos para este nicho específico"],
+  "priority_actions": ["Ação imediata de alto impacto"]
+}`;
 
   try {
     const data = await callAI({ system: "Estrategista de Elite. Inale Storytelling e Exale Resultados.", user: prompt });
@@ -730,7 +747,6 @@ app.post("/api/export-diagnostic", requireAuth, async (req, res) => {
   doc.end();
 });
 
-// [MELHORIA 1] Competitors: try/finally garante reset do _browser em crash
 app.post("/api/competitors", requireAuth, async (req, res) => {
   const { username } = req.body;
   const usernames = username.split(',').map(u => u.trim().replace('@', '')).filter(Boolean).slice(0, 3);
@@ -752,12 +768,11 @@ app.post("/api/competitors", requireAuth, async (req, res) => {
       const fullPath = path.resolve(PUBLIC_TMP_DIR, filename);
       await page.screenshot({ path: fullPath, fullPage: false });
       const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor para se destacar dele?
-      JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
+JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
       const vision = await callAI({ system: "Espião de Marketing com visão afiada.", user: prompt, imagePath: fullPath });
       results.push({ username: user, screenshot: `/tmp/${filename}`, analysis: vision || { vibe: "Inconsistente", counter_attack: "Focar em conteúdo autoral." } });
     } catch (e) {
       log.error(`❌ Erro ao capturar @${user}:`, e.message);
-      // Reset browser em caso de crash
       try { await context.close(); } catch (_) {}
       _browser = null;
       results.push({ username: user, screenshot: null, analysis: { vibe: "Erro na captura", counter_attack: "Tentar manualmente." } });
@@ -772,7 +787,7 @@ app.post("/api/competitors", requireAuth, async (req, res) => {
 app.post("/api/suggest-competitors", requireAuth, async (req, res) => {
   const { niche, city } = req.body;
   const prompt = `Sugira 3 arrobas reais do Instagram (benchmark ou negócio local) no nicho de '${niche}' na região '${city}'.
-  Retorne JSON: { "competitors": ["@nome1", "@nome2", "@nome3"] }`;
+Retorne JSON: { "competitors": ["@nome1", "@nome2", "@nome3"] }`;
   try {
     const data = await callAI({ system: "Especialista em pesquisa de mercado.", user: prompt });
     res.json(data);
@@ -790,25 +805,24 @@ app.post("/api/hashtags", requireAuth, async (req, res) => {
     } catch (e) { }
   }
   const prompt = `Você é um especialista em SEO e algoritmo do Instagram 2026.
-  Gere 5 sets de hashtags estratégicos para o nicho: "${resolvedNiche}" com objetivo: "${objective}".
-  Regras obrigatórias:
-  - Misture hashtags de alta (>1M posts), média (100k-1M) e baixa (<100k) competição.
-  - Nunca repita a mesma hashtag entre sets.
-  - Cada set deve ter entre 12 e 15 hashtags.
-  - Inclua pelo menos 2-3 hashtags em português por set.
-  Retorne JSON:
-  {
-    "sets": [{ "name": "...", "strategy": "...", "tags": ["#tag1"], "competition": "alta|media|baixa", "best_for": "..." }],
-    "banned_to_avoid": ["#tag_shadowban"],
-    "pro_tip": "Dica de ouro específica para o nicho"
-  }`;
+Gere 5 sets de hashtags estratégicos para o nicho: "${resolvedNiche}" com objetivo: "${objective}".
+Regras obrigatórias:
+- Misture hashtags de alta (>1M posts), média (100k-1M) e baixa (<100k) competição.
+- Nunca repita a mesma hashtag entre sets.
+- Cada set deve ter entre 12 e 15 hashtags.
+- Inclua pelo menos 2-3 hashtags em português por set.
+Retorne JSON:
+{
+  "sets": [{ "name": "...", "strategy": "...", "tags": ["#tag1"], "competition": "alta|media|baixa", "best_for": "..." }],
+  "banned_to_avoid": ["#tag_shadowban"],
+  "pro_tip": "Dica de ouro específica para o nicho"
+}`;
   try {
     const data = await callAI({ system: "Especialista em SEO e algoritmo do Instagram 2026. Apenas JSON válido.", user: prompt, username: acc?.username });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// [MELHORIA 6] Swipe file: trunca campos antes de salvar no MongoDB
 app.post("/api/swipe-file/save", requireAuth, async (req, res) => {
   const { username, entry } = req.body;
   try {
@@ -818,7 +832,7 @@ app.post("/api/swipe-file/save", requireAuth, async (req, res) => {
       ...entry,
       caption: truncate(entry.caption || "", 500),
       notes: truncate(entry.notes || "", 300),
-      screenshot: undefined // nunca persiste base64 no banco
+      screenshot: undefined
     };
     mem.swipe_file.push(safeEntry);
     if (mem.swipe_file.length > 30) mem.swipe_file.shift();
@@ -848,7 +862,9 @@ app.post("/api/autofill", requireAuth, async (req, res) => {
   } catch (e) { res.json({ suggestion: `Erro Técnico: ${e.message}` }); }
 });
 
-// [MELHORIA 8] Validação de total de posts (máx 15)
+// ==========================================
+// PLANNER — PROMPT RICO E DETALHADO
+// ==========================================
 app.post("/api/generate", requireAuth, async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
@@ -858,17 +874,68 @@ app.post("/api/generate", requireAuth, async (req, res) => {
   if (totalPosts > 15) return res.status(400).json({ error: "Total de posts não pode exceder 15 por plano." });
 
   const mem = await getClientMemory(acc.username);
-  const prompt = `Crie um Planejamento de Lançamento Eterno (Funil 4 Semanas) para @${acc.username}.
-  PERSONA DO CLIENTE: Nicho: ${mem.niche}. Público: ${mem.audience}. Tom: ${tone}.
-  Distribuição: ${reels} Reels, ${carousels} Carrosséis, ${singlePosts} Estáticos.
-  DIRETRIZ ESTRATÉGICA PLATINUM:
-  - PROIBIDO: Listas óbvias, adjetivos genéricos como "incrível" ou "essencial".
-  - CONTEÚDO: Cada post deve ser uma peça de "Doutrinação".
-  - COERÊNCIA: Semana 1 gera curiosidade; Semana 2 prova que o cliente é gênio; Semana 3 humaniza com falha/história; Semana 4 é a proposta final.
-  Retorne JSON:
-  { "posts": [{ "n": 1, "week_funnel": "Semana 1: Atenção", "format": "reels", "theme": "Título Curto de Impacto", "visual_audio_direction": "Direção de cinema", "script_or_slides": ["Gancho de 2 segundos", "Corpo com 3 quebras de padrão", "Chamada de transbordamento"], "caption": "Legenda Densa. Zero clichês.", "strategic_logic": "Por que esse post vai parar o scroll?" }] }`;
+
+  // Contexto evolutivo dos melhores posts
+  const topSuccesses = (mem.evolutionary_dna?.top_successes || []).slice(-3);
+  const evolutionContext = topSuccesses.length
+    ? `\nREFERÊNCIAS DE SUCESSO DESTA CONTA (imite a profundidade, não o tema):\n${topSuccesses.map(s => `- TEMA: ${s.subject} | NOTA: ${s.rating}/10`).join('\n')}`
+    : '';
+
+  const prompt = `MISSÃO: Criar um Planejamento Tático Mensal PLATINUM de 4 Semanas para @${acc.username}.
+
+CONTEXTO OBRIGATÓRIO DA MARCA:
+- Nicho: ${mem.niche || 'Não definido — infira pelo nome da conta'}
+- Público-alvo: ${mem.audience || 'Não definido — infira pelo nicho'}
+- Tom de Voz da Campanha: ${tone}
+- Objetivo da Campanha: ${goal}
+- Mix de Formatos: ${reels} Reels | ${carousels} Carrosséis | ${singlePosts} Estáticos
+${evolutionContext}
+
+DIRETRIZES ABSOLUTAS DE QUALIDADE:
+1. Cada post TEM que ser uma peça única — temas, ângulos e estruturas diferentes entre si.
+2. O campo script_or_slides deve ter entre 4 e 7 itens. Cada item deve descrever com detalhes o que dizer/mostrar (mínimo 20 palavras por item).
+   - Para Reels: descreva o visual, áudio, texto de tela e ritmo de cada cena.
+   - Para Carrosséis: descreva o título e o conteúdo de cada slide com clareza.
+   - Para Estáticos: descreva o texto principal, o elemento visual e o texto secundário.
+3. O campo caption (legenda) deve ter entre 80 e 200 palavras. Deve conter:
+   - Primeira linha impactante (gancho da legenda)
+   - Quebra de linha entre cada bloco de 2-3 frases
+   - CTA final único e direto (não genérico)
+4. O campo visual_audio_direction deve ser uma instrução cinematográfica real, não vaga.
+5. O campo strategic_logic deve explicar por que este post vai gerar resultado (não parar o scroll — gerar resultado).
+6. Distribua os gatilhos mentais ao longo do mês:
+   - Semana 1 (Atenção): Curiosidade, Polêmica, Choque
+   - Semana 2 (Inteligência): Prova Social, Autoridade, Dado Real
+   - Semana 3 (Emoção): Identificação, Vulnerabilidade, História Pessoal
+   - Semana 4 (Conversão): Escassez, Urgência, Proposta Direta
+
+Retorne APENAS JSON válido, sem markdown:
+{
+  "posts": [
+    {
+      "n": 1,
+      "week_funnel": "Semana 1: Atenção · REELS",
+      "format": "reels",
+      "theme": "Título curto e impactante do post",
+      "visual_audio_direction": "Instrução de direção detalhada: câmera, cortes, trilha, texto de tela",
+      "script_or_slides": [
+        "GANCHO (0-3s): Descrição detalhada do que dizer e mostrar para parar o scroll imediatamente...",
+        "PARTE 2: Desenvolvimento com informação real, história ou dado que mantém atenção...",
+        "PARTE 3: Aprofundamento ou virada — o momento em que o seguidor percebe o valor...",
+        "CHAMADA PARA AÇÃO: CTA de transbordamento específico para este post — não genérico..."
+      ],
+      "caption": "Primeira linha impactante que não precisa do 'mais'.\n\nParágrafo denso com valor real.\n\nSegundo bloco com continuidade natural.\n\nCTA direto no final.",
+      "strategic_logic": "Explicação de por que este post funciona no algoritmo e na psicologia do seguidor."
+    }
+  ]
+}`;
+
   try {
-    const data = await callAI({ system: "Você é um Co-Produtor Sênior de Lançamentos e Estrategista. Apenas JSON válido.", user: prompt, username: acc.username });
+    const data = await callAI({
+      system: SYSTEM_PROMPTS.PLANNER_CORE,
+      user: prompt,
+      username: acc.username
+    });
     mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
     if (mem.saved_planners.length > 15) mem.saved_planners.shift();
     await mem.save();
@@ -885,14 +952,18 @@ app.post("/api/single-post", requireAuth, async (req, res) => {
   if (!acc) return res.status(404).json({ error: "Conta não encontrada" });
   const mem = await getClientMemory(acc.username);
   const prompt = `Crie exatamente UM POST ESTRATÉGICO para @${acc.username}.
-  CONTEXTO DA MARCA: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
-  TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE: ${intensity}/10.
-  REGRAS DE OURO:
-  - NÃO use hashtags genéricas.
-  - O roteiro deve ser FLUIDO.
-  - A legenda deve começar com um "Gancho de Curiosidade Irresistível".
-  - Foque em quebrar a crença limitante nº 1 desse nicho.
-  { "format": "${format}", "theme": "${subject}", "visual_audio_direction": "direção de arte épica", "script_or_slides": ["parte 1", "parte 2", "..."], "caption": "legenda humanizada", "strategic_logic": "por que isso vende?" }`;
+CONTEXTO DA MARCA: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
+TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE: ${intensity}/10.
+
+REGRAS DE OURO:
+- NÃO use hashtags genéricas na legenda.
+- O roteiro deve ter pelo menos 4 partes com no mínimo 20 palavras cada.
+- A legenda deve começar com um Gancho de Curiosidade Irresistível de 1 linha.
+- Foque em quebrar a crença limitante nº 1 desse nicho.
+- visual_audio_direction deve ser uma instrução de cinema real.
+
+Retorne JSON:
+{ "format": "${format}", "theme": "${subject}", "visual_audio_direction": "direção de arte e áudio detalhada", "script_or_slides": ["GANCHO (0-3s): ...", "PARTE 2: ...", "PARTE 3: ...", "CTA: ..."], "caption": "legenda humanizada com quebras de linha e CTA", "strategic_logic": "por que isso converte?" }`;
   try {
     const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
     mem.single_posts.push({ date: new Date(), subject, format, angle, ...data });
@@ -930,12 +1001,11 @@ app.post("/api/export-report", requireAuth, (req, res) => {
   doc.end();
 });
 
-// [MELHORIA 9] Health com status do MongoDB
 app.get("/health", (req, res) => res.json({
   status: "ok",
   uptime: process.uptime(),
   db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  version: "2026.04-Ideale-v3.2-Platinum"
+  version: "2026.04-Ideale-v3.3-Platinum"
 }));
 
-app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v3.2 ativo em ${BASE_URL}`));
+app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v3.3 ativo em ${BASE_URL}`));
