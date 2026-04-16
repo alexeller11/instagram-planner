@@ -19,8 +19,7 @@ const PORT = Number(process.env.PORT || 10000);
 const IS_PROD = process.env.NODE_ENV === "production";
 const BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "agency-secret-123";
-const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const SESSION_SECRET = process.env.SESSION_SECRET; // Removido fallback inseguro "agency-secret-123"const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 const SAMBANOVA_API_KEY = (process.env.SAMBANOVA_API_KEY || "").trim();
 const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).filter(Boolean);
@@ -261,8 +260,7 @@ async function callAI({ system, user, imagePath, username }) {
   }
 
   try {
-    const modelName = imagePath ? "gemini-1.5-flash" : "gemini-1.5-flash";
-    console.log(`🚀 Tentando Fallback Gemini (${modelName})...`);
+    const modelName = imagePath ? "gemini-2.5-flash" : "gemini-2.5-flash";    console.log(`🚀 Tentando Fallback Gemini (${modelName})...`);
 
     const model = gemini.getGenerativeModel({
       model: modelName,
@@ -875,5 +873,8 @@ app.post("/api/export-report", (req, res) => {
   doc.fontSize(10).fillColor("#999999").text("Relatório Confidencial - Ideale Agency", 50, doc.page.height - 50, { align: 'center' });
   doc.end();
 });
+
+// Health check para Render.com
+app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
 
 app.listen(PORT, "0.0.0.0", () => console.log(`🔥 Ideale Platinum v3 ativo em ${BASE_URL}`));
