@@ -187,6 +187,12 @@ function truncate(str, max = 300) {
   return str.length > max ? str.substring(0, max) + "..." : str;
 }
 
+// Garante que uma bio não ultrapasse 150 caracteres (limite do Instagram)
+function enforceBioLimit(bio) {
+  if (!bio || typeof bio !== 'string') return bio;
+  return bio.length > 150 ? bio.substring(0, 150) : bio;
+}
+
 // ==========================================
 // MOTOR DE PERSONA PLATINUM
 // ==========================================
@@ -462,7 +468,7 @@ app.get("/api/identity/:username", requireAuth, async (req, res) => {
 });
 
 // ==========================================
-// DASHBOARD — resiliente: nunca quebra por falta de permissão da Graph API
+// DASHBOARD
 // ==========================================
 app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
   const igId = req.params.igId;
@@ -493,7 +499,6 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
       media = r.data.data || [];
     } catch (mediaErr) {
       log.warn(`⚠️ Falha ao buscar media insights detalhados (${mediaErr.message}). Tentando fallback básico...`);
-      // Fallback: busca sem insights (funciona em contas pessoais/básicas)
       try {
         const r2 = await callFbApiWithRetry(() =>
           axios.get(`https://graph.facebook.com/v21.0/${igId}/media`, {
@@ -534,7 +539,6 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
     res.json(result);
   } catch (e) {
     log.error("❌ Erro /api/dashboard:", e.message);
-    // Retorna dados zerados mas sem quebrar o front
     res.json({
       metrics: { engagement_rate: "0.00", avg_likes: 0, avg_comments: 0, total_reach_recent: 0, posts_analyzed: 0 },
       format_mix: {},
@@ -547,7 +551,7 @@ app.get("/api/dashboard/:igId", requireAuth, async (req, res) => {
 });
 
 // ==========================================
-// QUICK VERDICT — resiliente para contas pessoais
+// QUICK VERDICT
 // ==========================================
 app.post("/api/quick-verdict", requireAuth, async (req, res) => {
   const { username, followers, er, igId } = req.body;
@@ -561,7 +565,6 @@ app.post("/api/quick-verdict", requireAuth, async (req, res) => {
     try {
       const token = await resolveToken(igId);
       if (token) {
-        // Busca insights de alcance separadamente para não quebrar tudo
         try {
           const insightRes = await callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
             params: { metric: "reach,impressions", period: "day", access_token: token }
@@ -571,7 +574,6 @@ app.post("/api/quick-verdict", requireAuth, async (req, res) => {
           if (rVal > 0) { realInsights.reach = rVal * 30; realInsights.impressions = iVal * 30; isReal = true; }
         } catch (insErr) { log.warn(`⚠️ Insights reach/impressions indisponíveis: ${insErr.message}`); }
 
-        // Busca cidades separadamente — falha silenciosa
         try {
           const audienceRes = await callFbApiWithRetry(() => axios.get(`https://graph.facebook.com/v21.0/${acc.id}/insights`, {
             params: { metric: "audience_city", period: "lifetime", access_token: token }
@@ -584,7 +586,6 @@ app.post("/api/quick-verdict", requireAuth, async (req, res) => {
     } catch (e) { log.warn("⚠️ Erro geral quick-verdict insights:", e.message); }
   }
 
-  // Estimativa preditiva quando não tem dados reais
   if (!isReal || realInsights.reach === 0) {
     realInsights.reach = Math.round((followers || 100) * ((parseFloat(er) || 1) / 10) * 1.5);
     realInsights.impressions = Math.round(realInsights.reach * 1.8);
@@ -623,7 +624,6 @@ RETORNE JSON:
       is_real: isReal
     });
   } catch (e) {
-    // Fallback total — nunca deixa o dashboard quebrado
     res.json({
       verdict: "Análise Preditiva: Conta em fase de aquecimento de base. Focar em retenção e consistência de postagem.",
       demographics: { cities: realInsights.cities, gender: "Misto", time: "19h" },
@@ -656,6 +656,9 @@ Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta":
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ==========================================
+// DIAGNÓSTICO — com enforce de 150 chars nas bios
+// ==========================================
 app.post("/api/intelligence", requireAuth, async (req, res) => {
   const { igId, niche, audience } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
@@ -687,7 +690,7 @@ Feed Atual: ${postsContext || 'Indisponível (conta pessoal ou sem permissão)'}
 Nicho: ${niche}. Público: ${audience}.
 
 MISSÃO ESPECIAL: Gere 3 variações de BIO PREMIUM (Instagram) para o cliente.
-REGRAS: MÁXIMO 150 caracteres por Bio. Use técnica de Authority-Connection-Offer.
+REGRAS ABSOLUTAS: MÁXIMO 150 CARACTERES por bio — este é o limite do Instagram, não pode ser ultrapassado em hipótese alguma. Use técnica de Authority-Connection-Offer.
 
 Retorne JSON:
 {
@@ -695,9 +698,9 @@ Retorne JSON:
   "detected_niche": "nicho lido",
   "detected_tone": "tom de voz lido",
   "bio_suggestions_3D": {
-    "authority": "Bio focada em marcos, prova social e quem você atende. Máx 150 carac.",
-    "connection": "Bio focada em dor, conexão humana e transformação. Máx 150 carac.",
-    "conversion": "Bio focada em CTA agressivo, link/vendas. Máx 150 carac."
+    "authority": "Bio focada em marcos, prova social e quem você atende. MÁXIMO 150 CARACTERES.",
+    "connection": "Bio focada em dor, conexão humana e transformação. MÁXIMO 150 CARACTERES.",
+    "conversion": "Bio focada em CTA agressivo, link/vendas. MÁXIMO 150 CARACTERES."
   },
   "strengths": ["...", "..."],
   "weaknesses": ["...", "..."],
@@ -707,6 +710,14 @@ Retorne JSON:
 
   try {
     const data = await callAI({ system: "Estrategista de Elite. Inale Storytelling e Exale Resultados.", user: prompt });
+
+    // Enforce server-side: garante que nenhuma bio ultrapasse 150 chars
+    if (data.bio_suggestions_3D) {
+      data.bio_suggestions_3D.authority  = enforceBioLimit(data.bio_suggestions_3D.authority);
+      data.bio_suggestions_3D.connection = enforceBioLimit(data.bio_suggestions_3D.connection);
+      data.bio_suggestions_3D.conversion = enforceBioLimit(data.bio_suggestions_3D.conversion);
+    }
+
     mem.saved_diagnostics.push({ date: new Date(), ...data });
     if (mem.saved_diagnostics.length > 20) mem.saved_diagnostics.shift();
     await mem.save();
@@ -863,7 +874,7 @@ app.post("/api/autofill", requireAuth, async (req, res) => {
 });
 
 // ==========================================
-// PLANNER — PROMPT RICO E DETALHADO
+// PLANNER
 // ==========================================
 app.post("/api/generate", requireAuth, async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
@@ -875,7 +886,6 @@ app.post("/api/generate", requireAuth, async (req, res) => {
 
   const mem = await getClientMemory(acc.username);
 
-  // Contexto evolutivo dos melhores posts
   const topSuccesses = (mem.evolutionary_dna?.top_successes || []).slice(-3);
   const evolutionContext = topSuccesses.length
     ? `\nREFERÊNCIAS DE SUCESSO DESTA CONTA (imite a profundidade, não o tema):\n${topSuccesses.map(s => `- TEMA: ${s.subject} | NOTA: ${s.rating}/10`).join('\n')}`
@@ -897,12 +907,9 @@ DIRETRIZES ABSOLUTAS DE QUALIDADE:
    - Para Reels: descreva o visual, áudio, texto de tela e ritmo de cada cena.
    - Para Carrosséis: descreva o título e o conteúdo de cada slide com clareza.
    - Para Estáticos: descreva o texto principal, o elemento visual e o texto secundário.
-3. O campo caption (legenda) deve ter entre 80 e 200 palavras. Deve conter:
-   - Primeira linha impactante (gancho da legenda)
-   - Quebra de linha entre cada bloco de 2-3 frases
-   - CTA final único e direto (não genérico)
+3. O campo caption (legenda) deve ter entre 80 e 200 palavras.
 4. O campo visual_audio_direction deve ser uma instrução cinematográfica real, não vaga.
-5. O campo strategic_logic deve explicar por que este post vai gerar resultado (não parar o scroll — gerar resultado).
+5. O campo strategic_logic deve explicar por que este post vai gerar resultado.
 6. Distribua os gatilhos mentais ao longo do mês:
    - Semana 1 (Atenção): Curiosidade, Polêmica, Choque
    - Semana 2 (Inteligência): Prova Social, Autoridade, Dado Real
@@ -917,15 +924,10 @@ Retorne APENAS JSON válido, sem markdown:
       "week_funnel": "Semana 1: Atenção · REELS",
       "format": "reels",
       "theme": "Título curto e impactante do post",
-      "visual_audio_direction": "Instrução de direção detalhada: câmera, cortes, trilha, texto de tela",
-      "script_or_slides": [
-        "GANCHO (0-3s): Descrição detalhada do que dizer e mostrar para parar o scroll imediatamente...",
-        "PARTE 2: Desenvolvimento com informação real, história ou dado que mantém atenção...",
-        "PARTE 3: Aprofundamento ou virada — o momento em que o seguidor percebe o valor...",
-        "CHAMADA PARA AÇÃO: CTA de transbordamento específico para este post — não genérico..."
-      ],
-      "caption": "Primeira linha impactante que não precisa do 'mais'.\n\nParágrafo denso com valor real.\n\nSegundo bloco com continuidade natural.\n\nCTA direto no final.",
-      "strategic_logic": "Explicação de por que este post funciona no algoritmo e na psicologia do seguidor."
+      "visual_audio_direction": "Instrução de direção detalhada",
+      "script_or_slides": ["GANCHO (0-3s): ...", "PARTE 2: ...", "PARTE 3: ...", "CTA: ..."],
+      "caption": "Legenda com quebras de linha e CTA.",
+      "strategic_logic": "Por que este post funciona."
     }
   ]
 }`;
