@@ -187,50 +187,137 @@ function truncate(str, max = 300) {
   return str.length > max ? str.substring(0, max) + "..." : str;
 }
 
-// Garante que uma bio não ultrapasse 150 caracteres (limite do Instagram)
 function enforceBioLimit(bio) {
   if (!bio || typeof bio !== 'string') return bio;
   return bio.length > 150 ? bio.substring(0, 150) : bio;
 }
 
 // ==========================================
-// MOTOR DE PERSONA PLATINUM
+// HELPERS DE ESTRATÉGIA DE CONTEÚDO
+// ==========================================
+
+function getBestPostingTimes(niche) {
+  const nicheTimings = {
+    saude:       { days: "Terça, Quinta, Sábado", times: "06h-08h e 19h-21h", reasoning: "Decisão de saúde é matinal ou noturna (reflexão do dia)" },
+    beleza:      { days: "Quarta, Sexta, Domingo", times: "11h-13h e 20h-22h", reasoning: "Descoberta visual no almoço e planejamento noturno de cuidados" },
+    fitness:     { days: "Segunda, Quarta, Sexta", times: "05h30-07h e 17h-19h", reasoning: "Audiência treina cedo ou depois do trabalho — conteúdo sincronizado com rotina" },
+    negocios:    { days: "Terça, Quarta, Quinta", times: "07h-09h e 12h-13h", reasoning: "Decisor B2B acessa antes do expediente e no almoço" },
+    moda:        { days: "Quinta, Sexta, Domingo", times: "12h-14h e 21h-23h", reasoning: "Descoberta no almoço, consideração/compra à noite" },
+    educacao:    { days: "Segunda, Terça, Quarta", times: "07h-09h e 20h-22h", reasoning: "Motivação início de semana e estudo noturno" },
+    gastronomia: { days: "Quarta, Quinta, Domingo", times: "11h-13h e 18h-20h", reasoning: "Decisão de onde comer é tomada próximo ao horário" },
+    default:     { days: "Terça, Quarta, Quinta", times: "07h-09h e 19h-21h", reasoning: "Janelas de maior atenção baseadas em comportamento médio brasileiro" }
+  };
+  const lowerNiche = (niche || "").toLowerCase();
+  for (const [key, val] of Object.entries(nicheTimings)) {
+    if (lowerNiche.includes(key)) return val;
+  }
+  return nicheTimings.default;
+}
+
+function getHookLibrary(format) {
+  const hooks = {
+    reels: [
+      "Consequência antes da causa: 'Perdi [X] fazendo [Y]. Não porque sou burro — porque ninguém me contou essa regra.'",
+      "Afirmação contraintuitiva dita com certeza absoluta — sem condicionais, sem 'talvez'",
+      "Demonstração do resultado antes da explicação — o espectador fica para entender como chegou lá",
+      "Exposição de crença limitante: '[Mito do nicho]? Então esse vídeo é urgente.' — pausa antes de continuar",
+      "Corte frio no meio da ação — começa já acontecendo, sem introdução ou contexto"
+    ],
+    carrossel: [
+      "Slide 1: Promessa com número específico — 'Os X erros que custam [resultado negativo concreto] a 90% dos [público]'",
+      "Slide 1: Revelação contraintuitiva que cria dissonância — leva ao swipe para resolver a tensão",
+      "Slide 1: Antes/depois sem explicar o mecanismo — a curiosidade força o próximo slide",
+      "Slide 1: Autodiagnóstico — 'Você faz [X]? Então está perdendo [Y]'",
+      "Slide 1: Dado real chocante sem contexto — o contexto vem no slide 2"
+    ],
+    estatico: [
+      "Declaração polêmica ou verdade inconveniente do nicho em destaque",
+      "Contraste visual entre estado atual (dor) e estado desejado (transformação)",
+      "Número específico em destaque — dado real que muda perspectiva",
+      "Frase que parece errada à primeira leitura mas é verdade — cria parada e segundo olhar"
+    ]
+  };
+  const fmt = (format || "").toLowerCase();
+  if (fmt.includes("reels")) return hooks.reels;
+  if (fmt.includes("carro")) return hooks.carrossel;
+  return hooks.estatico;
+}
+
+// ==========================================
+// MOTOR DE PERSONA PLATINUM — PROMPTS MELHORADOS
 // ==========================================
 const SYSTEM_PROMPTS = {
-  PLATINUM_CORE: `VOCÊ É O ESTRATEGISTA-CHEFE DE UMA AGÊNCIA DE MARKETING BOUTIQUE (Diretor de Criação Sênior).
-PERFIL: Analítico, denso, provocativo e focado em lucro/conversão.
-FILTRO 2026:
-- VETO TOTAL DE CLICHÊS: Absolutamente proibido usar: "você sabia", "atualmente", "nos dias de hoje", "não perca tempo", "descubra como", "incrível", "essencial", "transforme sua vida".
-- TOM DE VOZ: Minimalista, sofisticado e Premium. Frases curtas de impacto + parágrafos densos de valor real.
-- ESTRATÉGIA SILENCIOSA: Cada peça quebra uma objeção ou eleva o status do cliente.
-- HUMANIZAÇÃO: Fale sobre TRANSFORMAÇÃO e MEDO DE FICAR PARA TRÁS, não sobre produto.`,
+  PLATINUM_CORE: `VOCÊ É O DIRETOR DE ESTRATÉGIA DE CONTEÚDO DE UMA AGÊNCIA BOUTIQUE DE ALTO DESEMPENHO.
 
-  VISION: "Analise estética, cores e autoridade visual. Dê conselhos agressivos e táticos de melhoria como um Diretor de Arte Sênior.",
+FILOSOFIA CENTRAL:
+Todo conteúdo existe para mover uma pessoa de um estado mental A para um estado mental B.
+Não existem "posts de valor" — existe conteúdo que muda comportamento ou conteúdo que ocupa espaço.
 
-  COPYWRITER: `Copywriter Sênior focada em Conversão Inevitável.
-MÉTODO:
-1. Gancho: Afirmação contraintuitiva ou pergunta que expõe uma ferida real.
-2. Desenvolvimento: Storytelling denso com fatos, números e imagens mentais. Não descreva, faça sentir.
-3. Estilo Visual: Use espaçamento generoso. Emojis ZERO ou máximo 2 por post, apenas para pontuar.
-4. CTA: Chamada direta para o 'Próximo Nível'. Proibido 'comente azul' ou CTAs genéricos.`,
+FILTRO DE QUALIDADE 2026 — VETO ABSOLUTO COM JUSTIFICATIVA:
+❌ "você sabia" — sinaliza que você acha que o seguidor não sabe. Cria hierarquia errada.
+❌ "atualmente / nos dias de hoje" — marcador de tempo desnecessário que enfraquece a afirmação.
+❌ "transforme sua vida" — promessa sem mecanismo. Não converte.
+❌ "conteúdo de valor / dica de ouro" — meta-comentário sobre o conteúdo ao invés de ser o conteúdo.
+❌ "comente sim / salva esse post" — CTA que não filtra audiência nem gera conversa real.
+❌ "compartilhe com quem precisa" — transfere responsabilidade de distribuição para o seguidor.
+❌ Listas de tópicos óbvios sem tensão entre eles.
+❌ Perguntas retóricas no início que qualquer pessoa responderia "sim" automaticamente.
 
-  PLANNER_CORE: `VOCÊ É O CO-PRODUTOR SÊNIOR DE LANÇAMENTOS DA IDEALE AGENCY.
-SUA MISSÃO: Criar roteiros e legendas que param o scroll, geram salvamentos e convertem.
+✅ TOM OBRIGATÓRIO: Escreva como alguém que já chegou onde o seguidor quer chegar — com autoridade casual, não arrogante.
+✅ TESTE DO SCROLL: Cada frase deve fazer a pessoa querer ler a próxima. Frase "skip-able" = corte ou reescreva.
+✅ ESPECIFICIDADE: Números reais, exemplos concretos, nomes de situações reconhecíveis > abstrações bonitas.`,
 
-REGRAS ABSOLUTAS DE COPY:
-- Cada post começa com um GANCHO de 2 a 3 segundos que gera curiosidade, choque ou identificação imediata.
-- O roteiro/telas deve ter NO MÍNIMO 4 partes distintas: Gancho → Desenvolvimento (2-3 partes com informação real/história) → CTA de transbordamento.
-- A legenda deve ter: 1 frase de abertura impactante + corpo com quebra de linha a cada 2 frases + CTA final único.
-- PROIBIDO: posts genéricos, listas óbvias, adjetivos vazios, estrutura idêntica entre posts.
-- OBRIGATÓRIO: cada post usa um gatilho mental diferente (Polêmica, Prova Social, Escassez, Identificação, Autoridade, Curiosidade, Medo de Ficar Para Trás).
-- O script_or_slides deve ter entre 4 e 7 itens DETALHADOS — cada item com no mínimo 20 palavras descrevendo exatamente o que dizer ou mostrar.
-- A legenda deve ter entre 80 e 200 palavras, com espaçamento visual entre blocos.
+  VISION: `Você é um Diretor de Arte com 15 anos de experiência em branding digital.
+Analise: identidade visual, coerência cromática, legibilidade mobile (thumb-stop) e posicionamento percebido vs. desejado.
+Seja brutal e específico. Nada de "poderia melhorar" — diga exatamente o que está errado e por quê prejudica conversão.`,
 
-ESTRUTURA DO FUNIL 4 SEMANAS:
-- Semana 1 (Atenção): Gerar curiosidade intensa. O cliente ainda não sabe que precisa de você.
-- Semana 2 (Prova de Inteligência): Conteúdo que faz o seguidor se sentir mais inteligente ao consumir. Ele salva e manda para alguém.
-- Semana 3 (Humanização/Emoção): História real, falha, aprendizado. O cliente se enxerga no conteúdo.
-- Semana 4 (Proposta/CTA): A oferta chega de forma natural, o seguidor já confia. CTA de alta conversão.`
+  COPYWRITER: `COPYWRITER SÊNIOR — ESPECIALISTA EM CONVERSÃO E RETENÇÃO.
+
+MÉTODO PALCO-PLATEIA:
+O post é uma peça em 3 atos. Cada ato tem uma função psicológica.
+- Ato 1 (GANCHO): Crie dissonância cognitiva ou reconhecimento imediato de dor. Não descreva — provoque.
+- Ato 2 (DESENVOLVIMENTO): Entregue mais do que foi prometido. Use a regra 3:1 — 3 informações que o seguidor não sabia para cada ponto óbvio.
+- Ato 3 (CTA): Não peça uma ação. Apresente a consequência de NÃO agir. O CTA deve parecer inevitável, não solicitado.
+
+MÉTRICAS QUE IMPORTAM:
+- Taxa de leitura até o fim (retenção)
+- Taxa de salvamento (percepção de valor permanente)
+- Taxa de compartilhamento (identificação de identidade)
+- Taxa de comentário qualificado (não apenas emojis)`,
+
+  PLANNER_CORE: `VOCÊ É O CO-PRODUTOR EXECUTIVO DE CONTEÚDO DA IDEALE AGENCY.
+
+PRINCÍPIO DA PRESSÃO DRAMÁTICA:
+Um mês de conteúdo é uma novela em 4 episódios. O seguidor deve sentir que perdeu algo se não viu o anterior.
+
+ESTRUTURA DE FUNIL EMOCIONAL OBRIGATÓRIA:
+
+SEMANA 1 — DESPERTAR (Gatilho: Identidade Ameaçada)
+Objetivo: Fazer o seguidor questionar uma crença que tinha como verdade.
+Frame: "O motivo pelo qual você ainda não [resultado] não é o que você pensa."
+Métrica alvo: Alto alcance (salva + compartilha), comentários de "isso me pegou"
+
+SEMANA 2 — EVIDÊNCIA (Gatilho: Prova Inteligente)
+Objetivo: Mostrar o mecanismo por trás do problema identificado na semana 1.
+Frame: Dados reais, caso específico, comparação com metodologia visível.
+Métrica alvo: Alto salvamento, comentários de "manda no privado"
+
+SEMANA 3 — HUMANIZAÇÃO (Gatilho: Vulnerabilidade Calculada)
+Objetivo: O especialista mostra que também errou — mas aprendeu o que o seguidor ainda não sabe.
+Frame: "O erro que me custou [X] e o que aprendi que ninguém ensina."
+Métrica alvo: Alto comentário (conexão emocional), compartilhamento orgânico
+
+SEMANA 4 — DECISÃO (Gatilho: Custo de Oportunidade)
+Objetivo: A oferta chega como consequência natural das 3 semanas anteriores.
+Frame: Não venda o produto — venda a versão futura do seguidor que tomou a decisão.
+Métrica alvo: Clique no link/DM, conversão direta
+
+REGRAS DE ROTEIRO ABSOLUTAS:
+- script_or_slides: 5-7 partes com mínimo 25 palavras por parte, cada uma com função psicológica definida
+- Para Reels: visual + fala/texto na tela + mood de áudio + direção de câmera
+- Para Carrossel: título do slide + copy + elemento visual + gancho para próximo slide (incomplete loop)
+- Para Estáticos: copy principal + sub-copy + elementos visuais específicos + micro-copy de CTA
+- Legenda: 100-200 palavras, 3+ quebras de parágrafo, CTA que cria consequência de não-ação`
 };
 
 // ==========================================
@@ -243,8 +330,8 @@ async function callAI({ system, user, imagePath, username }) {
       const mem = await getClientMemory(username);
       const successes = (mem.evolutionary_dna?.top_successes || []).slice(-3);
       if (successes.length) {
-        evolutionaryContext = `\nVIGILÂNCIA DE SUCESSO ANTERIOR:\n${successes
-          .map(s => `- TEMA: ${s.subject} | PONTUAÇÃO: ${s.rating}/10 | CONTEÚDO: ${truncate(s.content, 150)}`)
+        evolutionaryContext = `\nPADRÕES QUE JÁ FUNCIONARAM NESTA CONTA (incorpore a profundidade, não o tema):\n${successes
+          .map(s => `- TEMA: ${s.subject} | NOTA: ${s.rating}/10 | CONTEÚDO: ${truncate(s.content, 150)}`)
           .join("\n")}`;
       }
     } catch (e) { }
@@ -254,7 +341,7 @@ async function callAI({ system, user, imagePath, username }) {
     SYSTEM_PROMPTS.PLATINUM_CORE,
     system,
     evolutionaryContext,
-    "CONSELHO DE ESPECIALISTAS 2026: Simule o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Premium antes de retornar a resposta final em JSON."
+    "ANTES DE RESPONDER: Simule internamente o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Sênior. Retorne apenas o consenso final em JSON."
   ].filter(Boolean).join("\n\n");
 
   const estimatedTokens = Math.round((combinedSystem.length + user.length) / 3.5);
@@ -424,7 +511,7 @@ async function resolveToken(igId) {
 
 app.get("/api/me", (req, res) => res.json({ logged: !!req.session.logged, accounts: req.session.accounts || [] }));
 app.get("/api/auth/logout", (req, res) => { req.session.destroy(); res.json({ success: true }); });
-app.get("/api/version", (req, res) => res.json({ version: "2026.04-Ideale-v3.3-Platinum" }));
+app.get("/api/version", (req, res) => res.json({ version: "2026.05-Ideale-v4.0-Platinum" }));
 
 app.get("/api/debug-status", (req, res) => {
   const recentFbCalls = fbCallTimestamps.filter(t => Date.now() - t < FB_WINDOW_MS).length;
@@ -440,6 +527,12 @@ app.get("/api/debug-status", (req, res) => {
     dash_cache_entries: dashCache.size,
     timestamp: new Date()
   });
+});
+
+// Invalidação manual de cache do dashboard
+app.post("/api/dashboard/invalidate/:igId", requireAuth, (req, res) => {
+  dashCache.delete(req.params.igId);
+  res.json({ success: true, message: "Cache invalidado." });
 });
 
 app.get("/api/memory/:username", requireAuth, async (req, res) => {
@@ -595,23 +688,22 @@ app.post("/api/quick-verdict", requireAuth, async (req, res) => {
 Seguidores: ${followers}. Taxa de Engajamento: ${er}%.
 STATUS: ${isReal ? 'DADOS REAIS DA API' : 'ESTIMATIVA PREDITIVA IDEALE'}.
 
-MISSÃO: Gere um Veredito EXPERT — humanizado, direto e mentoriano. Máximo 3 frases densas.
-Determine o 'Health Status' (uma das opções: Pico de Tração | Em Maturação | Estável | Alerta de Queda).
-Na seção demographics, dê a melhor leitura possível mesmo sem dados reais.
+MISSÃO: Veredito de consultor sênior — humanizado, direto, máximo 3 frases densas.
+Determine o Health Status: Pico de Tração | Em Maturação | Estável | Alerta de Queda.
 
-RETORNE JSON:
+JSON:
 {
-  "verdict": "Veredito de 2-3 frases densas e específicas...",
+  "verdict": "2-3 frases densas e específicas",
   "demographics": {
     "cities": "${realInsights.cities}",
     "gender": "Estimado com base no nicho",
-    "time": "Melhor horário estimado (ex: 19h-21h)"
+    "time": "Melhor horário estimado"
   },
   "health_status": "..."
 }`;
 
   try {
-    const data = await callAI({ system: "Estrategista de Dados Premium. Fale como um consultor humano sênior. Sem clichês.", user: prompt });
+    const data = await callAI({ system: "Estrategista de Dados Premium. Consultor humano sênior. Zero clichês.", user: prompt });
     res.json({
       verdict: data.verdict || "Conta em análise. Execute o Diagnóstico Avançado para leitura completa.",
       demographics: {
@@ -634,18 +726,50 @@ RETORNE JSON:
   }
 });
 
+// ==========================================
+// AVALIAÇÃO DE POST — CRITÉRIOS PONDERADOS
+// ==========================================
 app.post("/api/evaluate-post", requireAuth, async (req, res) => {
   const { theme, script_or_slides, caption, username } = req.body;
-  const prompt = `AVALIE ESTE POST:
-Tema: ${theme}.
-Roteiro/Estrutura: ${JSON.stringify(script_or_slides)}.
-Legenda: ${caption}.
+  const mem = username ? await getClientMemory(username) : null;
 
-Dê nota de 0 a 10 e analise Hook (Gancho), Body (Corpo) e CTA (Chamada).
-FORNEÇA UM REFINAMENTO DA LEGENDA com mais impacto, espaçamento visual e SEO 2026.
-Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta": "..." }, "refined_caption": "..." }`;
+  const prompt = `AVALIAÇÃO TÉCNICA DE CONTEÚDO — NÍVEL DIRETOR DE CRIAÇÃO.
+
+POST:
+Tema: ${theme}
+Roteiro: ${JSON.stringify(script_or_slides)}
+Legenda: ${caption}
+Nicho da conta: ${mem?.niche || 'Geral'}
+Público: ${mem?.audience || 'Geral'}
+
+CRITÉRIOS (média ponderada = score final):
+1. FORÇA DO GANCHO (peso 3x): Os primeiros 3s/palavras provocam curiosidade ou dissonância real?
+   0-3: Genérico ("você sabia", pergunta óbvia) | 4-6: Intenção mas não surpreende | 7-9: Cria tensão genuína | 10: Para qualquer membro do público no piloto automático
+2. ESPECIFICIDADE (peso 2x): Tem dados, exemplos ou situações reconhecíveis?
+   0-3: Só abstrações | 4-6: Alguns exemplos | 7-9: Dados reais ou situações muito específicas | 10: Só quem é do nicho entende a profundidade
+3. RETENÇÃO (peso 2x): Cada parte leva para a próxima? Existe "loop incompleto"?
+4. QUALIDADE DO CTA (peso 1x): A ação é inevitável ou solicitada?
+   0-3: "Comente sim" | 7-10: CTA que apresenta consequência de não agir
+5. ALINHAMENTO COM PÚBLICO (peso 2x): Ressoa com o público específico desta conta?
+
+Retorne JSON:
+{
+  "score": 7.5,
+  "breakdown": {
+    "hook": { "score": 8, "feedback": "..." },
+    "specificity": { "score": 7, "feedback": "..." },
+    "retention": { "score": 6, "feedback": "..." },
+    "cta": { "score": 9, "feedback": "..." },
+    "audience_fit": { "score": 7, "feedback": "..." }
+  },
+  "analysis": { "hook": "...", "body": "...", "cta": "..." },
+  "refined_caption": "Legenda melhorada completa",
+  "script_improvements": ["Melhoria específica 1", "Melhoria específica 2", "Melhoria específica 3"],
+  "better_hook_suggestion": "Como o gancho poderia ser 20% mais forte"
+}`;
+
   try {
-    const data = await callAI({ system: "Especialista em Copywriting de Alta Performance e Retenção de Audiência.", user: prompt, username });
+    const data = await callAI({ system: "Diretor de Criação com 10 anos avaliando conteúdo premium. Brutal, específico, construtivo. Só JSON.", user: prompt, username });
     if (username && data.score >= 8) {
       const mem = await getClientMemory(username);
       mem.evolutionary_dna.top_successes.push({ subject: theme, content: caption, rating: data.score, date: new Date() });
@@ -657,7 +781,7 @@ Retorne JSON: { "score": 8.5, "analysis": { "hook": "...", "body": "...", "cta":
 });
 
 // ==========================================
-// DIAGNÓSTICO — com enforce de 150 chars nas bios
+// DIAGNÓSTICO
 // ==========================================
 app.post("/api/intelligence", requireAuth, async (req, res) => {
   const { igId, niche, audience } = req.body;
@@ -685,33 +809,41 @@ app.post("/api/intelligence", requireAuth, async (req, res) => {
   } catch (e) { log.warn("⚠️ Não foi possível buscar posts para diagnóstico:", e.message); }
 
   const prompt = `AUDITORIA DIGITAL PLATINUM para @${acc.username}.
-Você é o Estrategista-Chefe da Ideale. Analise o feed e o nicho.
-Feed Atual: ${postsContext || 'Indisponível (conta pessoal ou sem permissão)'}
+
+DADOS:
+Bio atual: ${acc.biography || 'Não fornecida'}
+Feed: ${postsContext || 'Indisponível'}
 Nicho: ${niche}. Público: ${audience}.
 
-MISSÃO ESPECIAL: Gere 3 variações de BIO PREMIUM (Instagram) para o cliente.
-REGRAS ABSOLUTAS: MÁXIMO 150 CARACTERES por bio — este é o limite do Instagram, não pode ser ultrapassado em hipótese alguma. Use técnica de Authority-Connection-Offer.
+Diga o que os outros não têm coragem de dizer. Análise como se tivesse estudado esta conta por 2 semanas.
 
-Retorne JSON:
+REGRAS DAS BIOS (inflexíveis):
+- MÁXIMO 150 caracteres por bio (limite técnico do Instagram)
+- Sem verbos no gerúndio ("ajudando", "transformando")
+- Sem "especialista em" seguido de coisa óbvia
+- Específica o suficiente para alienar quem não é o público
+
+JSON:
 {
-  "executive_summary": "Análise densa, sem clichês, foco em branding e pontos de alavancagem.",
-  "detected_niche": "nicho lido",
-  "detected_tone": "tom de voz lido",
+  "executive_summary": "Análise honesta em 3 frases densas — o que está bem, o que é crítico e o maior gap",
+  "detected_niche": "nicho específico detectado",
+  "detected_tone": "tom de voz atual detectado",
+  "bio_analysis": "O que está errado na bio e por quê prejudica conversão",
   "bio_suggestions_3D": {
-    "authority": "Bio focada em marcos, prova social e quem você atende. MÁXIMO 150 CARACTERES.",
-    "connection": "Bio focada em dor, conexão humana e transformação. MÁXIMO 150 CARACTERES.",
-    "conversion": "Bio focada em CTA agressivo, link/vendas. MÁXIMO 150 CARACTERES."
+    "authority": "Bio max 150 chars — credenciais + resultado + para quem",
+    "connection": "Bio max 150 chars — dor + transformação + identificação",
+    "conversion": "Bio max 150 chars — CTA + prova + urgência"
   },
-  "strengths": ["...", "..."],
-  "weaknesses": ["...", "..."],
-  "pillars": ["3 pilares táticos únicos para este nicho específico"],
-  "priority_actions": ["Ação imediata de alto impacto"]
+  "strengths": ["Ponto forte com exemplo específico do feed", "Ponto forte 2"],
+  "weaknesses": ["Fraqueza crítica — o que custa em resultado", "Fraqueza 2"],
+  "pillars": ["Pilar editorial específico para este nicho", "Pilar 2", "Pilar 3"],
+  "priority_actions": ["Ação imediata (próximos 7 dias)", "Ação de médio prazo (30 dias)"],
+  "hidden_opportunity": "Posicionamento que este perfil não explora mas deveria"
 }`;
 
   try {
     const data = await callAI({ system: "Estrategista de Elite. Inale Storytelling e Exale Resultados.", user: prompt });
 
-    // Enforce server-side: garante que nenhuma bio ultrapasse 150 chars
     if (data.bio_suggestions_3D) {
       data.bio_suggestions_3D.authority  = enforceBioLimit(data.bio_suggestions_3D.authority);
       data.bio_suggestions_3D.connection = enforceBioLimit(data.bio_suggestions_3D.connection);
@@ -746,6 +878,10 @@ app.post("/api/export-diagnostic", requireAuth, async (req, res) => {
     (payload.weaknesses || []).forEach(w => doc.text(`• ${w}`));
     doc.moveDown();
   }
+  if (payload.hidden_opportunity) {
+    doc.fontSize(14).fillColor("#f39c12").text("Oportunidade Oculta");
+    doc.fontSize(11).fillColor("#333333").text(payload.hidden_opportunity, { align: 'justify' }).moveDown();
+  }
   doc.fontSize(14).fillColor("#27ae60").text("Bio Tridimensional (Variações)");
   doc.fontSize(12).fillColor("#333").text("Autoridade: ", { continued: true }).fontSize(11).text(payload.bio_suggestions_3D?.authority || "-");
   doc.fontSize(12).fillColor("#333").text("Conexão: ", { continued: true }).fontSize(11).text(payload.bio_suggestions_3D?.connection || "-");
@@ -758,6 +894,9 @@ app.post("/api/export-diagnostic", requireAuth, async (req, res) => {
   doc.end();
 });
 
+// ==========================================
+// SPY DE CONCORRENTES
+// ==========================================
 app.post("/api/competitors", requireAuth, async (req, res) => {
   const { username } = req.body;
   const usernames = username.split(',').map(u => u.trim().replace('@', '')).filter(Boolean).slice(0, 3);
@@ -765,31 +904,30 @@ app.post("/api/competitors", requireAuth, async (req, res) => {
   if (!browser) return res.status(500).json({ error: "Navegador indisponível. Tente novamente." });
   const results = [];
   for (const user of usernames) {
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
-      viewport: { width: 390, height: 844 },
-      deviceScaleFactor: 2,
-    });
-    const page = await context.newPage();
+    let context;
     try {
+      context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 2,
+      });
+      const page = await context.newPage();
       log.info(`📡 Capturando perfil: @${user}...`);
       await page.goto(`https://www.instagram.com/${user}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForTimeout(5000);
       const filename = `comp_${user}_${Date.now()}.png`;
       const fullPath = path.resolve(PUBLIC_TMP_DIR, filename);
       await page.screenshot({ path: fullPath, fullPage: false });
-      const prompt = `Analise @${user}. Cores? Vibe (luxo, popular)? Counter-attack: Como ser melhor para se destacar dele?
-JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
-      const vision = await callAI({ system: "Espião de Marketing com visão afiada.", user: prompt, imagePath: fullPath });
+      const prompt = `Analise @${user}. Cores dominantes? Vibe (luxo, popular, técnico)? Posicionamento percebido? Counter-attack: como se diferenciar e ganhar mercado deste perfil?
+JSON: { "colors": "...", "vibe": "...", "positioning": "...", "counter_attack": "..." }`;
+      const vision = await callAI({ system: "Espião de Marketing com visão de Diretor de Arte.", user: prompt, imagePath: fullPath });
       results.push({ username: user, screenshot: `/tmp/${filename}`, analysis: vision || { vibe: "Inconsistente", counter_attack: "Focar em conteúdo autoral." } });
     } catch (e) {
       log.error(`❌ Erro ao capturar @${user}:`, e.message);
-      try { await context.close(); } catch (_) {}
       _browser = null;
       results.push({ username: user, screenshot: null, analysis: { vibe: "Erro na captura", counter_attack: "Tentar manualmente." } });
-      continue;
     } finally {
-      try { await context.close(); } catch (_) {}
+      if (context) await context.close().catch(() => {});
     }
   }
   res.json({ results, analysis: "Varredura concluída." });
@@ -798,13 +936,57 @@ JSON: { "colors": "...", "vibe": "...", "counter_attack": "..." }`;
 app.post("/api/suggest-competitors", requireAuth, async (req, res) => {
   const { niche, city } = req.body;
   const prompt = `Sugira 3 arrobas reais do Instagram (benchmark ou negócio local) no nicho de '${niche}' na região '${city}'.
-Retorne JSON: { "competitors": ["@nome1", "@nome2", "@nome3"] }`;
+JSON: { "competitors": ["@nome1", "@nome2", "@nome3"] }`;
   try {
     const data = await callAI({ system: "Especialista em pesquisa de mercado.", user: prompt });
     res.json(data);
   } catch (e) { res.status(500).json({ error: "Erro buscando recomendação." }); }
 });
 
+// ==========================================
+// ANÁLISE COMPETITIVA PROFUNDA (NOVA)
+// ==========================================
+app.post("/api/competitor-deep", requireAuth, async (req, res) => {
+  const { igId, competitors } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada." });
+  const mem = await getClientMemory(acc.username);
+
+  const prompt = `ANÁLISE COMPETITIVA ESTRATÉGICA para @${acc.username}.
+Nicho: ${mem.niche || 'A inferir'}. Público: ${mem.audience || 'A inferir'}.
+Concorrentes: ${(competitors || []).join(', ')}
+
+Identifique os Espaços em Branco — posicionamentos que NENHUM concorrente ocupa ainda.
+
+JSON:
+{
+  "market_landscape": "Quem domina e por quê. Leitura honesta do mercado.",
+  "competitors": [
+    {
+      "username": "@handle",
+      "perceived_positioning": "Como o mercado os vê",
+      "content_strategy": "Padrão de conteúdo usado",
+      "audience_owned": "Fatia de mercado que têm",
+      "weakness": "Ponto cego — o que NÃO estão fazendo",
+      "threat_level": "baixo|médio|alto",
+      "beat_them_with": "Estratégia específica para ganhar a fatia deles"
+    }
+  ],
+  "white_spaces": ["Posicionamento que ninguém ocupa ainda neste nicho"],
+  "our_unique_angle": "Qual posicionamento @${acc.username} deveria tomar que nenhum concorrente ocupa",
+  "content_gaps": ["Tema que o mercado precisa mas ninguém cobre bem"],
+  "30_day_battle_plan": "3 movimentos concretos para ganhar terreno em 30 dias"
+}`;
+
+  try {
+    const data = await callAI({ system: "Consultor de Estratégia Competitiva Digital. Brutal, específico, orientado a resultado.", user: prompt, username: acc.username });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ==========================================
+// HASHTAG INTELLIGENCE
+// ==========================================
 app.post("/api/hashtags", requireAuth, async (req, res) => {
   const { igId, objective, niche: customNiche } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
@@ -815,18 +997,17 @@ app.post("/api/hashtags", requireAuth, async (req, res) => {
       if (mem.niche && !customNiche) resolvedNiche = mem.niche;
     } catch (e) { }
   }
-  const prompt = `Você é um especialista em SEO e algoritmo do Instagram 2026.
+  const prompt = `Especialista em SEO e algoritmo do Instagram 2026.
 Gere 5 sets de hashtags estratégicos para o nicho: "${resolvedNiche}" com objetivo: "${objective}".
-Regras obrigatórias:
-- Misture hashtags de alta (>1M posts), média (100k-1M) e baixa (<100k) competição.
+- Misture alta (>1M posts), média (100k-1M) e baixa (<100k) competição.
 - Nunca repita a mesma hashtag entre sets.
-- Cada set deve ter entre 12 e 15 hashtags.
-- Inclua pelo menos 2-3 hashtags em português por set.
-Retorne JSON:
+- 12 a 15 hashtags por set.
+- Pelo menos 2-3 hashtags em português por set.
+JSON:
 {
   "sets": [{ "name": "...", "strategy": "...", "tags": ["#tag1"], "competition": "alta|media|baixa", "best_for": "..." }],
   "banned_to_avoid": ["#tag_shadowban"],
-  "pro_tip": "Dica de ouro específica para o nicho"
+  "pro_tip": "Dica específica para o nicho"
 }`;
   try {
     const data = await callAI({ system: "Especialista em SEO e algoritmo do Instagram 2026. Apenas JSON válido.", user: prompt, username: acc?.username });
@@ -834,6 +1015,86 @@ Retorne JSON:
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ==========================================
+// GANCHOS POR TENDÊNCIA (NOVA)
+// ==========================================
+app.post("/api/trend-hook", requireAuth, async (req, res) => {
+  const { igId, theme } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada." });
+  const mem = await getClientMemory(acc.username);
+
+  const prompt = `Especialista em psicologia de scroll e tendências 2025-2026.
+Nicho: "${mem.niche || 'Geral'}". Tema: "${theme}". Público: "${mem.audience || 'Geral'}".
+
+Gere 5 variações de gancho (primeiros 3 segundos) com padrão psicológico diferente em cada.
+Padrões disponíveis: Identidade Ameaçada | Polarização Estratégica | Especificidade Numérica | Urgência de Contexto Real | Vulnerabilidade Calculada
+
+JSON:
+{
+  "hooks": [
+    {
+      "type": "Identidade Ameaçada",
+      "hook": "Texto do gancho (máx 20 palavras)",
+      "psychology": "Por que funciona para este público específico",
+      "risk_level": "baixo|médio|alto",
+      "expected_outcome": "salvamento|compartilhamento|comentário|alcance"
+    }
+  ],
+  "recommended": 0,
+  "recommendation_reason": "Por que este gancho é o mais forte para este contexto"
+}`;
+
+  try {
+    const data = await callAI({ system: "Especialista em psicologia de conteúdo. JSON apenas.", user: prompt, username: acc.username });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ==========================================
+// VARIAÇÕES DE LEGENDA POR MÉTRICA (NOVA)
+// ==========================================
+app.post("/api/caption-variations", requireAuth, async (req, res) => {
+  const { igId, theme, format, core_message } = req.body;
+  const acc = (req.session.accounts || []).find(a => a.id === igId);
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada." });
+  const mem = await getClientMemory(acc.username);
+
+  const prompt = `3 variações de legenda para o mesmo post, cada uma otimizada para uma métrica diferente.
+Conta: @${acc.username} | Nicho: ${mem.niche} | Público: ${mem.audience}
+Tema: ${theme} | Formato: ${format} | Mensagem central: ${core_message}
+
+VERSÃO 1 — Otimizada para SALVAMENTO:
+Conteúdo denso como referência. Listas com informação não óbvia, frameworks nomeados, dados específicos.
+
+VERSÃO 2 — Otimizada para COMENTÁRIO:
+Polarização saudável ou pergunta que exige opinião pessoal. Declaração controversa + convite explícito à discordância.
+
+VERSÃO 3 — Otimizada para CONVERSÃO:
+Problema → dor agravada → ponte → CTA específico de baixa fricção.
+
+JSON:
+{
+  "variations": [
+    {
+      "objective": "salvamento",
+      "caption": "Legenda completa 100-200 palavras",
+      "why_it_works": "Mecanismo psicológico específico",
+      "ideal_for": "Quando usar esta versão"
+    }
+  ],
+  "recommendation": "Qual usar baseado no momento do funil"
+}`;
+
+  try {
+    const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ==========================================
+// SWIPE FILE
+// ==========================================
 app.post("/api/swipe-file/save", requireAuth, async (req, res) => {
   const { username, entry } = req.body;
   try {
@@ -852,6 +1113,9 @@ app.post("/api/swipe-file/save", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ==========================================
+// AUTOFILL
+// ==========================================
 app.post("/api/autofill", requireAuth, async (req, res) => {
   const { igId, field_type } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
@@ -868,76 +1132,90 @@ app.post("/api/autofill", requireAuth, async (req, res) => {
   const prompt = prompts[field_type];
   if (!prompt) return res.status(400).json({ error: "field_type inválido" });
   try {
-    const data = await callAI({ system: "Você é focado em respostas ultra-diretas. Só retorne JSON.", user: prompt, username: acc.username });
+    const data = await callAI({ system: "Respostas ultra-diretas. Só JSON.", user: prompt, username: acc.username });
     res.json(data);
   } catch (e) { res.json({ suggestion: `Erro Técnico: ${e.message}` }); }
 });
 
 // ==========================================
-// PLANNER
+// PLANNER MENSAL — MELHORADO
 // ==========================================
 app.post("/api/generate", requireAuth, async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
-  if (!acc) return res.status(404).json({ error: "Acct not found" });
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada." });
 
   const totalPosts = (Number(reels) || 0) + (Number(carousels) || 0) + (Number(singlePosts) || 0);
   if (totalPosts > 15) return res.status(400).json({ error: "Total de posts não pode exceder 15 por plano." });
 
   const mem = await getClientMemory(acc.username);
+  const timings = getBestPostingTimes(mem.niche);
 
   const topSuccesses = (mem.evolutionary_dna?.top_successes || []).slice(-3);
   const evolutionContext = topSuccesses.length
-    ? `\nREFERÊNCIAS DE SUCESSO DESTA CONTA (imite a profundidade, não o tema):\n${topSuccesses.map(s => `- TEMA: ${s.subject} | NOTA: ${s.rating}/10`).join('\n')}`
+    ? `\nPADRÕES QUE JÁ FUNCIONARAM NESTA CONTA (incorpore a profundidade, não o tema):\n${topSuccesses.map(s => `- TEMA: "${s.subject}" | NOTA: ${s.rating}/10`).join('\n')}`
     : '';
 
-  const prompt = `MISSÃO: Criar um Planejamento Tático Mensal PLATINUM de 4 Semanas para @${acc.username}.
+  const reelsHooks = getHookLibrary("reels").map((h, i) => `  ${i + 1}. ${h}`).join('\n');
+  const carHooks = getHookLibrary("carrossel").map((h, i) => `  ${i + 1}. ${h}`).join('\n');
 
-CONTEXTO OBRIGATÓRIO DA MARCA:
-- Nicho: ${mem.niche || 'Não definido — infira pelo nome da conta'}
-- Público-alvo: ${mem.audience || 'Não definido — infira pelo nicho'}
-- Tom de Voz da Campanha: ${tone}
-- Objetivo da Campanha: ${goal}
-- Mix de Formatos: ${reels} Reels | ${carousels} Carrosséis | ${singlePosts} Estáticos
+  const prompt = `MISSÃO: Planejamento Tático Mensal de 4 Semanas para @${acc.username}.
+
+════ CONTEXTO DA MARCA ════
+Nicho: ${mem.niche || 'Inferir pelo username'}
+Público: ${mem.audience || 'Inferir pelo nicho'}
+Tom: ${tone}
+Objetivo: ${goal}
+Mix: ${reels} Reels | ${carousels} Carrosséis | ${singlePosts} Estáticos
+Melhores dias: ${timings.days} | Horários: ${timings.times}
+Por quê: ${timings.reasoning}
 ${evolutionContext}
 
-DIRETRIZES ABSOLUTAS DE QUALIDADE:
-1. Cada post TEM que ser uma peça única — temas, ângulos e estruturas diferentes entre si.
-2. O campo script_or_slides deve ter entre 4 e 7 itens. Cada item deve descrever com detalhes o que dizer/mostrar (mínimo 20 palavras por item).
-   - Para Reels: descreva o visual, áudio, texto de tela e ritmo de cada cena.
-   - Para Carrosséis: descreva o título e o conteúdo de cada slide com clareza.
-   - Para Estáticos: descreva o texto principal, o elemento visual e o texto secundário.
-3. O campo caption (legenda) deve ter entre 80 e 200 palavras.
-4. O campo visual_audio_direction deve ser uma instrução cinematográfica real, não vaga.
-5. O campo strategic_logic deve explicar por que este post vai gerar resultado.
-6. Distribua os gatilhos mentais ao longo do mês:
-   - Semana 1 (Atenção): Curiosidade, Polêmica, Choque
-   - Semana 2 (Inteligência): Prova Social, Autoridade, Dado Real
-   - Semana 3 (Emoção): Identificação, Vulnerabilidade, História Pessoal
-   - Semana 4 (Conversão): Escassez, Urgência, Proposta Direta
+════ BIBLIOTECA DE GANCHOS — USE E ADAPTE ════
+Para Reels:
+${reelsHooks}
 
-Retorne APENAS JSON válido, sem markdown:
+Para Carrosséis:
+${carHooks}
+
+════ REGRAS DE QUALIDADE ════
+1. Cada post usa um gatilho mental DIFERENTE: Identidade Ameaçada | Custo de Oportunidade | Curiosidade Irresolvida | Prova Social Inversa | Autoridade Casual | Vulnerabilidade Calculada | Urgência Real | Contraste Injusto
+2. script_or_slides: 5-7 partes com mínimo 25 palavras cada. Função psicológica definida em cada parte.
+   - Reels: [visual] + [fala/texto na tela] + [mood de áudio] + [direção de câmera]
+   - Carrosséis: [título] + [copy] + [visual específico] + [gancho para próximo slide]
+   - Estáticos: [copy principal] + [sub-copy] + [elementos visuais] + [CTA]
+3. caption: 100-200 palavras, 3+ quebras de parágrafo, CTA que cria consequência de não-ação
+4. visual_audio_direction: instrução de cinema real (mínimo 30 palavras)
+5. strategic_logic: psicologia por trás do post + por que funciona nesta semana do funil
+
+JSON:
 {
   "posts": [
     {
       "n": 1,
-      "week_funnel": "Semana 1: Atenção · REELS",
+      "week_funnel": "Semana 1: Despertar · REELS",
       "format": "reels",
-      "theme": "Título curto e impactante do post",
-      "visual_audio_direction": "Instrução de direção detalhada",
-      "script_or_slides": ["GANCHO (0-3s): ...", "PARTE 2: ...", "PARTE 3: ...", "CTA: ..."],
-      "caption": "Legenda com quebras de linha e CTA.",
-      "strategic_logic": "Por que este post funciona."
+      "theme": "Título curto e específico",
+      "posting_suggestion": "${timings.days.split(',')[0].trim()} às ${timings.times.split(' e ')[0]}",
+      "visual_audio_direction": "Instrução detalhada (30+ palavras)",
+      "script_or_slides": ["GANCHO (0-3s): 25+ palavras", "PARTE 2: ...", "PARTE 3: ...", "PARTE 4: ...", "CTA: ..."],
+      "caption": "Legenda 100-200 palavras com quebras e CTA",
+      "strategic_logic": "Psicologia + por que funciona nesta semana do funil",
+      "expected_metric": "salvamento|compartilhamento|comentário|clique"
     }
   ]
 }`;
 
   try {
-    const data = await callAI({
-      system: SYSTEM_PROMPTS.PLANNER_CORE,
-      user: prompt,
-      username: acc.username
-    });
+    const data = await callAI({ system: SYSTEM_PROMPTS.PLANNER_CORE, user: prompt, username: acc.username });
+
+    if (data.posts) {
+      data.posts = data.posts.map((p, i) => ({
+        ...p,
+        posting_suggestion: p.posting_suggestion || `${timings.days.split(',')[i % 3]?.trim()} às ${timings.times.split(' e ')[0]}`
+      }));
+    }
+
     mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
     if (mem.saved_planners.length > 15) mem.saved_planners.shift();
     await mem.save();
@@ -948,24 +1226,52 @@ Retorne APENAS JSON válido, sem markdown:
   }
 });
 
+// ==========================================
+// POST ÚNICO — MELHORADO
+// ==========================================
 app.post("/api/single-post", requireAuth, async (req, res) => {
   const { igId, format, subject, angle, intensity } = req.body;
   const acc = (req.session.accounts || []).find(a => a.id === igId);
-  if (!acc) return res.status(404).json({ error: "Conta não encontrada" });
+  if (!acc) return res.status(404).json({ error: "Conta não encontrada." });
   const mem = await getClientMemory(acc.username);
-  const prompt = `Crie exatamente UM POST ESTRATÉGICO para @${acc.username}.
-CONTEXTO DA MARCA: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
-TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE: ${intensity}/10.
+  const hooks = getHookLibrary(format);
+  const timings = getBestPostingTimes(mem.niche);
 
-REGRAS DE OURO:
-- NÃO use hashtags genéricas na legenda.
-- O roteiro deve ter pelo menos 4 partes com no mínimo 20 palavras cada.
-- A legenda deve começar com um Gancho de Curiosidade Irresistível de 1 linha.
-- Foque em quebrar a crença limitante nº 1 desse nicho.
-- visual_audio_direction deve ser uma instrução de cinema real.
+  const prompt = `UM POST ESTRATÉGICO PREMIUM para @${acc.username}.
 
-Retorne JSON:
-{ "format": "${format}", "theme": "${subject}", "visual_audio_direction": "direção de arte e áudio detalhada", "script_or_slides": ["GANCHO (0-3s): ...", "PARTE 2: ...", "PARTE 3: ...", "CTA: ..."], "caption": "legenda humanizada com quebras de linha e CTA", "strategic_logic": "por que isso converte?" }`;
+CONTEXTO: Nicho: ${mem.niche || 'Geral'}. Público: ${mem.audience || 'Geral'}.
+TEMA: ${subject}. FORMATO: ${format}. ÂNGULO: ${angle}. INTENSIDADE COMERCIAL: ${intensity}/10.
+MELHOR HORÁRIO: ${timings.times.split(' e ')[0]} (${timings.days.split(',')[0].trim()})
+
+PADRÕES DE GANCHO DISPONÍVEIS:
+${hooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}
+
+INTENSIDADE ${intensity}/10:
+${Number(intensity) <= 4
+  ? 'Conteúdo de posicionamento. Venda implícita na autoridade. Sem CTA direto de produto.'
+  : Number(intensity) <= 7
+  ? 'CTA suave ao final — "Se quiser aprofundar, o próximo passo é [X]." Venda como consequência do conteúdo.'
+  : 'Post de decisão. O copy deve fazer o seguidor sentir o custo de NÃO agir hoje. CTA direto com prazo ou escassez real.'
+}
+
+REGRAS:
+- 5-7 partes no roteiro, mínimo 25 palavras cada
+- Legenda 100-200 palavras, 3+ quebras de parágrafo
+- visual_audio_direction com 30+ palavras
+- Gancho nos primeiros 3s usando um dos padrões acima adaptado ao tema
+
+JSON:
+{
+  "format": "${format}",
+  "theme": "${subject}",
+  "posting_suggestion": "${timings.days.split(',')[0].trim()} às ${timings.times.split(' e ')[0]}",
+  "visual_audio_direction": "Direção detalhada (30+ palavras)",
+  "script_or_slides": ["GANCHO (0-3s): 25+ palavras", "PARTE 2: ...", "PARTE 3: ...", "PARTE 4: ...", "CTA: ..."],
+  "caption": "Legenda completa 100-200 palavras",
+  "strategic_logic": "Por que este post converte para intensidade ${intensity}/10",
+  "hook_pattern_used": "Qual padrão de gancho foi usado e por quê"
+}`;
+
   try {
     const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
     mem.single_posts.push({ date: new Date(), subject, format, angle, ...data });
@@ -978,6 +1284,9 @@ Retorne JSON:
   }
 });
 
+// ==========================================
+// EXPORT PDF
+// ==========================================
 app.post("/api/export-report", requireAuth, (req, res) => {
   const { payload, username } = req.body;
   const doc = new PDFDocument({ margin: 50 });
@@ -989,7 +1298,10 @@ app.post("/api/export-report", requireAuth, (req, res) => {
   doc.moveDown(3);
   doc.fillColor("#000000").fontSize(20).text(`Cliente: @${username}`, { underline: true }).moveDown();
   (payload.posts || []).forEach(p => {
-    doc.fontSize(14).fillColor("#22ceb5").text(`${p.week_funnel || 'Planejamento'} | Post ${p.n} - ${p.format.toUpperCase()} | Temática: ${p.theme}`);
+    doc.fontSize(14).fillColor("#22ceb5").text(`${p.week_funnel || 'Planejamento'} | Post ${p.n} - ${p.format.toUpperCase()} | ${p.theme}`);
+    if (p.posting_suggestion) {
+      doc.fontSize(10).fillColor("#f39c12").text(`📅 ${p.posting_suggestion}`);
+    }
     doc.fontSize(11).fillColor("#e74c3c").text(`Direção Visual/Áudio:`, { continued: true }).fillColor("#333333").text(` ${p.visual_audio_direction}`);
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor("#2980b9").text("Roteiro / Telas:");
@@ -997,6 +1309,10 @@ app.post("/api/export-report", requireAuth, (req, res) => {
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor("#27ae60").text("Legenda (Copy):");
     doc.fillColor("#333333").text(p.caption, { align: 'justify' });
+    if (p.strategic_logic) {
+      doc.moveDown(0.3);
+      doc.fontSize(10).fillColor("#888888").text(`Lógica: ${p.strategic_logic}`);
+    }
     doc.moveDown(2);
   });
   doc.fontSize(10).fillColor("#999999").text("Relatório Confidencial - Ideale Agency", 50, doc.page.height - 50, { align: 'center' });
@@ -1007,7 +1323,7 @@ app.get("/health", (req, res) => res.json({
   status: "ok",
   uptime: process.uptime(),
   db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  version: "2026.04-Ideale-v3.3-Platinum"
+  version: "2026.05-Ideale-v4.0-Platinum"
 }));
 
-app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v3.3 ativo em ${BASE_URL}`));
+app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v4.0 ativo em ${BASE_URL}`));
