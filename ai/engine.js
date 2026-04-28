@@ -37,9 +37,12 @@ async function runLLM({ clients, system, user }) {
 
     const text = res.data.choices[0].message.content;
 
+    console.log("🧠 RESPOSTA IA:", text.slice(0, 300));
+
     try {
       return JSON.parse(text);
-    } catch {
+    } catch (err) {
+      console.error("❌ JSON inválido da IA");
       return { posts: [] };
     }
 
