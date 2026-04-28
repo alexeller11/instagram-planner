@@ -1,15 +1,15 @@
 const axios = require("axios");
 
-async function getProfilePosts(username) {
+async function getProfileData(username) {
   try {
     const res = await axios.get(`https://www.instagram.com/${username}/?__a=1&__d=dis`);
     const edges = res.data.graphql.user.edge_owner_to_timeline_media.edges;
 
     return edges.slice(0, 12).map(e => {
-      const node = e.node;
+      const n = e.node;
       return {
-        caption: node.edge_media_to_caption.edges[0]?.node?.text || "",
-        score: node.edge_liked_by.count + node.edge_media_to_comment.count
+        caption: n.edge_media_to_caption.edges[0]?.node?.text || "",
+        score: n.edge_liked_by.count + n.edge_media_to_comment.count
       };
     });
   } catch {
@@ -24,4 +24,4 @@ function extractPatterns(posts) {
     .map(p => p.caption.slice(0, 120));
 }
 
-module.exports = { getProfilePosts, extractPatterns };
+module.exports = { getProfileData, extractPatterns };
