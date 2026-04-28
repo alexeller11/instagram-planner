@@ -1,6 +1,6 @@
 {
-  "name": "godmode-content-engine",
-  "version": "1.0.0",
+  "name": "titan-content-engine",
+  "version": "2.0.0",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
