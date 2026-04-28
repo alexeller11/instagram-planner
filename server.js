@@ -3,10 +3,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 const { buildClients } = require("./ai/engine");
-const { generateWithPipeline } = require("./ai/pipeline");
-const { filterRepetitions, updateMemory } = require("./ai/memory");
-const { getProfilePosts, extractPatterns } = require("./ai/insights");
-const { filterQuality } = require("./ai/quality");
+const { generate } = require("./ai/pipeline");
+const { getProfileData, extractPatterns } = require("./ai/insights");
+const { decideStrategy } = require("./ai/brain");
+const { updateMemory, avoidRepetition } = require("./ai/memory");
+const { filter } = require("./ai/quality");
 
 const app = express();
 app.use(express.json());
@@ -15,15 +16,15 @@ mongoose.connect(process.env.MONGODB_URI || "");
 
 const Client = mongoose.model("Client", new mongoose.Schema({
   username: String,
-  content_memory: {
-    last_themes: [String]
+  memory: {
+    last: [String]
   }
 }));
 
 async function getClient(username) {
   let c = await Client.findOne({ username });
   if (!c) {
-    c = new Client({ username, content_memory: { last_themes: [] } });
+    c = new Client({ username, memory: { last: [] } });
     await c.save();
   }
   return c;
@@ -32,89 +33,64 @@ async function getClient(username) {
 const clients = buildClients(process.env);
 
 const SYSTEM = `
-Você é estrategista de conteúdo nível TITAN.
+Você é um estrategista omnisciente.
 
-PROIBIDO:
-- conteúdo genérico
-- repetir ideias
-
-OBRIGATÓRIO:
-- curiosidade
-- contraste
-- storytelling
-- impacto
+Crie conteúdo:
+- não óbvio
+- não repetido
+- altamente engajador
 `;
-
-function enforceMix(posts, reels, carousels, single) {
-  const byType = {
-    reels: posts.filter(p => p.format === "reels"),
-    carrossel: posts.filter(p => p.format === "carrossel"),
-    estatico: posts.filter(p => p.format === "estatico")
-  };
-
-  return [
-    ...byType.reels.slice(0, reels),
-    ...byType.carrossel.slice(0, carousels),
-    ...byType.estatico.slice(0, single)
-  ];
-}
 
 app.post("/api/generate", async (req, res) => {
   try {
-    const { username, reels = 0, carousels = 0, singlePosts = 0 } = req.body;
+    const { username } = req.body;
 
     const client = await getClient(username);
 
-    const postsRaw = await getProfilePosts(username);
-    const patterns = extractPatterns(postsRaw);
+    const insights = await getProfileData(username);
+    const patterns = extractPatterns(insights);
 
-    const memory = client.content_memory.last_themes.join(", ");
+    const strategy = decideStrategy(insights);
 
-    const total = reels + carousels + singlePosts;
+    const total =
+      strategy.reels +
+      strategy.carrossel +
+      strategy.estatico;
 
     const prompt = `
 Crie ${total} posts.
 
-Cada post deve conter:
+Distribuição:
+${strategy.reels} reels
+${strategy.carrossel} carrossel
+${strategy.estatico} estatico
+
+Cada post:
 - theme
 - caption
-- format (reels/carrossel/estatico)
-
-Todos diferentes.
+- format
 `;
 
-    const result = await generateWithPipeline({
+    let result = await generate({
       clients,
       system: SYSTEM,
       prompt,
-      memory,
-      patterns
+      patterns,
+      memory: client.memory.last.join(", ")
     });
 
     let posts = result.posts || [];
 
-    // normaliza formato
-    posts = posts.map(p => ({
-      ...p,
-      format: (p.format || "").toLowerCase().includes("reel")
-        ? "reels"
-        : (p.format || "").toLowerCase().includes("carro")
-        ? "carrossel"
-        : "estatico"
-    }));
+    posts = avoidRepetition(posts, client.memory);
+    posts = filter(posts);
 
-    // filtros TITAN
-    posts = filterRepetitions(posts, client.content_memory);
-    posts = filterQuality(posts);
-
-    // garante mix
-    posts = enforceMix(posts, reels, carousels, singlePosts);
-
-    // atualiza memória
-    client.content_memory = updateMemory(client.content_memory, posts);
+    client.memory = updateMemory(client.memory, posts);
     await client.save();
 
-    res.json({ posts });
+    res.json({
+      strategy,
+      posts
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -122,5 +98,5 @@ Todos diferentes.
 });
 
 app.listen(10000, () => {
-  console.log("🚀 TITAN MODE ONLINE");
+  console.log("🧠 OMNISCIENT AI ONLINE");
 });
