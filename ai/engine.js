@@ -12,9 +12,7 @@ function buildClients(env) {
 async function runLLM({ clients, system, user, temperature = 0.9 }) {
   const { openai } = clients;
 
-  if (!openai.key) {
-    throw new Error("OPENAI_API_KEY não configurada");
-  }
+  if (!openai.key) throw new Error("OPENAI_API_KEY não configurada");
 
   const res = await axios.post(
     "https://api.openai.com/v1/chat/completions",
