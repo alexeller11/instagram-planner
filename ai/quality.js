@@ -1,26 +1,15 @@
-function isGeneric(text) {
-  const banned = [
-    "troca de óleo",
-    "faça manutenção",
-    "dica importante",
-    "você sabia"
-  ];
+function score(post) {
+  let s = 10;
 
-  return banned.some(b => text.toLowerCase().includes(b));
+  if (!post.caption || post.caption.length < 100) s -= 3;
+  if (post.caption.includes("dica")) s -= 2;
+  if (post.caption.includes("manutenção")) s -= 2;
+
+  return s;
 }
 
-function scorePost(post) {
-  let score = 10;
-
-  if (isGeneric(post.caption)) score -= 5;
-  if (!post.caption || post.caption.length < 80) score -= 3;
-  if (!post.theme) score -= 2;
-
-  return score;
+function filter(posts) {
+  return posts.filter(p => score(p) >= 5);
 }
 
-function filterQuality(posts) {
-  return posts.filter(p => scorePost(p) >= 5);
-}
-
-module.exports = { filterQuality };
+module.exports = { filter };
