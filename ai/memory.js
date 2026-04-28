@@ -1,21 +1,13 @@
-function filterRepetitions(posts, memory) {
-  const history = memory.last_themes || [];
-
-  return posts.filter(p => {
-    const t = (p.theme || "").toLowerCase();
-    return !history.some(h => t.includes(h));
-  });
-}
-
 function updateMemory(memory, posts) {
-  const themes = posts.map(p => (p.theme || "").toLowerCase());
+  const themes = posts.map(p => p.theme.toLowerCase());
 
-  memory.last_themes = [
-    ...(memory.last_themes || []),
-    ...themes
-  ].slice(-50);
-
+  memory.last = [...(memory.last || []), ...themes].slice(-50);
   return memory;
 }
 
-module.exports = { filterRepetitions, updateMemory };
+function avoidRepetition(posts, memory) {
+  const last = memory.last || [];
+  return posts.filter(p => !last.includes(p.theme.toLowerCase()));
+}
+
+module.exports = { updateMemory, avoidRepetition };
