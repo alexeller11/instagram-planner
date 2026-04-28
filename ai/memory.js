@@ -1,35 +1,21 @@
-function extractThemes(posts) {
-  return posts.map(p => p.theme?.toLowerCase()).filter(Boolean);
-}
-
-function isSimilar(a, b) {
-  if (!a || !b) return false;
-  return a.includes(b) || b.includes(a);
-}
-
-function filterRepetitions(newPosts, memory) {
+function filterRepetitions(posts, memory) {
   const history = memory.last_themes || [];
 
-  return newPosts.filter(post => {
-    const theme = post.theme?.toLowerCase();
-
-    const repeated = history.some(h => isSimilar(h, theme));
-    return !repeated;
+  return posts.filter(p => {
+    const theme = p.theme?.toLowerCase() || "";
+    return !history.some(h => theme.includes(h));
   });
 }
 
 function updateMemory(memory, posts) {
-  const themes = extractThemes(posts);
+  const themes = posts.map(p => p.theme?.toLowerCase());
 
   memory.last_themes = [
     ...(memory.last_themes || []),
     ...themes
-  ].slice(-30); // guarda últimos 30
+  ].slice(-30);
 
   return memory;
 }
 
-module.exports = {
-  filterRepetitions,
-  updateMemory
-};
+module.exports = { filterRepetitions, updateMemory };
