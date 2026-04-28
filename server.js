@@ -5,20 +5,16 @@ const mongoose = require("mongoose");
 const { buildClients } = require("./ai/engine");
 const { generateWithPipeline } = require("./ai/pipeline");
 const { filterRepetitions, updateMemory } = require("./ai/memory");
-const { getInstagramInsights, extractPatterns } = require("./ai/insights");
+const { getProfilePosts, extractPatterns } = require("./ai/insights");
+const { filterQuality } = require("./ai/quality");
 
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 10000;
-
-// ================= DB =================
 mongoose.connect(process.env.MONGODB_URI || "");
 
 const Client = mongoose.model("Client", new mongoose.Schema({
   username: String,
-  niche: String,
-  audience: String,
   content_memory: {
     last_themes: [String]
   }
@@ -33,46 +29,58 @@ async function getClient(username) {
   return c;
 }
 
-// ================= IA =================
 const clients = buildClients(process.env);
 
 const SYSTEM = `
-Você é estrategista nível elite.
-
-CRIE CONTEÚDO QUE:
-- prende atenção
-- foge do óbvio
-- gera curiosidade
+Você é estrategista de conteúdo nível TITAN.
 
 PROIBIDO:
 - conteúdo genérico
 - repetir ideias
+
+OBRIGATÓRIO:
+- curiosidade
+- contraste
+- storytelling
+- impacto
 `;
 
-// ================= ROUTE =================
+function enforceMix(posts, reels, carousels, single) {
+  const byType = {
+    reels: posts.filter(p => p.format === "reels"),
+    carrossel: posts.filter(p => p.format === "carrossel"),
+    estatico: posts.filter(p => p.format === "estatico")
+  };
+
+  return [
+    ...byType.reels.slice(0, reels),
+    ...byType.carrossel.slice(0, carousels),
+    ...byType.estatico.slice(0, single)
+  ];
+}
+
 app.post("/api/generate", async (req, res) => {
   try {
     const { username, reels = 0, carousels = 0, singlePosts = 0 } = req.body;
 
     const client = await getClient(username);
 
-    // 🔥 coleta dados reais
-    const insights = await getInstagramInsights(username);
-    const patterns = extractPatterns(insights);
+    const postsRaw = await getProfilePosts(username);
+    const patterns = extractPatterns(postsRaw);
 
     const memory = client.content_memory.last_themes.join(", ");
 
     const total = reels + carousels + singlePosts;
 
     const prompt = `
-Crie ${total} posts totalmente diferentes.
+Crie ${total} posts.
 
-Formato livre.
-
-Cada post deve ter:
+Cada post deve conter:
 - theme
 - caption
-- formato (reels/carrossel/estatico)
+- format (reels/carrossel/estatico)
+
+Todos diferentes.
 `;
 
     const result = await generateWithPipeline({
@@ -85,8 +93,24 @@ Cada post deve ter:
 
     let posts = result.posts || [];
 
-    posts = filterRepetitions(posts, client.content_memory);
+    // normaliza formato
+    posts = posts.map(p => ({
+      ...p,
+      format: (p.format || "").toLowerCase().includes("reel")
+        ? "reels"
+        : (p.format || "").toLowerCase().includes("carro")
+        ? "carrossel"
+        : "estatico"
+    }));
 
+    // filtros TITAN
+    posts = filterRepetitions(posts, client.content_memory);
+    posts = filterQuality(posts);
+
+    // garante mix
+    posts = enforceMix(posts, reels, carousels, singlePosts);
+
+    // atualiza memória
     client.content_memory = updateMemory(client.content_memory, posts);
     await client.save();
 
@@ -97,6 +121,6 @@ Cada post deve ter:
   }
 });
 
-app.listen(PORT, () => {
-  console.log("🚀 GOD MODE rodando:", PORT);
+app.listen(10000, () => {
+  console.log("🚀 TITAN MODE ONLINE");
 });
