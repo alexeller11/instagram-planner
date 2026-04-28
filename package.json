@@ -1,6 +1,6 @@
 {
-  "name": "singularity-content-engine",
-  "version": "4.0.0",
+  "name": "instagram-planner",
+  "version": "1.0.0",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
