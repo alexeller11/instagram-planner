@@ -1,6 +1,7 @@
 function updateMemory(memory, posts) {
   const themes = posts.map(p => (p.theme || "").toLowerCase());
-  memory.last = [...(memory.last || []), ...themes].slice(-80);
+
+  memory.last = [...(memory.last || []), ...themes].slice(-50);
   return memory;
 }
 
