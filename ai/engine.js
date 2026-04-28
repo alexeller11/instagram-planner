@@ -4,24 +4,20 @@ function buildClients(env) {
   return {
     openai: {
       key: env.OPENAI_API_KEY,
-      model: env.OPENAI_MODEL || "gpt-4o-mini"
+      model: env.OPENAI_MODEL || "gpt-3.5-turbo"
     }
   };
 }
 
 async function runLLM({ clients, system, user }) {
+  const { openai } = clients;
+
   try {
-    const { openai } = clients;
-
-    if (!openai.key) {
-      throw new Error("OPENAI_API_KEY não configurada");
-    }
-
     const res = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
         model: openai.model,
-        temperature: 0.9,
+        temperature: 0.8,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user }
@@ -37,17 +33,28 @@ async function runLLM({ clients, system, user }) {
 
     const text = res.data.choices[0].message.content;
 
-    console.log("🧠 RESPOSTA IA:", text.slice(0, 300));
-
     try {
       return JSON.parse(text);
-    } catch (err) {
-      console.error("❌ JSON inválido da IA");
+    } catch {
       return { posts: [] };
     }
 
   } catch (err) {
+    if (err.response?.status === 429) {
+      console.error("🚫 LIMITE DA OPENAI ATINGIDO (429)");
+      return {
+        posts: [
+          {
+            theme: "Sistema temporariamente limitado",
+            caption: "A geração automática está temporariamente indisponível. Tente novamente em alguns minutos.",
+            format: "estatico"
+          }
+        ]
+      };
+    }
+
     console.error("❌ ERRO IA:", err.message);
+
     return { posts: [] };
   }
 }
