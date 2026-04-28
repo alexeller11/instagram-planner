@@ -11,83 +11,159 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
 
-mongoose.connect(process.env.MONGODB_URI);
+// ================= LOG =================
+const log = {
+  info: (...a) => console.log("[INFO]", ...a),
+  error: (...a) => console.error("[ERROR]", ...a),
+};
 
-const Client = mongoose.model("Client", new mongoose.Schema({
-  username: String,
-  niche: String,
-  audience: String,
+// ================= DATABASE =================
+mongoose.connect(process.env.MONGODB_URI || "")
+  .then(() => log.info("✅ Mongo conectado"))
+  .catch(err => log.error("❌ Mongo erro:", err.message));
+
+// ================= SCHEMA =================
+const clientSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+
+  niche: { type: String, default: "" },
+  audience: { type: String, default: "" },
+  location: { type: String, default: "" },
+  tone: { type: String, default: "" },
+
+  // 🔥 MEMÓRIA DE CONTEÚDO
   content_memory: {
-    last_themes: [String]
+    last_themes: { type: [String], default: [] }
   },
+
+  // 🔥 MEMÓRIA DE PERFORMANCE
   performance_memory: {
-    top_posts: Array
-  }
-}));
+    top_posts: [{
+      theme: String,
+      content: String,
+      score: Number,
+      date: Date
+    }]
+  },
+
+  saved_planners: { type: Array, default: [] },
+  single_posts: { type: Array, default: [] }
+
+}, { timestamps: true });
+
+const Client = mongoose.model("Client", clientSchema);
+
+// ================= HELPERS =================
 
 async function getClient(username) {
-  let c = await Client.findOne({ username });
-  if (!c) {
-    c = new Client({ username, content_memory: { last_themes: [] } });
-    await c.save();
+  let client = await Client.findOne({ username });
+
+  if (!client) {
+    client = new Client({
+      username,
+      content_memory: { last_themes: [] }
+    });
+    await client.save();
   }
-  return c;
+
+  return client;
 }
 
-function normalizeFormat(f) {
-  f = String(f || "").toLowerCase();
+function normalizeFormat(format) {
+  const f = String(format || "").toLowerCase();
+
   if (f.includes("reel")) return "reels";
   if (f.includes("carro")) return "carrossel";
   return "estatico";
 }
 
+// ================= IA =================
+
 const aiClients = buildClients(process.env);
 
 const SYSTEM = `
-Você é estrategista de conteúdo premium.
+Você é um estrategista de conteúdo nível agência premium.
 
-PROIBIDO:
-- conteúdo genérico
-- repetir temas
-- focar só em manutenção
+ANTI-GENERICIDADE (OBRIGATÓRIO):
+- NÃO focar só em manutenção
+- NÃO repetir ideias
+- NÃO fazer conteúdo genérico
 
-OBRIGATÓRIO:
-- histórias reais
-- erros de clientes
-- bastidores
-- comparações
+VARIAÇÃO OBRIGATÓRIA:
+- histórias reais de clientes
+- bastidores da empresa
+- erros comuns
+- comparações (barato vs caro)
 - curiosidades técnicas
+- situações do dia a dia
+
+Se parecer conteúdo padrão → reescreva.
 `;
+
+// ================= ROUTE PRINCIPAL =================
 
 app.post("/api/generate", async (req, res) => {
   try {
-    const { username, reels, carousels, singlePosts } = req.body;
+    const {
+      username,
+      reels = 0,
+      carousels = 0,
+      singlePosts = 0,
+      goal = "",
+      tone = ""
+    } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: "username obrigatório" });
+    }
 
     const client = await getClient(username);
 
-    const memoryContext = client.content_memory.last_themes.join(", ");
-
     const total = reels + carousels + singlePosts;
 
-    const prompt = `
-Crie ${total} posts.
+    if (total === 0) {
+      return res.status(400).json({ error: "Defina quantidade de posts" });
+    }
 
-Mix:
+    const memoryContext = (client.content_memory?.last_themes || []).join(", ");
+
+    const prompt = `
+Crie ${total} posts para Instagram.
+
+MIX:
 ${reels} reels
 ${carousels} carrossel
 ${singlePosts} estatico
 
-Cada post deve ser único.
+Nicho: ${client.niche}
+Público: ${client.audience}
+Objetivo: ${goal}
+Tom: ${tone}
+
+TEMAS JÁ USADOS (NÃO REPETIR):
+${memoryContext}
+
+REGRA:
+Cada post deve ser completamente diferente.
 `;
 
     const { output } = await generateWithPipeline({
       clients: aiClients,
+      log,
       combinedSystem: SYSTEM,
       userPrompt: prompt,
       memoryContext
     });
 
-    let posts = output.posts.map(p => ({
+    let posts = Array.isArray(output?.posts) ? output.posts : [];
+
+    // 🔥 fallback (não quebra mais)
+    if (!posts.length) {
+      return res.json({ posts: [] });
+    }
+
+    // normaliza formato
+    posts = posts.map(p => ({
       ...p,
       format: normalizeFormat(p.format)
     }));
@@ -98,15 +174,40 @@ Cada post deve ser único.
     // 🔥 atualiza memória
     client.content_memory = updateMemory(client.content_memory, posts);
 
+    // 🔥 salva planner
+    client.saved_planners.push({
+      date: new Date(),
+      posts
+    });
+
+    if (client.saved_planners.length > 20) {
+      client.saved_planners.shift();
+    }
+
     await client.save();
+
+    // numeração
+    posts.forEach((p, i) => p.n = i + 1);
 
     res.json({ posts });
 
   } catch (err) {
+    log.error("❌ Erro generate:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ================= HEALTH =================
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    db: mongoose.connection.readyState
+  });
+});
+
+// ================= START =================
+
 app.listen(PORT, () => {
-  console.log("Server rodando:", PORT);
+  log.info(`🚀 Server rodando na porta ${PORT}`);
 });
