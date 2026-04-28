@@ -3,25 +3,28 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 const { buildClients } = require("./ai/engine");
-const { generateBatch } = require("./ai/pipeline");
-const { getProfileData, extractPatterns } = require("./ai/insights");
-const { decideStrategy, planSlots } = require("./ai/brain");
+const { generate } = require("./ai/pipeline");
 const { updateMemory, avoidRepetition } = require("./ai/memory");
-const { baseScore, filterQuality } = require("./ai/quality");
 
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
+
+// ===== LOG =====
+const log = {
+  info: (...a) => console.log("[INFO]", ...a),
+  error: (...a) => console.error("[ERROR]", ...a),
+};
 
 // ===== DB =====
-mongoose.connect(process.env.MONGODB_URI || "");
+mongoose.connect(process.env.MONGODB_URI || "")
+  .then(() => log.info("✅ Mongo conectado"))
+  .catch(err => log.error("❌ Mongo erro:", err.message));
 
 const Client = mongoose.model("Client", new mongoose.Schema({
   username: String,
-  memory: {
-    last: [String]
-  }
+  memory: { last: [String] }
 }));
 
 async function getClient(username) {
@@ -37,115 +40,85 @@ async function getClient(username) {
 const clients = buildClients(process.env);
 
 const SYSTEM = `
-Você é um estrategista SINGULARITY.
-
-CRIE CONTEÚDO:
-- específico
-- não óbvio
-- com gancho forte
-- com variação de ângulo
+Você é estrategista de conteúdo premium.
 
 PROIBIDO:
-- clichês
-- repetição
-- frases genéricas
+- conteúdo genérico
+- repetir ideias
+
+OBRIGATÓRIO:
+- curiosidade
+- impacto
+- storytelling
 `;
 
-// normaliza formato
-function normalize(f) {
-  const x = (f || "").toLowerCase();
-  if (x.includes("reel")) return "reels";
-  if (x.includes("carro")) return "carrossel";
-  return "estatico";
-}
-
+// ===== ROUTE =====
 app.post("/api/generate", async (req, res) => {
   try {
     const { username } = req.body;
-    if (!username) return res.status(400).json({ error: "username obrigatório" });
+
+    if (!username) {
+      return res.status(400).json({ error: "username obrigatório" });
+    }
 
     const client = await getClient(username);
 
-    // 1) Dados reais
-    const insights = await getProfileData(username);
-    const patterns = extractPatterns(insights);
+    // 🔥 PROMPT SIMPLES (sem scraping quebrado)
+    const prompt = `
+Crie 6 posts para Instagram.
 
-    // 2) Estratégia (mix)
-    const strategy = decideStrategy(insights);
-    const slots = planSlots(strategy);
+Cada post:
+- theme
+- caption
+- format (reels/carrossel/estatico)
 
-    // 3) Geração A/B (variantes)
-    let variants = await generateBatch({
-      clients,
-      system: SYSTEM,
-      slots,
-      patterns,
-      memory: (client.memory.last || []).join(", ")
-    });
+Todos diferentes.
+`;
+
+    let result;
+
+    try {
+      result = await generate({
+        clients,
+        system: SYSTEM,
+        prompt,
+        patterns: "",
+        memory: client.memory.last.join(", ")
+      });
+    } catch (err) {
+      log.error("❌ IA erro:", err.message);
+      return res.status(500).json({ error: "Erro na IA" });
+    }
+
+    let posts = Array.isArray(result?.posts) ? result.posts : [];
 
     // fallback
-    if (!variants.length) {
-      return res.json({ strategy, posts: [] });
+    if (!posts.length) {
+      log.error("⚠️ IA retornou vazio");
+      return res.json({ posts: [] });
     }
 
-    // 4) Normaliza + filtra repetição
-    variants = variants.map(v => ({
-      ...v,
-      format: normalize(v.format)
-    }));
+    // remove repetição
+    posts = avoidRepetition(posts, client.memory);
 
-    variants = avoidRepetition(variants, client.memory);
-
-    // 5) Score e seleção (escolhe a melhor variação por slot)
-    const grouped = {};
-    for (const v of variants) {
-      if (!grouped[v.slot]) grouped[v.slot] = [];
-      grouped[v.slot].push(v);
-    }
-
-    let selected = [];
-    for (const slotId of Object.keys(grouped)) {
-      const list = grouped[slotId];
-
-      // remove lixo
-      const good = filterQuality(list);
-
-      // ordena por score
-      const ranked = (good.length ? good : list)
-        .map(p => ({ ...p, _score: baseScore(p) }))
-        .sort((a, b) => b._score - a._score);
-
-      if (ranked.length) selected.push(ranked[0]);
-    }
-
-    // 6) Garante mix final
-    const byType = {
-      reels: selected.filter(p => p.format === "reels"),
-      carrossel: selected.filter(p => p.format === "carrossel"),
-      estatico: selected.filter(p => p.format === "estatico")
-    };
-
-    const final = [
-      ...byType.reels.slice(0, strategy.reels),
-      ...byType.carrossel.slice(0, strategy.carrossel),
-      ...byType.estatico.slice(0, strategy.estatico)
-    ].map((p, i) => ({ ...p, n: i + 1 }));
-
-    // 7) Memória evolutiva
-    client.memory = updateMemory(client.memory, final);
+    // salva memória
+    client.memory = updateMemory(client.memory, posts);
     await client.save();
 
-    res.json({
-      strategy,
-      count: final.length,
-      posts: final
-    });
+    res.json({ posts });
 
   } catch (err) {
+    log.error("❌ erro geral:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ===== HEALTH =====
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// ===== START =====
 app.listen(PORT, () => {
-  console.log("🧠 SINGULARITY ONLINE:", PORT);
+  log.info(`🚀 Server rodando na porta ${PORT}`);
 });
