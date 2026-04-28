@@ -9,16 +9,14 @@ function buildClients(env) {
   };
 }
 
-async function runLLM({ clients, system, user, temperature = 0.9 }) {
+async function runLLM({ clients, system, user }) {
   const { openai } = clients;
-
-  if (!openai.key) throw new Error("OPENAI_API_KEY não configurada");
 
   const res = await axios.post(
     "https://api.openai.com/v1/chat/completions",
     {
       model: openai.model,
-      temperature,
+      temperature: 0.9,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -32,10 +30,8 @@ async function runLLM({ clients, system, user, temperature = 0.9 }) {
     }
   );
 
-  const text = res.data.choices[0].message.content;
-
   try {
-    return JSON.parse(text);
+    return JSON.parse(res.data.choices[0].message.content);
   } catch {
     return { posts: [] };
   }
