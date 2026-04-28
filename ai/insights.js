@@ -9,7 +9,7 @@ async function getProfileData(username) {
       const n = e.node;
       return {
         caption: n.edge_media_to_caption.edges[0]?.node?.text || "",
-        score: n.edge_liked_by.count + n.edge_media_to_comment.count
+        score: (n.edge_liked_by.count || 0) + (n.edge_media_to_comment.count || 0)
       };
     });
   } catch {
@@ -21,7 +21,7 @@ function extractPatterns(posts) {
   return posts
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
-    .map(p => p.caption.slice(0, 120));
+    .map(p => p.caption.slice(0, 140));
 }
 
 module.exports = { getProfileData, extractPatterns };
