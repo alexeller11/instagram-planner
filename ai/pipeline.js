@@ -11,15 +11,14 @@ async function generateWithPipeline({
     clients,
     system: `${system}
 
-ANTI-GENERICIDADE:
-- não repetir temas
-- não fazer conteúdo padrão
-
-TEMAS PROIBIDOS:
+ANTI-REPETIÇÃO:
 ${memory}
 
-BASEADO NO QUE FUNCIONA:
+PADRÕES QUE FUNCIONAM:
 ${patterns}
+
+VARIAÇÃO OBRIGATÓRIA:
+Cada post deve ser diferente.
 `,
     user: prompt
   });
