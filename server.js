@@ -11,6 +11,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// ===== DB =====
 mongoose.connect(process.env.MONGODB_URI || "");
 
 const Client = mongoose.model("Client", new mongoose.Schema({
@@ -27,6 +28,7 @@ async function getClient(username) {
   return c;
 }
 
+// ===== IA =====
 const clients = buildClients(process.env);
 
 const SYSTEM = `
@@ -38,17 +40,18 @@ Crie conteúdo:
 - interessante
 `;
 
+// ===== ROTAS =====
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// 🔥 AGORA FUNCIONA NO NAVEGADOR
 app.get("/api/generate", async (req, res) => {
-  const username = req.query.username || "teste";
+  try {
+    const username = req.query.username || "teste";
 
-  const client = await getClient(username);
+    const client = await getClient(username);
 
-  const prompt = `
+    const prompt = `
 Crie 5 posts para Instagram.
 
 Cada post:
@@ -57,21 +60,25 @@ Cada post:
 - format
 `;
 
-  const result = await generate({
-    clients,
-    system: SYSTEM,
-    prompt,
-    memory: client.memory.last.join(", ")
-  });
+    const result = await generate({
+      clients,
+      system: SYSTEM,
+      prompt,
+      memory: client.memory.last.join(", ")
+    });
 
-  let posts = result.posts || [];
+    let posts = result.posts || [];
 
-  posts = avoidRepetition(posts, client.memory);
+    posts = avoidRepetition(posts, client.memory);
 
-  client.memory = updateMemory(client.memory, posts);
-  await client.save();
+    client.memory = updateMemory(client.memory, posts);
+    await client.save();
 
-  res.json({ posts });
+    res.json({ posts });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {
