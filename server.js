@@ -14,6 +14,10 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { chromium } = require("playwright");
 const mongoose = require("mongoose");
 
+// ✅ NOVO: motor modular + pipeline
+const { buildClients } = require("./ai/engine");
+const { generateWithPipeline } = require("./ai/pipeline");
+
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -27,8 +31,16 @@ const IG_TOKENS = (process.env.IG_TOKENS || "").split(",").map(t => t.trim()).fi
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const APP_PASSWORD = (process.env.APP_PASSWORD || "").trim();
 
+// ✅ NOVO: OpenAI env (opcional)
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || "").trim();
+const OPENAI_MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
+
+// Clientes antigos (mantidos p/ compat)
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 const gemini = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+// ✅ NOVO: clientes do motor modular
+const aiClients = buildClients(process.env);
 
 const log = {
   info:  (...a) => console.log(`[${new Date().toISOString()}] [INFO]`, ...a),
@@ -320,8 +332,18 @@ REGRAS DE ROTEIRO ABSOLUTAS:
 - Legenda: 100-200 palavras, 3+ quebras de parágrafo, CTA que cria consequência de não-ação`
 };
 
+// ✅ NOVO: helper para combinedSystem (reuso no pipeline)
+function buildCombinedSystem({ system, evolutionaryContext }) {
+  return [
+    SYSTEM_PROMPTS.PLATINUM_CORE,
+    system,
+    evolutionaryContext,
+    "ANTES DE RESPONDER: Simule internamente o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Sênior. Retorne apenas o consenso final em JSON."
+  ].filter(Boolean).join("\n\n");
+}
+
 // ==========================================
-// MOTOR IA COM TIMEOUT E FALLBACK COMPLETO
+// MOTOR IA COM TIMEOUT E FALLBACK COMPLETO (LEGADO)
 // ==========================================
 async function callAI({ system, user, imagePath, username }) {
   let evolutionaryContext = "";
@@ -337,12 +359,7 @@ async function callAI({ system, user, imagePath, username }) {
     } catch (e) { }
   }
 
-  const combinedSystem = [
-    SYSTEM_PROMPTS.PLATINUM_CORE,
-    system,
-    evolutionaryContext,
-    "ANTES DE RESPONDER: Simule internamente o debate entre um Estrategista de Retenção, um Psicólogo Comportamental e um Copywriter Sênior. Retorne apenas o consenso final em JSON."
-  ].filter(Boolean).join("\n\n");
+  const combinedSystem = buildCombinedSystem({ system, evolutionaryContext });
 
   const estimatedTokens = Math.round((combinedSystem.length + user.length) / 3.5);
   let lastError = null;
@@ -517,7 +534,11 @@ app.get("/api/debug-status", (req, res) => {
   const recentFbCalls = fbCallTimestamps.filter(t => Date.now() - t < FB_WINDOW_MS).length;
   res.json({
     env: process.env.NODE_ENV || "development",
-    groq: !!GROQ_API_KEY, gemini: !!GEMINI_API_KEY, sambanova: !!SAMBANOVA_API_KEY,
+    groq: !!GROQ_API_KEY,
+    gemini: !!GEMINI_API_KEY,
+    sambanova: !!SAMBANOVA_API_KEY,
+    openai: !!OPENAI_API_KEY,
+    openai_model: OPENAI_MODEL,
     mongodb: mongoose.connection.readyState === 1,
     session_store: MONGODB_URI ? "mongodb" : "memory",
     app_password_set: !!APP_PASSWORD,
@@ -1138,7 +1159,7 @@ app.post("/api/autofill", requireAuth, async (req, res) => {
 });
 
 // ==========================================
-// PLANNER MENSAL — MELHORADO
+// PLANNER MENSAL — (PIPELINE)
 // ==========================================
 app.post("/api/generate", requireAuth, async (req, res) => {
   const { igId, goal, tone, reels, carousels, singlePosts } = req.body;
@@ -1207,19 +1228,26 @@ JSON:
 }`;
 
   try {
-    const data = await callAI({ system: SYSTEM_PROMPTS.PLANNER_CORE, user: prompt, username: acc.username });
+    const combinedSystem = buildCombinedSystem({ system: SYSTEM_PROMPTS.PLANNER_CORE, evolutionaryContext: evolutionContext });
+    const { output } = await generateWithPipeline({
+      clients: aiClients,
+      log,
+      combinedSystem,
+      userPrompt: prompt,
+      formatHint: "auto"
+    });
 
-    if (data.posts) {
-      data.posts = data.posts.map((p, i) => ({
+    if (output.posts) {
+      output.posts = output.posts.map((p, i) => ({
         ...p,
         posting_suggestion: p.posting_suggestion || `${timings.days.split(',')[i % 3]?.trim()} às ${timings.times.split(' e ')[0]}`
       }));
     }
 
-    mem.saved_planners.push({ date: new Date(), goal, posts: (data.posts || []) });
+    mem.saved_planners.push({ date: new Date(), goal, posts: (output.posts || []) });
     if (mem.saved_planners.length > 15) mem.saved_planners.shift();
     await mem.save();
-    res.json(data);
+    res.json(output);
   } catch (e) {
     log.error("❌ Erro /api/generate:", e.message);
     res.status(500).json({ error: `Falha no Planejamento: ${e.message}` });
@@ -1227,7 +1255,7 @@ JSON:
 });
 
 // ==========================================
-// POST ÚNICO — MELHORADO
+// POST ÚNICO — (PIPELINE)
 // ==========================================
 app.post("/api/single-post", requireAuth, async (req, res) => {
   const { igId, format, subject, angle, intensity } = req.body;
@@ -1273,11 +1301,19 @@ JSON:
 }`;
 
   try {
-    const data = await callAI({ system: SYSTEM_PROMPTS.COPYWRITER, user: prompt, username: acc.username });
-    mem.single_posts.push({ date: new Date(), subject, format, angle, ...data });
+    const combinedSystem = buildCombinedSystem({ system: SYSTEM_PROMPTS.COPYWRITER, evolutionaryContext: "" });
+    const { output } = await generateWithPipeline({
+      clients: aiClients,
+      log,
+      combinedSystem,
+      userPrompt: prompt,
+      formatHint: format || "auto"
+    });
+
+    mem.single_posts.push({ date: new Date(), subject, format, angle, ...output });
     if (mem.single_posts.length > 50) mem.single_posts.shift();
     await mem.save();
-    res.json(data);
+    res.json(output);
   } catch (e) {
     log.error("❌ Erro /api/single-post:", e.message);
     res.status(500).json({ error: `Falha no Post Único: ${e.message}` });
@@ -1298,17 +1334,17 @@ app.post("/api/export-report", requireAuth, (req, res) => {
   doc.moveDown(3);
   doc.fillColor("#000000").fontSize(20).text(`Cliente: @${username}`, { underline: true }).moveDown();
   (payload.posts || []).forEach(p => {
-    doc.fontSize(14).fillColor("#22ceb5").text(`${p.week_funnel || 'Planejamento'} | Post ${p.n} - ${p.format.toUpperCase()} | ${p.theme}`);
+    doc.fontSize(14).fillColor("#22ceb5").text(`${p.week_funnel || 'Planejamento'} | Post ${p.n} - ${String(p.format || "").toUpperCase()} | ${p.theme}`);
     if (p.posting_suggestion) {
       doc.fontSize(10).fillColor("#f39c12").text(`📅 ${p.posting_suggestion}`);
     }
-    doc.fontSize(11).fillColor("#e74c3c").text(`Direção Visual/Áudio:`, { continued: true }).fillColor("#333333").text(` ${p.visual_audio_direction}`);
+    doc.fontSize(11).fillColor("#e74c3c").text(`Direção Visual/Áudio:`, { continued: true }).fillColor("#333333").text(` ${p.visual_audio_direction || ""}`);
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor("#2980b9").text("Roteiro / Telas:");
     (p.script_or_slides || []).forEach(s => doc.fillColor("#333333").text(`• ${s}`));
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor("#27ae60").text("Legenda (Copy):");
-    doc.fillColor("#333333").text(p.caption, { align: 'justify' });
+    doc.fillColor("#333333").text(p.caption || "", { align: 'justify' });
     if (p.strategic_logic) {
       doc.moveDown(0.3);
       doc.fontSize(10).fillColor("#888888").text(`Lógica: ${p.strategic_logic}`);
@@ -1322,8 +1358,16 @@ app.post("/api/export-report", requireAuth, (req, res) => {
 app.get("/health", (req, res) => res.json({
   status: "ok",
   uptime: process.uptime(),
-  db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  version: "2026.05-Ideale-v4.0-Platinum"
+  db: mongoose.connection.readyState
 }));
 
-app.listen(PORT, "0.0.0.0", () => log.info(`🔥 Ideale Platinum v4.0 ativo em ${BASE_URL}`));
+// Rate limit básico (mantendo leve)
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120
+});
+app.use("/api/", limiter);
+
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+app.listen(PORT, () => log.info(`✅ Server rodando em ${BASE_URL} (porta ${PORT})`));
