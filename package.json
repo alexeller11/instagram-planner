@@ -1,6 +1,6 @@
 {
-  "name": "titan-content-engine",
-  "version": "2.0.0",
+  "name": "omniscient-ai",
+  "version": "3.0.0",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
