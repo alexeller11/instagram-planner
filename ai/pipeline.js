@@ -1,106 +1,100 @@
-const { runLLM } = require("./engine");
+// pipeline.js
 
-// =========================
-// SUGESTÕES
-// =========================
-async function generateSuggestions({ clients, nicheHint }) {
-  const prompt = `
-Você é um estrategista de conteúdo.
+function normalizeFormat(f) {
+  if (!f) return "Reels";
+  f = f.toLowerCase();
 
-Cliente: ${nicheHint}
-
-Crie:
-- 10 ideias de conteúdo REAIS e específicas
-- 3 bios profissionais
-
-REGRAS:
-- Nada genérico
-- Nada de "você sabia"
-- Nada de promessa absurda
-
-Retorne JSON:
-{
-  "suggestions": [],
-  "bio_options": []
-}
-`;
-
-  const out = await runLLM({
-    clients,
-    system: "Retorne apenas JSON válido",
-    user: prompt
-  });
-
-  return {
-    suggestions: out?.suggestions || [],
-    bio_options: out?.bio_options || []
-  };
+  if (f.includes("reel")) return "Reels";
+  if (f.includes("carrossel")) return "Carrossel";
+  if (f.includes("carousel")) return "Carrossel";
+  return "Estático";
 }
 
-// =========================
-// PLANO 30 DIAS
-// =========================
+async function runLLM({ clients, system, user }) {
+  for (const c of clients) {
+    try {
+      const res = await c(system, user);
+      if (res) return res;
+    } catch (e) {
+      console.log("IA falhou:", e.message);
+    }
+  }
+  return null;
+}
+
 async function generatePlan30({ clients, niche, goal, tone }) {
   const prompt = `
-Você é um estrategista de marketing real.
+Você é um estrategista de marketing de alto nível.
 
-Cliente: ${niche}
-
+Cliente/Nicho: ${niche}
 Objetivo: ${goal}
 Tom: ${tone}
 
-Crie 30 posts REAIS.
+IMPORTANTE:
+- Nada genérico
+- Nada clichê
+- Nada superficial
+- Conteúdo aplicável ao nicho real
+- Não inventar histórias fake
 
-FORMATOS:
-- 14 Reels
-- 10 Carrossel
-- 6 Foto
+Crie 30 posts estratégicos.
 
-REGRAS:
-- Conteúdo deve ser realista para o negócio
-- NÃO inventar histórias falsas
-- NÃO usar frases genéricas
-- NÃO repetir ideias
+Formato JSON:
 
-Cada post:
 {
- "n":1,
- "title":"",
- "format":"",
- "copy":""
+  "posts":[
+    {
+      "n":1,
+      "theme":"",
+      "format":"Reels | Carrossel | Estático",
+      "caption":"",
+      "script_or_slides":["",""],
+      "visual_audio_direction":"",
+      "strategic_logic":""
+    }
+  ]
 }
-
-Retorne JSON.
 `;
 
   const out = await runLLM({
     clients,
-    system: "Retorne apenas JSON válido",
+    system: "Responda apenas JSON válido",
     user: prompt
   });
 
   let posts = Array.isArray(out?.posts) ? out.posts : [];
 
-  // normalização
   posts = posts.slice(0, 30).map((p, i) => ({
     n: i + 1,
-    title: p.title || "Post",
+    theme: p.theme || "Conteúdo estratégico",
     format: normalizeFormat(p.format),
-    copy: p.copy || ""
+    caption: p.caption || "",
+    script_or_slides: p.script_or_slides || [
+      "Gancho forte",
+      "Desenvolvimento",
+      "Chamada para ação"
+    ],
+    visual_audio_direction:
+      p.visual_audio_direction || "Vídeo direto com especialista",
+    strategic_logic: p.strategic_logic || ""
   }));
+
+  // fallback caso IA falhe
+  if (!posts.length) {
+    posts = Array.from({ length: 12 }).map((_, i) => ({
+      n: i + 1,
+      theme: `Conteúdo estratégico ${i + 1}`,
+      format: i % 3 === 0 ? "Reels" : i % 2 === 0 ? "Carrossel" : "Estático",
+      caption: "Conteúdo em construção",
+      script_or_slides: ["Gancho", "Conteúdo", "CTA"],
+      visual_audio_direction: "Gravação simples",
+      strategic_logic: "Fallback automático"
+    }));
+  }
 
   return { posts };
 }
 
-function normalizeFormat(f) {
-  if (!f) return "Reels";
-  const x = f.toLowerCase();
-  if (x.includes("reel")) return "Reels";
-  if (x.includes("car")) return "Carrossel";
-  return "Foto";
-}
-
 module.exports = {
-  generateSuggestions,
   generatePlan30
 };
