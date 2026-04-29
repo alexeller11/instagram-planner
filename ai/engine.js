@@ -67,24 +67,20 @@ async function callGroq(client, system, user) {
 }
 
 async function runLLM({ clients, system, user }) {
-  // 1) NVIDIA
   try {
     if (clients.nvidia?.key) {
       console.log("🟣 Tentando NVIDIA...");
       const text = await callNvidia(clients.nvidia, system, user);
-      console.log("🧠 NVIDIA OK");
       return extractJSON(text);
     }
   } catch (err) {
     console.log("⚠️ NVIDIA falhou:", err.response?.status || err.message);
   }
 
-  // 2) GROQ
   try {
     if (clients.groq?.key) {
       console.log("🟢 Tentando GROQ...");
       const text = await callGroq(clients.groq, system, user);
-      console.log("🧠 GROQ OK");
       return extractJSON(text);
     }
   } catch (err) {
