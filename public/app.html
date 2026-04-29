@@ -889,7 +889,7 @@ function renderPostCard(p, isSingle = false) {
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span class="badge" style="background:#fff; color:#000;">${isSingle ? 'POST ÚNICO' : (p.week_funnel || 'POST ' + p.n)} · ${(p.format || '').toUpperCase()}</span>
         <div style="display:flex; gap:8px;">
-          <button class="mini-action" onclick='evaluatePost(${pJson})'>⭐ Avaliar IA</button>
+          <button class="mini-action" onclick='evaluatePost(JSON.parse(decodeURIComponent("${pJson}")))'>⭐ Avaliar IA</button>
           <button class="mini-action" onclick='copyPostContent(${pJson})'>📋 Copiar Tudo</button>
         </div>
       </div>
