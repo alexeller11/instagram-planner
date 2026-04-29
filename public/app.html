@@ -1284,7 +1284,7 @@ function renderCalendar() {
         (p.format || '').toLowerCase().includes('carro') ? 'carrossel' : 'estatico';
       const formatLabel = (p.format || '').toLowerCase().includes('reels') ? '🎬 REELS' :
         (p.format || '').toLowerCase().includes('carro') ? '🎴 CARROSSEL' : '🖼️ ESTÁTICO';
-      const pJson = JSON.stringify(p).replace(/"/g, '&quot;');
+      const pJson = encodeURIComponent(JSON.stringify(p));.replace(/"/g, '&quot;');
       return `
         <div class="cal-post-pill ${formatClass}" onclick='showPostModal(${pJson})' title="Clique para ver detalhes">
           <div class="cal-post-num">#${p.n || ''}</div>
