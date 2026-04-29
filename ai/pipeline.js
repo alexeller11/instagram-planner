@@ -3,62 +3,69 @@ const { runLLM } = require("./engine");
 async function generate({ clients, niche, memory }) {
 
   const prompt = `
-Você é um roteirista profissional de vídeos curtos (Reels/TikTok).
+Você é um estrategista de conteúdo e social media.
 
 NICHO:
 ${niche}
 
 OBJETIVO:
-Criar roteiros que:
-- prendam atenção nos primeiros 3 segundos
-- mantenham retenção
-- gerem identificação
-- incentivem ação
+Criar um calendário semanal completo para Instagram.
 
-Crie 4 roteiros de REELS completos.
+ESTRATÉGIA:
+- 3 reels (alcance e conexão)
+- 2 carrosséis (valor e autoridade)
+- 1 post estático (posicionamento)
 
-ESTRUTURA OBRIGATÓRIA:
+DISTRIBUIÇÃO:
+Segunda: reels
+Terça: carrossel
+Quarta: reels
+Quinta: carrossel
+Sexta: reels
+Sábado: estático
 
-Para cada roteiro:
+CADA POST DEVE TER:
+
+- day: dia da semana
+- type: reels | carrossel | estatico
+- objective: (engajamento, autoridade, venda)
 
 - theme: ideia central
-- hook: primeira frase (impactante, curiosa ou tensa)
+- hook: frase inicial forte
 
-- script: texto que a pessoa vai falar (natural, humano, direto)
+SE FOR REELS:
+- script: fala completa
 
-- scenes: lista de cenas (ex: câmera, ação, corte)
-  Exemplo:
-  [
-    "câmera no rosto, expressão séria",
-    "corte mostrando situação",
-    "aproximação no final"
-  ]
+SE FOR CARROSSEL:
+- slides: lista com ideias de cada slide
 
+- caption: legenda pronta (com storytelling)
 - cta: chamada para ação
-
-- editing: sugestão de edição (legenda, cortes, zoom, música)
+- hashtags: 5 a 8 hashtags relevantes
 
 REGRAS IMPORTANTES:
 - NÃO usar frases genéricas
 - NÃO parecer propaganda
 - usar situações reais do nicho
-- linguagem simples e natural
-- parecer algo que alguém falaria de verdade
+- linguagem simples e humana
 
-Evite repetir:
+Evitar repetir:
 ${memory}
 
 RETORNE APENAS JSON:
 
 {
-  "posts": [
+  "calendar": [
     {
+      "day": "Segunda",
+      "type": "reels",
+      "objective": "engajamento",
       "theme": "...",
       "hook": "...",
       "script": "...",
-      "scenes": ["...", "..."],
+      "caption": "...",
       "cta": "...",
-      "editing": "..."
+      "hashtags": ["...", "..."]
     }
   ]
 }
@@ -70,7 +77,7 @@ RETORNE APENAS JSON:
     user: prompt
   });
 
-  return result || { posts: [] };
+  return result || { calendar: [] };
 }
 
 module.exports = { generate };
