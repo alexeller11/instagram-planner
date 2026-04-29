@@ -3,48 +3,47 @@ const { runLLM } = require("./engine");
 async function generate({ clients, niche, memory }) {
 
   const prompt = `
-Você é um estrategista de conteúdo que cria posts PRONTOS PARA PUBLICAÇÃO.
+Você é um roteirista profissional de vídeos curtos (Reels/TikTok).
 
 NICHO:
 ${niche}
 
 OBJETIVO:
-Criar conteúdo que:
-- prenda atenção imediatamente
-- gere identificação
-- pareça real
-- estimule ação
+Criar roteiros que:
+- prendam atenção nos primeiros 3 segundos
+- mantenham retenção
+- gerem identificação
+- incentivem ação
+
+Crie 4 roteiros de REELS completos.
 
 ESTRUTURA OBRIGATÓRIA:
 
-Cada post deve conter:
+Para cada roteiro:
 
-- theme: ideia central curta
-- format: reels, carrossel ou estatico
+- theme: ideia central
+- hook: primeira frase (impactante, curiosa ou tensa)
 
-- hook: primeira frase extremamente chamativa
-- caption: desenvolvimento (história, contexto ou explicação)
-- cta: chamada para ação (comentário, salvar, chamar no direct, etc)
-- visual_hint: sugestão de imagem ou vídeo
+- script: texto que a pessoa vai falar (natural, humano, direto)
+
+- scenes: lista de cenas (ex: câmera, ação, corte)
+  Exemplo:
+  [
+    "câmera no rosto, expressão séria",
+    "corte mostrando situação",
+    "aproximação no final"
+  ]
+
+- cta: chamada para ação
+
+- editing: sugestão de edição (legenda, cortes, zoom, música)
 
 REGRAS IMPORTANTES:
 - NÃO usar frases genéricas
 - NÃO parecer propaganda
 - usar situações reais do nicho
-- escrever como humano, não como empresa
-
-FORMATO POR TIPO:
-
-REELS:
-- hook forte + tensão
-- caption curto
-
-CARROSSEL:
-- educativo ou explicativo
-- quebrar em lógica de sequência
-
-ESTÁTICO:
-- opinião forte OU insight direto
+- linguagem simples e natural
+- parecer algo que alguém falaria de verdade
 
 Evite repetir:
 ${memory}
@@ -55,11 +54,11 @@ RETORNE APENAS JSON:
   "posts": [
     {
       "theme": "...",
-      "format": "reels",
       "hook": "...",
-      "caption": "...",
+      "script": "...",
+      "scenes": ["...", "..."],
       "cta": "...",
-      "visual_hint": "..."
+      "editing": "..."
     }
   ]
 }
