@@ -20,24 +20,36 @@ function normalizeFormat(f) {
 }
 
 async function generatePlan30({ clients, niche, goal, tone }) {
+
   const prompt = `
-Você é um estrategista de marketing real.
+Você é um estrategista de conteúdo nível agência premium.
 
 Cliente: ${niche}
-
 Objetivo: ${goal}
 Tom: ${tone}
 
-REGRAS:
-- Não inventar serviços
-- Não usar linguagem genérica
-- Não usar "você sabia"
-- Falar como empresa real
-- Conteúdo prático e aplicável
+MISSÃO:
+Criar conteúdo que gera:
+- autoridade
+- conexão
+- desejo
+- ação
 
-Crie 30 posts.
+NÃO FAÇA:
+- nada genérico
+- nada clichê
+- nada tipo "você sabia"
+- nada inventado
+- nada superficial
 
-Formato JSON:
+FAÇA:
+- ganchos fortes (primeira linha impactante)
+- situações reais do cliente
+- dores reais
+- linguagem humana
+- conteúdo que faria alguém parar o scroll
+
+FORMATO:
 
 {
  "posts":[
@@ -51,6 +63,35 @@ Formato JSON:
   }
  ]
 }
+
+REGRAS DE CONTEÚDO:
+
+REELS:
+- storytelling ou problema direto
+- abertura forte
+- final com CTA
+
+CARROSSEL:
+- educativo ou quebra de crença
+- dividido em etapas
+
+FOTO:
+- posicionamento ou prova
+
+IMPORTANTE:
+Se for oficina:
+- falar de problema mecânico real
+- falar de erro comum
+- falar de prejuízo evitável
+- linguagem prática
+
+NÃO FALAR:
+- luxo
+- estética premium
+- "segredo"
+- coisas irreais
+
+Crie 30 conteúdos diferentes.
 `;
 
   const out = await runLLM({
@@ -67,11 +108,12 @@ Formato JSON:
     format: normalizeFormat(p.format),
     caption: p.caption || "",
     script_or_slides: p.script_or_slides || [
-      "Gancho direto",
-      "Explicação simples",
+      "Gancho forte",
+      "Desenvolvimento",
       "Chamada para ação"
     ],
-    visual_audio_direction: p.visual_audio_direction || "Vídeo simples com explicação",
+    visual_audio_direction:
+      p.visual_audio_direction || "Gravação simples com especialista",
     strategic_logic: p.strategic_logic || ""
   }));
 
@@ -79,12 +121,12 @@ Formato JSON:
   if (!posts.length) {
     posts = Array.from({ length: 12 }).map((_, i) => ({
       n: i + 1,
-      theme: `Conteúdo ${i + 1}`,
+      theme: `Conteúdo estratégico ${i + 1}`,
       format: i % 3 === 0 ? "Reels" : i % 2 === 0 ? "Carrossel" : "Estático",
       caption: "Conteúdo em construção",
       script_or_slides: ["Gancho", "Conteúdo", "CTA"],
-      visual_audio_direction: "Vídeo simples",
-      strategic_logic: "Fallback automático"
+      visual_audio_direction: "Gravação simples",
+      strategic_logic: "Fallback"
     }));
   }
 
