@@ -5,6 +5,10 @@ function buildClients(env) {
     nvidia: {
       key: env.NVIDIA_API_KEY,
       model: env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct"
+    },
+    groq: {
+      key: env.GROQ_API_KEY,
+      model: env.GROQ_MODEL || "llama-3.1-8b-instant"
     }
   };
 }
@@ -18,42 +22,83 @@ function extractJSON(text) {
   }
 }
 
-async function runLLM({ clients, system, user }) {
-  try {
-    if (!clients.nvidia.key) {
-      throw new Error("NVIDIA_API_KEY não definida");
-    }
-
-    console.log("🟣 Usando NVIDIA (modelo atual)...");
-
-    const response = await axios.post(
-      "https://integrate.api.nvidia.com/v1/chat/completions",
-      {
-        model: clients.nvidia.model,
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${clients.nvidia.key}`,
-          "Content-Type": "application/json"
-        }
+// ================= NVIDIA =================
+async function callNvidia(client, system, user) {
+  const res = await axios.post(
+    "https://integrate.api.nvidia.com/v1/chat/completions",
+    {
+      model: client.model,
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
       }
-    );
+    }
+  );
 
-    const text = response.data.choices[0].message.content;
+  return res.data.choices[0].message.content;
+}
 
-    console.log("🧠 RESPOSTA NVIDIA:\n", text);
+// ================= GROQ =================
+async function callGroq(client, system, user) {
+  const res = await axios.post(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      model: client.model,
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
 
-    return extractJSON(text);
+  return res.data.choices[0].message.content;
+}
 
+// ================= ORQUESTRADOR =================
+async function runLLM({ clients, system, user }) {
+
+  // 🔥 1. NVIDIA
+  try {
+    if (clients.nvidia.key) {
+      console.log("🟣 Tentando NVIDIA...");
+      const text = await callNvidia(clients.nvidia, system, user);
+      console.log("🧠 NVIDIA OK");
+      return extractJSON(text);
+    }
   } catch (err) {
-    console.error("❌ ERRO NVIDIA:", err.response?.data || err.message);
-    return { posts: [] };
+    console.log("⚠️ NVIDIA falhou:", err.response?.status || err.message);
   }
+
+  // 🔥 2. GROQ
+  try {
+    if (clients.groq.key) {
+      console.log("🟢 Tentando GROQ...");
+      const text = await callGroq(clients.groq, system, user);
+      console.log("🧠 GROQ OK");
+      return extractJSON(text);
+    }
+  } catch (err) {
+    console.log("❌ GROQ falhou:", err.response?.status || err.message);
+  }
+
+  // 🔥 3. Fallback final
+  console.log("❌ Nenhuma IA respondeu");
+
+  return { posts: [] };
 }
 
 module.exports = { buildClients, runLLM };
