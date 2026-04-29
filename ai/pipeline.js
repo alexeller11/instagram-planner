@@ -2,84 +2,116 @@ const { runLLM } = require("./engine");
 
 async function generate({ clients, niche, memory }) {
 
-  const prompt = `
-Você é um estrategista de conteúdo profissional.
+  // ================= GERADOR =================
+  const buildPrompt = () => `
+Você é um estrategista de conteúdo.
 
 NICHO:
 ${niche}
 
-OBJETIVO:
-Criar um calendário MENSAL (4 semanas) inteligente para Instagram.
+Crie um calendário mensal completo (4 semanas).
 
-ESTRATÉGIA DO MÊS:
+REGRAS:
+- 4 semanas completas
+- 6 posts por semana
+- sem repetição
+- sem conteúdo genérico
 
-SEMANA 1 → ATRAÇÃO (chamar atenção)
-SEMANA 2 → CONEXÃO (gerar identificação)
-SEMANA 3 → AUTORIDADE (provar conhecimento)
-SEMANA 4 → CONVERSÃO (levar para ação)
+PROIBIDO:
+- "conheça nossa clínica"
+- "nossa equipe"
+- "testemunhos"
+- "dicas de..."
 
-CADA SEMANA DEVE TER:
+ESTILO:
+- conflito
+- curiosidade
+- situação real
 
-- 3 reels
-- 2 carrosséis
-- 1 post estático
-
-DISTRIBUIÇÃO:
-Segunda: reels
-Terça: carrossel
-Quarta: reels
-Quinta: carrossel
-Sexta: reels
-Sábado: estatico
-
-CADA POST DEVE TER:
-
-- day
-- type (reels | carrossel | estatico)
-- objective (engajamento, autoridade, venda)
-
-- theme
-- hook
-
-SE FOR REELS:
-- script
-
-SE FOR CARROSSEL:
-- slides (lista de ideias por slide)
-
-- caption (legenda completa com storytelling)
-- cta
-- hashtags (5 a 8)
-
-REGRAS IMPORTANTES:
-- NÃO ser genérico
-- NÃO parecer propaganda
-- usar situações reais do nicho
-- linguagem humana
-
-Evitar repetir:
-${memory}
-
-RETORNE APENAS JSON:
-
+RETORNE JSON:
 {
-  "month_plan": [
-    {
-      "week": 1,
-      "focus": "atração",
-      "posts": []
-    }
-  ]
+  "month_plan": [...]
 }
 `;
 
-  const result = await runLLM({
-    clients,
-    system: "Você responde apenas JSON puro.",
-    user: prompt
-  });
+  // ================= AVALIADOR =================
+  const evaluatePrompt = (content) => `
+Você é um diretor criativo.
 
-  return result || { month_plan: [] };
+Avalie o conteúdo abaixo.
+
+CRITÉRIOS:
+- originalidade
+- impacto
+- ausência de clichês
+- variedade
+- semanas completas
+
+Se estiver RUIM, responda:
+{ "approved": false, "reason": "..." }
+
+Se estiver BOM:
+{ "approved": true }
+
+Conteúdo:
+${JSON.stringify(content)}
+`;
+
+  let attempt = 0;
+  let result = null;
+
+  while (attempt < 3) {
+    attempt++;
+
+    console.log("🔁 Tentativa:", attempt);
+
+    // 1. GERA
+    const generated = await runLLM({
+      clients,
+      system: "Você responde apenas JSON.",
+      user: buildPrompt()
+    });
+
+    if (!generated?.month_plan) continue;
+
+    // 2. AVALIA
+    const evaluation = await runLLM({
+      clients,
+      system: "Você responde apenas JSON.",
+      user: evaluatePrompt(generated)
+    });
+
+    console.log("🧠 Avaliação:", evaluation);
+
+    if (evaluation?.approved === true) {
+      result = generated;
+      break;
+    }
+
+    console.log("⚠️ Conteúdo rejeitado:", evaluation?.reason);
+  }
+
+  if (!result) {
+    console.log("❌ Nenhuma tentativa passou no filtro");
+
+    return {
+      month_plan: [
+        {
+          week: 1,
+          focus: "fallback",
+          posts: [
+            {
+              theme: "Conteúdo em ajuste",
+              caption: "Estamos refinando sua estratégia.",
+              format: "estatico"
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  return result;
 }
 
 module.exports = { generate };
