@@ -1,15 +1,3 @@
-// pipeline.js
-
-function normalizeFormat(f) {
-  if (!f) return "Reels";
-  f = f.toLowerCase();
-
-  if (f.includes("reel")) return "Reels";
-  if (f.includes("carrossel")) return "Carrossel";
-  if (f.includes("carousel")) return "Carrossel";
-  return "Estático";
-}
-
 async function runLLM({ clients, system, user }) {
   for (const c of clients) {
     try {
@@ -22,37 +10,46 @@ async function runLLM({ clients, system, user }) {
   return null;
 }
 
+function normalizeFormat(f) {
+  if (!f) return "Reels";
+  f = f.toLowerCase();
+
+  if (f.includes("reel")) return "Reels";
+  if (f.includes("car")) return "Carrossel";
+  return "Estático";
+}
+
 async function generatePlan30({ clients, niche, goal, tone }) {
   const prompt = `
-Você é um estrategista de marketing de alto nível.
+Você é um estrategista de marketing real.
 
-Cliente/Nicho: ${niche}
+Cliente: ${niche}
+
 Objetivo: ${goal}
 Tom: ${tone}
 
-IMPORTANTE:
-- Nada genérico
-- Nada clichê
-- Nada superficial
-- Conteúdo aplicável ao nicho real
-- Não inventar histórias fake
+REGRAS:
+- Não inventar serviços
+- Não usar linguagem genérica
+- Não usar "você sabia"
+- Falar como empresa real
+- Conteúdo prático e aplicável
 
-Crie 30 posts estratégicos.
+Crie 30 posts.
 
 Formato JSON:
 
 {
-  "posts":[
-    {
-      "n":1,
-      "theme":"",
-      "format":"Reels | Carrossel | Estático",
-      "caption":"",
-      "script_or_slides":["",""],
-      "visual_audio_direction":"",
-      "strategic_logic":""
-    }
-  ]
+ "posts":[
+  {
+    "theme":"",
+    "format":"",
+    "caption":"",
+    "script_or_slides":["",""],
+    "visual_audio_direction":"",
+    "strategic_logic":""
+  }
+ ]
 }
 `;
 
@@ -70,24 +67,23 @@ Formato JSON:
     format: normalizeFormat(p.format),
     caption: p.caption || "",
     script_or_slides: p.script_or_slides || [
-      "Gancho forte",
-      "Desenvolvimento",
+      "Gancho direto",
+      "Explicação simples",
       "Chamada para ação"
     ],
-    visual_audio_direction:
-      p.visual_audio_direction || "Vídeo direto com especialista",
+    visual_audio_direction: p.visual_audio_direction || "Vídeo simples com explicação",
     strategic_logic: p.strategic_logic || ""
   }));
 
-  // fallback caso IA falhe
+  // fallback
   if (!posts.length) {
     posts = Array.from({ length: 12 }).map((_, i) => ({
       n: i + 1,
-      theme: `Conteúdo estratégico ${i + 1}`,
+      theme: `Conteúdo ${i + 1}`,
       format: i % 3 === 0 ? "Reels" : i % 2 === 0 ? "Carrossel" : "Estático",
       caption: "Conteúdo em construção",
       script_or_slides: ["Gancho", "Conteúdo", "CTA"],
-      visual_audio_direction: "Gravação simples",
+      visual_audio_direction: "Vídeo simples",
       strategic_logic: "Fallback automático"
     }));
   }
