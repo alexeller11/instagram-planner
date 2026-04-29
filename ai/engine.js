@@ -5,15 +5,11 @@ function buildClients(env) {
     groq: {
       key: env.GROQ_API_KEY,
       model: "llama3-70b-8192"
-    },
-    openai: {
-      key: env.OPENAI_API_KEY,
-      model: "gpt-3.5-turbo"
     }
   };
 }
 
-// extrai JSON mesmo se vier bagunçado
+// extrai JSON mesmo se vier texto junto
 function extractJSON(text) {
   try {
     const match = text.match(/\{[\s\S]*\}/);
@@ -23,81 +19,44 @@ function extractJSON(text) {
   }
 }
 
-// ================= GROQ =================
-async function callGroq(client, system, user) {
-  const res = await axios.post(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      model: client.model,
-      temperature: 0.8,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ]
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${client.key}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
-
-  return res.data.choices[0].message.content;
-}
-
-// ================= OPENAI (fallback) =================
-async function callOpenAI(client, system, user) {
-  const res = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
-    {
-      model: client.model,
-      temperature: 0.8,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ]
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${client.key}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
-
-  return res.data.choices[0].message.content;
-}
-
-// ================= ORQUESTRADOR =================
 async function runLLM({ clients, system, user }) {
-
-  // 🔥 PRIMEIRO: GROQ
   try {
-    if (clients.groq.key) {
-      console.log("🟢 Usando GROQ...");
-      const text = await callGroq(clients.groq, system, user);
-      console.log("🧠 GROQ respondeu:", text);
-      return extractJSON(text);
+    if (!clients.groq.key) {
+      throw new Error("GROQ_API_KEY não definida");
     }
+
+    console.log("🟢 Chamando GROQ...");
+
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama3-70b-8192",
+        temperature: 0.7,
+        messages: [
+          {
+            role: "user",
+            content: `${system}\n\n${user}`
+          }
+        ]
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${clients.groq.key}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const text = response.data.choices[0].message.content;
+
+    console.log("🧠 RESPOSTA GROQ:\n", text);
+
+    return extractJSON(text);
+
   } catch (err) {
-    console.log("⚠️ GROQ falhou:", err.message);
+    console.error("❌ ERRO GROQ:", err.response?.data || err.message);
+    return { posts: [] };
   }
-
-  // 🔥 FALLBACK: OPENAI
-  try {
-    if (clients.openai.key) {
-      console.log("🟡 Tentando OpenAI...");
-      const text = await callOpenAI(clients.openai, system, user);
-      return extractJSON(text);
-    }
-  } catch (err) {
-    console.log("❌ OpenAI falhou:", err.message);
-  }
-
-  console.log("❌ Nenhuma IA respondeu");
-
-  return { posts: [] };
 }
 
 module.exports = { buildClients, runLLM };
