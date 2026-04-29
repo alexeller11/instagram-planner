@@ -5,126 +5,80 @@ const path = require("path");
 
 const { buildClients } = require("./ai/engine");
 const { generate } = require("./ai/pipeline");
-const { updateMemory, avoidRepetition } = require("./ai/memory");
 
 const app = express();
 app.use(express.json());
 
-// 🔥 SERVIR FRONTEND
+// 🔥 SERVIR ARQUIVOS FRONT
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
 
-// ================= LOG =================
-const log = {
-  info: (...a) => console.log("[INFO]", ...a),
-  error: (...a) => console.error("[ERROR]", ...a),
-};
-
-// ================= DATABASE =================
+// ================= DB =================
 mongoose.connect(process.env.MONGODB_URI || "")
-  .then(() => log.info("✅ Mongo conectado"))
-  .catch(err => log.error("❌ Mongo erro:", err.message));
-
-const Client = mongoose.model("Client", new mongoose.Schema({
-  username: String,
-  niche: String,
-  memory: { last: [String] }
-}));
-
-async function getClient(username, niche) {
-  let c = await Client.findOne({ username });
-
-  if (!c) {
-    c = new Client({
-      username,
-      niche,
-      memory: { last: [] }
-    });
-    await c.save();
-  }
-
-  if (niche && c.niche !== niche) {
-    c.niche = niche;
-    await c.save();
-  }
-
-  return c;
-}
+  .then(() => console.log("✅ Mongo conectado"))
+  .catch(err => console.log("❌ Mongo erro:", err.message));
 
 // ================= IA =================
 const clients = buildClients(process.env);
 
-// ================= ROTAS =================
+// ================= ROTAS FRONT =================
 
-// 🔥 AGORA O FRONT ABRE AQUI
+// LOGIN
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
+// APP PRINCIPAL
+app.get("/app", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/app.html"));
+});
+
+// DASHBOARD (backup)
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/dashboard.html"));
+});
+
+// PRIVACY
+app.get("/privacy", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/privacy.html"));
+});
+
+// ================= API =================
+
+// FAKE AUTH (pra não travar seu login)
+app.post("/api/auth", (req, res) => {
+  res.json({ success: true });
+});
+
+// HEALTH
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// ================= GERAÇÃO =================
-
+// GERAÇÃO
 app.get("/api/generate", async (req, res) => {
   try {
     const username = req.query.username || "teste";
-    const niche = req.query.niche || "negócios locais";
+    const niche = req.query.niche || "negócios";
 
-    log.info("🔍 Cliente:", username, "| Nicho:", niche);
-
-    const client = await getClient(username, niche);
+    console.log("🔍 Gerando para:", username, niche);
 
     const result = await generate({
       clients,
-      niche: client.niche,
-      memory: (client.memory.last || []).join(", ")
+      niche,
+      memory: ""
     });
 
-    console.log("🧠 RESPOSTA BRUTA IA:", result);
-
-    let output = [];
-
-    if (Array.isArray(result.posts)) {
-      output = result.posts;
-    } else if (Array.isArray(result.calendar)) {
-      output = result.calendar;
-    } else if (Array.isArray(result.month_plan)) {
-      output = result.month_plan;
-    }
-
-    if (!output.length) {
-      log.error("⚠️ IA retornou vazio");
-
-      return res.json({
-        type: "fallback",
-        data: [
-          {
-            theme: "Conteúdo em ajuste",
-            caption: "Estamos refinando sua estratégia.",
-            format: "estatico"
-          }
-        ]
-      });
-    }
-
-    res.json({
-      type: result.month_plan ? "monthly_calendar" :
-            result.calendar ? "weekly_calendar" :
-            "posts",
-      data: output
-    });
+    return res.json(result);
 
   } catch (err) {
-    log.error("❌ erro:", err.message);
+    console.log("❌ erro:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ================= START =================
-
 app.listen(PORT, () => {
-  log.info(`🚀 API rodando na porta ${PORT}`);
+  console.log(`🚀 API rodando na porta ${PORT}`);
 });
