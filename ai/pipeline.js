@@ -1,36 +1,35 @@
 const { runLLM } = require("./engine");
 
-async function generate({ clients, system, memory }) {
+async function generate({ clients, niche, memory }) {
 
   const prompt = `
-Você é um estrategista de conteúdo para redes sociais.
+Você é um estrategista de conteúdo.
 
-Nicho: OFICINA MECÂNICA (carros)
+NICHO DO CLIENTE:
+${niche}
 
-Objetivo:
-Gerar conteúdo que:
-- prenda atenção
-- gere identificação
-- mostre autoridade
-- faça o cliente confiar
+OBJETIVO:
+Criar conteúdo que gere:
+- atenção
+- identificação
+- autoridade
+- confiança
+
+REGRAS:
+- NÃO seja genérico
+- NÃO use frases clichê
+- use situações reais do nicho
+- fale como alguém do mercado falaria
 
 Crie 6 posts.
 
-REGRAS IMPORTANTES:
-- NÃO use frases genéricas (tipo "você sabia", "nos dias de hoje")
-- NÃO fale de forma ampla
-- Use situações reais de oficina
-- Use problemas que clientes realmente vivem
-- Use linguagem simples e direta
-
 Cada post deve ter:
 - theme (curto e específico)
-- caption (texto envolvente)
+- caption (envolvente e direto)
 - format (reels, carrossel ou estatico)
 
-Exemplo de nível esperado:
-- "Cliente chegou com barulho no motor e quase perdeu tudo"
-- "O erro que faz seu carro consumir mais combustível sem você perceber"
+Evite repetir temas:
+${memory}
 
 Retorne apenas JSON:
 {
