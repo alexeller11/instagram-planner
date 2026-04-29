@@ -4,12 +4,11 @@ function buildClients(env) {
   return {
     nvidia: {
       key: env.NVIDIA_API_KEY,
-      model: "meta/llama3-70b-instruct"
+      model: env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct"
     }
   };
 }
 
-// extrai JSON mesmo se vier texto junto
 function extractJSON(text) {
   try {
     const match = text.match(/\{[\s\S]*\}/);
@@ -25,7 +24,7 @@ async function runLLM({ clients, system, user }) {
       throw new Error("NVIDIA_API_KEY não definida");
     }
 
-    console.log("🟣 Usando NVIDIA AI...");
+    console.log("🟣 Usando NVIDIA (modelo atual)...");
 
     const response = await axios.post(
       "https://integrate.api.nvidia.com/v1/chat/completions",
@@ -33,14 +32,8 @@ async function runLLM({ clients, system, user }) {
         model: clients.nvidia.model,
         temperature: 0.7,
         messages: [
-          {
-            role: "system",
-            content: system
-          },
-          {
-            role: "user",
-            content: user
-          }
+          { role: "system", content: system },
+          { role: "user", content: user }
         ]
       },
       {
