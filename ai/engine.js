@@ -2,9 +2,9 @@ const axios = require("axios");
 
 function buildClients(env) {
   return {
-    groq: {
-      key: env.GROQ_API_KEY,
-      model: "llama3-70b-8192"
+    nvidia: {
+      key: env.NVIDIA_API_KEY,
+      model: "meta/llama3-70b-instruct"
     }
   };
 }
@@ -21,27 +21,31 @@ function extractJSON(text) {
 
 async function runLLM({ clients, system, user }) {
   try {
-    if (!clients.groq.key) {
-      throw new Error("GROQ_API_KEY não definida");
+    if (!clients.nvidia.key) {
+      throw new Error("NVIDIA_API_KEY não definida");
     }
 
-    console.log("🟢 Chamando GROQ...");
+    console.log("🟣 Usando NVIDIA AI...");
 
     const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
+      "https://integrate.api.nvidia.com/v1/chat/completions",
       {
-        model: "llama3-70b-8192",
+        model: clients.nvidia.model,
         temperature: 0.7,
         messages: [
           {
+            role: "system",
+            content: system
+          },
+          {
             role: "user",
-            content: `${system}\n\n${user}`
+            content: user
           }
         ]
       },
       {
         headers: {
-          "Authorization": `Bearer ${clients.groq.key}`,
+          Authorization: `Bearer ${clients.nvidia.key}`,
           "Content-Type": "application/json"
         }
       }
@@ -49,12 +53,12 @@ async function runLLM({ clients, system, user }) {
 
     const text = response.data.choices[0].message.content;
 
-    console.log("🧠 RESPOSTA GROQ:\n", text);
+    console.log("🧠 RESPOSTA NVIDIA:\n", text);
 
     return extractJSON(text);
 
   } catch (err) {
-    console.error("❌ ERRO GROQ:", err.response?.data || err.message);
+    console.error("❌ ERRO NVIDIA:", err.response?.data || err.message);
     return { posts: [] };
   }
 }
