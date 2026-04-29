@@ -3,18 +3,26 @@ const { runLLM } = require("./engine");
 async function generate({ clients, niche, memory }) {
 
   const prompt = `
-Você é um estrategista de conteúdo e social media.
+Você é um estrategista de conteúdo profissional.
 
 NICHO:
 ${niche}
 
 OBJETIVO:
-Criar um calendário semanal completo para Instagram.
+Criar um calendário MENSAL (4 semanas) inteligente para Instagram.
 
-ESTRATÉGIA:
-- 3 reels (alcance e conexão)
-- 2 carrosséis (valor e autoridade)
-- 1 post estático (posicionamento)
+ESTRATÉGIA DO MÊS:
+
+SEMANA 1 → ATRAÇÃO (chamar atenção)
+SEMANA 2 → CONEXÃO (gerar identificação)
+SEMANA 3 → AUTORIDADE (provar conhecimento)
+SEMANA 4 → CONVERSÃO (levar para ação)
+
+CADA SEMANA DEVE TER:
+
+- 3 reels
+- 2 carrosséis
+- 1 post estático
 
 DISTRIBUIÇÃO:
 Segunda: reels
@@ -22,32 +30,32 @@ Terça: carrossel
 Quarta: reels
 Quinta: carrossel
 Sexta: reels
-Sábado: estático
+Sábado: estatico
 
 CADA POST DEVE TER:
 
-- day: dia da semana
-- type: reels | carrossel | estatico
-- objective: (engajamento, autoridade, venda)
+- day
+- type (reels | carrossel | estatico)
+- objective (engajamento, autoridade, venda)
 
-- theme: ideia central
-- hook: frase inicial forte
+- theme
+- hook
 
 SE FOR REELS:
-- script: fala completa
+- script
 
 SE FOR CARROSSEL:
-- slides: lista com ideias de cada slide
+- slides (lista de ideias por slide)
 
-- caption: legenda pronta (com storytelling)
-- cta: chamada para ação
-- hashtags: 5 a 8 hashtags relevantes
+- caption (legenda completa com storytelling)
+- cta
+- hashtags (5 a 8)
 
 REGRAS IMPORTANTES:
-- NÃO usar frases genéricas
+- NÃO ser genérico
 - NÃO parecer propaganda
 - usar situações reais do nicho
-- linguagem simples e humana
+- linguagem humana
 
 Evitar repetir:
 ${memory}
@@ -55,17 +63,11 @@ ${memory}
 RETORNE APENAS JSON:
 
 {
-  "calendar": [
+  "month_plan": [
     {
-      "day": "Segunda",
-      "type": "reels",
-      "objective": "engajamento",
-      "theme": "...",
-      "hook": "...",
-      "script": "...",
-      "caption": "...",
-      "cta": "...",
-      "hashtags": ["...", "..."]
+      "week": 1,
+      "focus": "atração",
+      "posts": []
     }
   ]
 }
@@ -77,7 +79,7 @@ RETORNE APENAS JSON:
     user: prompt
   });
 
-  return result || { calendar: [] };
+  return result || { month_plan: [] };
 }
 
 module.exports = { generate };
