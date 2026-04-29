@@ -1,117 +1,117 @@
 const { runLLM } = require("./engine");
 
-async function generate({ clients, niche, memory }) {
-
-  // ================= GERADOR =================
-  const buildPrompt = () => `
-Você é um estrategista de conteúdo.
+function buildPrompt({ niche, memory }) {
+  return `
+Você é um estrategista de conteúdo de alto nível.
 
 NICHO:
 ${niche}
 
-Crie um calendário mensal completo (4 semanas).
+CRIE UM CALENDÁRIO MENSAL COMPLETO (4 semanas).
 
-REGRAS:
-- 4 semanas completas
-- 6 posts por semana
-- sem repetição
-- sem conteúdo genérico
+REGRAS CRÍTICAS:
+- Todas as 4 semanas DEVEM estar preenchidas
+- Cada semana deve ter 6 posts (Seg a Sáb)
+- NÃO repetir temas
+- NÃO usar conteúdo genérico
 
 PROIBIDO:
 - "conheça nossa clínica"
 - "nossa equipe"
 - "testemunhos"
 - "dicas de..."
+- conteúdo institucional fraco
 
 ESTILO:
 - conflito
 - curiosidade
 - situação real
+- linguagem humana
 
-RETORNE JSON:
+SEMANA 1 → ATRAÇÃO
+SEMANA 2 → CONEXÃO
+SEMANA 3 → AUTORIDADE
+SEMANA 4 → CONVERSÃO
+
+FORMATO DE CADA POST:
+- day
+- type (reels|carrossel|estatico)
+- objective (engajamento|autoridade|venda)
+- theme
+- hook
+- se reels: script
+- se carrossel: slides (lista)
+- caption
+- cta
+- hashtags (5 a 8)
+
+EVITE REPETIR ESTES TEMAS:
+${memory}
+
+RETORNE APENAS JSON NO FORMATO:
 {
-  "month_plan": [...]
+  "month_plan": [
+    { "week": 1, "focus": "atração", "posts": [] },
+    { "week": 2, "focus": "conexão", "posts": [] },
+    { "week": 3, "focus": "autoridade", "posts": [] },
+    { "week": 4, "focus": "conversão", "posts": [] }
+  ]
 }
-`;
+`.trim();
+}
 
-  // ================= AVALIADOR =================
-  const evaluatePrompt = (content) => `
-Você é um diretor criativo.
+function evalPrompt(content) {
+  return `
+Você é um diretor criativo rigoroso.
 
-Avalie o conteúdo abaixo.
+Aponte se o conteúdo está aprovado.
 
-CRITÉRIOS:
-- originalidade
-- impacto
-- ausência de clichês
-- variedade
-- semanas completas
+Critérios (reprovar se falhar em qualquer):
+- month_plan tem 4 semanas
+- cada semana tem 6 posts
+- não repetiu temas
+- não tem conteúdo institucional fraco
+- hooks fortes, sem clichê
 
-Se estiver RUIM, responda:
-{ "approved": false, "reason": "..." }
-
-Se estiver BOM:
-{ "approved": true }
-
+Responda APENAS JSON:
+Se reprovado: { "approved": false, "reason": "..." }
+Se aprovado: { "approved": true }
 Conteúdo:
 ${JSON.stringify(content)}
-`;
+`.trim();
+}
 
-  let attempt = 0;
-  let result = null;
+async function generate({ clients, niche, memory }) {
+  let best = null;
 
-  while (attempt < 3) {
-    attempt++;
-
+  for (let attempt = 1; attempt <= 3; attempt++) {
     console.log("🔁 Tentativa:", attempt);
 
-    // 1. GERA
     const generated = await runLLM({
       clients,
-      system: "Você responde apenas JSON.",
-      user: buildPrompt()
+      system: "Você responde apenas JSON puro.",
+      user: buildPrompt({ niche, memory }),
     });
 
     if (!generated?.month_plan) continue;
 
-    // 2. AVALIA
     const evaluation = await runLLM({
       clients,
-      system: "Você responde apenas JSON.",
-      user: evaluatePrompt(generated)
+      system: "Você responde apenas JSON puro.",
+      user: evalPrompt(generated),
     });
 
-    console.log("🧠 Avaliação:", evaluation);
-
     if (evaluation?.approved === true) {
-      result = generated;
+      best = generated;
       break;
     }
 
-    console.log("⚠️ Conteúdo rejeitado:", evaluation?.reason);
+    console.log("⚠️ Reprovado:", evaluation?.reason || "sem motivo");
+    best = generated; // guarda o melhor que temos
   }
 
-  if (!result) {
-    console.log("❌ Nenhuma tentativa passou no filtro");
-
-    return {
-      month_plan: [
-        {
-          week: 1,
-          focus: "fallback",
-          posts: [
-            {
-              theme: "Conteúdo em ajuste",
-              caption: "Estamos refinando sua estratégia.",
-              format: "estatico"
-            }
-          ]
-        }
-      ]
-    };
-  }
-
-  return result;
+  if (!best?.month_plan) return { month_plan: [] };
+  return best;
 }
 
 module.exports = { generate };
