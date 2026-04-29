@@ -10,33 +10,32 @@ ${memory}
 TAREFA:
 ${prompt}
 
-FORMATO DE RESPOSTA (OBRIGATÓRIO):
-Responda apenas JSON válido, sem texto antes ou depois.
+RETORNE APENAS JSON VÁLIDO.
 
-Exemplo:
+FORMATO:
 {
   "posts": [
     {
-      "theme": "Tema do post",
-      "caption": "Texto do post",
+      "theme": "tema",
+      "caption": "texto",
       "format": "reels"
     }
   ]
 }
 
 REGRAS:
-- NÃO escreva explicações
 - NÃO escreva texto fora do JSON
 - NÃO use markdown
+- NÃO explique nada
 `;
 
-  const res = await runLLM({
+  const result = await runLLM({
     clients,
-    system: "Você responde apenas JSON puro.",
+    system: "Você é um gerador de JSON puro.",
     user: fullPrompt
   });
 
-  return res || { posts: [] };
+  return result || { posts: [] };
 }
 
 module.exports = { generate };
