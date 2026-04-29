@@ -9,13 +9,14 @@ function buildClients(env) {
   };
 }
 
+// 🔥 extrai JSON mesmo se vier bagunçado
 function extractJSON(text) {
   try {
     const match = text.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    return { posts: [] };
+    if (!match) return null;
+    return JSON.parse(match[0]);
   } catch {
-    return { posts: [] };
+    return null;
   }
 }
 
@@ -27,7 +28,7 @@ async function runLLM({ clients, system, user }) {
       "https://api.openai.com/v1/chat/completions",
       {
         model: openai.model,
-        temperature: 0.8,
+        temperature: 0.7,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user }
@@ -43,9 +44,16 @@ async function runLLM({ clients, system, user }) {
 
     const text = res.data.choices[0].message.content;
 
-    console.log("🧠 IA respondeu:", text);
+    console.log("🧠 IA respondeu:\n", text);
 
-    return extractJSON(text);
+    const parsed = extractJSON(text);
+
+    if (!parsed) {
+      console.error("❌ JSON não encontrado");
+      return { posts: [] };
+    }
+
+    return parsed;
 
   } catch (err) {
     console.error("❌ ERRO IA:", err.message);
