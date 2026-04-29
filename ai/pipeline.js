@@ -3,35 +3,53 @@ const { runLLM } = require("./engine");
 async function generate({ clients, niche, memory }) {
 
   const prompt = `
-Você é um estrategista de conteúdo.
+Você é um estrategista de conteúdo que cria posts que PRENDEM atenção.
 
-NICHO DO CLIENTE:
+NICHO:
 ${niche}
 
 OBJETIVO:
-Criar conteúdo que gere:
-- atenção
-- identificação
-- autoridade
-- confiança
+Criar conteúdo que:
+- faça a pessoa parar de rolar
+- gere curiosidade
+- cause identificação
+- pareça uma história real
 
-REGRAS:
-- NÃO seja genérico
-- NÃO use frases clichê
-- use situações reais do nicho
-- fale como alguém do mercado falaria
+REGRAS IMPORTANTES:
+- NÃO use frases genéricas (tipo "você sabia", "descubra", "dicas")
+- NÃO escreva como empresa
+- escreva como alguém contando algo real
+- use situações específicas
+- use problemas reais do dia a dia do cliente
+
+ESTILO:
+- direto
+- humano
+- com tensão (problema → consequência)
+- linguagem simples
 
 Crie 6 posts.
 
-Cada post deve ter:
-- theme (curto e específico)
-- caption (envolvente e direto)
-- format (reels, carrossel ou estatico)
+FORMATOS:
+- reels → impacto e história rápida
+- carrossel → explicação com curiosidade
+- estatico → posicionamento forte ou opinião
 
-Evite repetir temas:
+Evite repetir:
 ${memory}
 
-Retorne apenas JSON:
+EXEMPLOS DO NÍVEL ESPERADO:
+
+Oficina:
+- "Ele achou que era só um barulho… até o carro parar no meio da estrada"
+
+Clínica:
+- "Tem gente que descobre problema na visão tarde demais — e nem percebeu os sinais"
+
+Loja:
+- "Ela não comprava roupa há meses… até entender o que realmente valorizava o corpo dela"
+
+RETORNE APENAS JSON:
 {
   "posts": [
     {
