@@ -1,135 +1,96 @@
 const { runLLM } = require("./engine");
 
-function buildPrompt({ niche, memory, goal, tone, mix }) {
-  const reels = mix?.reels ?? 4;
-  const car = mix?.carousels ?? 4;
-  const img = mix?.statics ?? 2;
+// Sugestões + Bios
+async function generateSuggestions({ clients, nicheHint }) {
+  const prompt = `
+Gere sugestões de conteúdo e opções de BIO para um Instagram de ${nicheHint || "negócios locais"}.
 
-  return `
-Você é um estrategista de conteúdo de alto nível.
+Regras:
+- Nada genérico ("você sabia", "descubra")
+- Sugestões práticas e específicas
 
-NICHO: ${niche}
-OBJETIVO: ${goal}
-TOM: ${tone}
-
-CRIE UM CALENDÁRIO MENSAL COMPLETO (4 semanas).
-
-REGRAS CRÍTICAS:
-- Todas as 4 semanas DEVEM estar preenchidas
-- Cada semana deve ter 6 posts (Seg a Sáb)
-- Não repetir temas
-- Sem conteúdo genérico
-
-PROIBIDO:
-- "conheça nossa clínica"
-- "nossa equipe"
-- "testemunhos"
-- "dicas de..." (genérico)
-- institucional fraco
-
-ESTRATÉGIA DO MÊS:
-SEMANA 1 → ATRAÇÃO
-SEMANA 2 → CONEXÃO
-SEMANA 3 → AUTORIDADE
-SEMANA 4 → CONVERSÃO
-
-FORMATO POR SEMANA (fixo para consistência):
-Segunda: reels
-Terça: carrossel
-Quarta: reels
-Quinta: carrossel
-Sexta: reels
-Sábado: estatico
-
-(Se precisar aproximar o mix do pedido geral: Reels=${reels}, Carrosséis=${car}, Estáticos=${img})
-
-CADA POST DEVE TER:
-- day
-- type (reels|carrossel|estatico)
-- objective (engajamento|autoridade|venda)
-- theme
-- hook
-
-Se REELS:
-- script (fala completa, natural)
-
-Se CARROSSEL:
-- slides (lista com 5 a 8 itens)
-
-Sempre:
-- caption (legenda pronta, com 3+ quebras de linha)
-- cta
-- hashtags (5 a 8)
-
-EVITE REPETIR ESTES TEMAS:
-${memory}
-
-RETORNE APENAS JSON:
+Retorne JSON:
 {
-  "month_plan": [
-    { "week": 1, "focus": "atração", "posts": [] },
-    { "week": 2, "focus": "conexão", "posts": [] },
-    { "week": 3, "focus": "autoridade", "posts": [] },
-    { "week": 4, "focus": "conversão", "posts": [] }
-  ]
+  "suggestions": ["..."],
+  "bio_options": ["...", "...", "..."]
 }
 `.trim();
+
+  const out = await runLLM({
+    clients,
+    system: "Responda apenas JSON válido.",
+    user: prompt
+  });
+
+  return {
+    suggestions: Array.isArray(out?.suggestions) ? out.suggestions.slice(0, 12) : [],
+    bio_options: Array.isArray(out?.bio_options) ? out.bio_options.slice(0, 6) : []
+  };
 }
 
-function evalPrompt(content) {
-  return `
-Você é um diretor criativo rigoroso.
+// Plano 30 dias no formato do app (d.posts[])
+async function generatePlan30({ clients, niche, goal, tone }) {
+  const basePrompt = `
+Crie um PLANO DE 30 DIAS para Instagram.
 
-Aprovar somente se:
-- month_plan tem 4 semanas
-- cada semana tem 6 posts
-- sem repetição de themes
-- sem conteúdo institucional fraco
-- hooks fortes (nada "você sabia", "descubra", etc)
+Nicho: ${niche}
+Objetivo: ${goal}
+Tom: ${tone}
 
-Responda APENAS JSON:
-Reprovado: { "approved": false, "reason": "..." }
-Aprovado: { "approved": true }
+Preciso de 30 itens. Cada item deve ter:
+- n (1..30)
+- title (tema curto e específico)
+- format ("Reels" ou "Carrossel" ou "Foto")
+- copy (legenda pronta para postar, com 3+ quebras de linha)
 
-Conteúdo:
-${JSON.stringify(content)}
+Regras:
+- Nada genérico
+- Evitar repetir temas
+- Reels: mais emocional e história
+- Carrossel: educativo em tópicos (mas a legenda também pronta)
+
+Retorne APENAS JSON:
+{ "posts": [ { "n": 1, "title": "...", "format": "Reels", "copy": "..." } ] }
 `.trim();
-}
 
-async function generateMonthlyWithQuality({ clients, niche, memory, goal, tone, mix }) {
-  let best = null;
+  // Tentativa 1
+  let out = await runLLM({ clients, system: "Responda apenas JSON válido.", user: basePrompt });
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    console.log("🔁 Tentativa calendário:", attempt);
+  // Validação simples
+  const ok =
+    Array.isArray(out?.posts) &&
+    out.posts.length >= 24; // tolerância; se vier menos, refaz 1x
 
-    const generated = await runLLM({
-      clients,
-      system: "Você responde apenas JSON puro.",
-      user: buildPrompt({ niche, memory, goal, tone, mix }),
-    });
-
-    if (!generated?.month_plan) {
-      best = generated;
-      continue;
-    }
-
-    const evaluation = await runLLM({
-      clients,
-      system: "Você responde apenas JSON puro.",
-      user: evalPrompt(generated),
-    });
-
-    if (evaluation?.approved === true) {
-      best = generated;
-      break;
-    }
-
-    console.log("⚠️ Reprovado:", evaluation?.reason || "sem motivo");
-    best = generated;
+  if (!ok) {
+    // Tentativa 2 (mais rígida)
+    const retryPrompt = basePrompt + "\n\nIMPORTANTE: Se retornar menos de 30 posts, o resultado será rejeitado. Retorne 30.";
+    out = await runLLM({ clients, system: "Responda apenas JSON válido.", user: retryPrompt });
   }
 
-  if (!best?.month_plan) return { month_plan: [] };
-  return best;
+  const posts = Array.isArray(out?.posts) ? out.posts : [];
+  // Normalização final
+  const normalized = posts
+    .slice(0, 30)
+    .map((p, idx) => ({
+      n: Number(p?.n || idx + 1),
+      title: String(p?.title || p?.theme || `Post ${idx + 1}`),
+      format: normalizeFormatLabel(p?.format),
+      copy: String(p?.copy || p?.caption || "")
+    }));
+
+  return { posts: normalized };
 }
 
-module.exports = { generateMonthlyWithQuality };
+function normalizeFormatLabel(fmt) {
+  const f = String(fmt || "").toLowerCase();
+  if (f.includes("reel")) return "Reels";
+  if (f.includes("carro")) return "Carrossel";
+  if (f.includes("foto") || f.includes("static") || f.includes("est")) return "Foto";
+  // padrão
+  return "Reels";
+}
+
+module.exports = {
+  generateSuggestions,
+  generatePlan30
+};
