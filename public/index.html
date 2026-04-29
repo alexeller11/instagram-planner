@@ -3,71 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Instagram Planner Agency</title>
+  <title>Instagram Planner</title>
+
   <style>
     body{
       margin:0;
-      font-family:Arial,sans-serif;
+      font-family:Arial;
       background:#0c0a1a;
       color:#fff;
       display:flex;
       align-items:center;
       justify-content:center;
-      min-height:100vh;
+      height:100vh;
     }
+
     .box{
       background:#17142d;
-      padding:32px;
-      border-radius:18px;
-      width:min(420px,92vw);
-      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      padding:30px;
+      border-radius:16px;
+      text-align:center;
+      width:320px;
     }
-    h1{margin:0 0 12px}
-    p{color:#bbb;line-height:1.6}
+
     button{
+      margin-top:20px;
       width:100%;
-      margin-top:16px;
       padding:14px;
-      border:0;
-      border-radius:12px;
+      border:none;
+      border-radius:10px;
       background:#ff6b35;
       color:#fff;
-      font-weight:700;
+      font-weight:bold;
       cursor:pointer;
     }
-    #msg{margin-top:12px;color:#ffd166}
+
+    p{color:#bbb}
   </style>
 </head>
+
 <body>
-  <div class="box">
-    <h1>Entrar no painel</h1>
-    <p>Conecta as contas já configuradas em <strong>IG_TOKENS</strong> e abre o app.</p>
-    <button onclick="login()">Entrar</button>
-    <div id="msg"></div>
-  </div>
 
-  <script>
-    async function login(){
-      const msg = document.getElementById("msg");
-      msg.textContent = "Conectando...";
+<div class="box">
+  <h2>Instagram Planner</h2>
+  <p>Acesse seu painel</p>
 
-      try{
-        const res = await fetch("/api/auth", {
-          method: "POST",
-          credentials: "include"
-        });
-        const data = await res.json();
+  <button onclick="go()">Entrar</button>
+</div>
 
-        if(!data.success){
-          msg.textContent = data.error || "Erro ao autenticar.";
-          return;
-        }
+<script>
+function go(){
+  window.location.href = "/app";
+}
+</script>
 
-        window.location.href = "/app";
-      }catch(e){
-        msg.textContent = "Erro ao conectar.";
-      }
-    }
-  </script>
 </body>
 </html>
