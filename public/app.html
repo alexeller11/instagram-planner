@@ -882,7 +882,7 @@ function renderPostCard(p, isSingle = false) {
     return `<div class="tp-block"><span class="tp-label">${label}</span>${s}</div>`;
   }).join('');
 
-  const pJson = JSON.stringify(p).replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+  const pJson = encodeURIComponent(JSON.stringify(p));.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
 
   return `
     <div class="card post-card" style="margin-bottom:16px;">
