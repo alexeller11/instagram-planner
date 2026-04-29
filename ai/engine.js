@@ -4,12 +4,12 @@ function buildClients(env) {
   return {
     nvidia: {
       key: env.NVIDIA_API_KEY,
-      model: env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct",
+      model: env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct"
     },
     groq: {
       key: env.GROQ_API_KEY,
-      model: env.GROQ_MODEL || "llama-3.1-8b-instant",
-    },
+      model: env.GROQ_MODEL || "llama-3.1-8b-instant"
+    }
   };
 }
 
@@ -30,15 +30,15 @@ async function callNvidia(client, system, user) {
       temperature: 0.7,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+        { role: "user", content: user }
+      ]
     },
     {
       headers: {
         Authorization: `Bearer ${client.key}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      timeout: 60000,
+      timeout: 60000
     }
   );
   return res.data.choices?.[0]?.message?.content || "";
@@ -52,15 +52,15 @@ async function callGroq(client, system, user) {
       temperature: 0.7,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+        { role: "user", content: user }
+      ]
     },
     {
       headers: {
         Authorization: `Bearer ${client.key}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      timeout: 60000,
+      timeout: 60000
     }
   );
   return res.data.choices?.[0]?.message?.content || "";
