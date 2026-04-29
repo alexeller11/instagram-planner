@@ -1,1487 +1,218 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Ideale — Inteligência & Planejamento Platinum</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --bg: #031116;
-      --sidebar: #051A22;
-      --card: #0A222B;
-      --brand: #22ceb5;
-      --brand-hover: #1bb59e;
-      --text: #e2f1f0;
-      --text-muted: #8aa7a4;
-      --border: #113642;
-      --glass: rgba(10, 34, 43, 0.7);
-      --red: #e74c3c;
-      --gold: #f1c40f;
-      --blue: #3498db;
-      --green: #27ae60;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-    body { background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; scroll-behavior: smooth; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planner</title>
 
-    /* Layout */
-    aside {
-      width: 280px; background: var(--sidebar); height: 100vh; position: fixed;
-      padding: 28px 20px; display: flex; flex-direction: column; border-right: 1px solid var(--border);
-      z-index: 50; overflow-y: auto;
-    }
-    .logo-container { margin-bottom: 32px; text-align: center; }
-    .logo-container img { max-width: 155px; filter: drop-shadow(0 0 10px rgba(34, 206, 181, 0.2)); }
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0c0a1a;
+  color:#fff;
+}
 
-    .nav-section { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); padding: 0 8px; margin: 16px 0 8px; opacity: 0.6; }
-    .nav-item {
-      padding: 11px 14px; border-radius: 10px; cursor: pointer; color: var(--text-muted);
-      margin-bottom: 4px; transition: all 0.3s ease; font-weight: 500; display: flex; align-items: center; gap: 10px; font-size: 14px;
-    }
-    .nav-item:hover { background: rgba(34, 206, 181, 0.1); color: var(--brand); transform: translateX(4px); }
-    .nav-item.active { background: var(--brand); color: #020a0d; font-weight: 600; box-shadow: 0 4px 15px rgba(34, 206, 181, 0.2); }
-    .nav-item svg { flex-shrink: 0; }
+.container{
+  max-width:1200px;
+  margin:auto;
+  padding:20px;
+}
 
-    main { margin-left: 280px; flex: 1; padding: 40px 48px; max-width: 1240px; }
+select,button{
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  margin-right:10px;
+}
 
-    .card {
-      background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 28px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); transition: transform 0.2s, border-color 0.3s;
-    }
-    .card:hover { border-color: rgba(34, 206, 181, 0.3); }
+button{
+  background:#ff6b35;
+  color:#fff;
+  cursor:pointer;
+}
 
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 28px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 28px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 28px; }
+.card{
+  background:#17142d;
+  padding:16px;
+  border-radius:12px;
+  margin-top:12px;
+}
 
-    /* Typography */
-    h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; color: #fff; letter-spacing: -0.5px; }
-    h3 { font-size: 18px; font-weight: 600; margin-bottom: 18px; color: var(--brand); display: flex; align-items: center; gap: 8px; }
-    h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:12px;
+}
 
-    input, select, textarea {
-      width: 100%; padding: 13px; background: rgba(3, 17, 22, 0.5); border: 1px solid var(--border);
-      border-radius: 10px; margin-bottom: 16px; color: white; font-size: 14px; transition: 0.3s;
-    }
-    textarea { resize: vertical; min-height: 100px; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(34, 206, 181, 0.1); }
-
-    .btn {
-      background: var(--brand); color: #020a0d; border: none; padding: 13px 22px;
-      border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;
-      transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px;
-    }
-    .btn:hover:not(:disabled) { background: var(--brand-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(34, 206, 181, 0.3); }
-    .btn:disabled { opacity: 0.7; cursor: not-allowed; }
-    .btn-outline { background: transparent; border: 1px solid var(--brand); color: var(--brand); }
-    .btn-outline:hover:not(:disabled) { background: rgba(34, 206, 181, 0.1); color: var(--brand); transform: none; }
-    .btn-red { background: var(--red); color: #fff; }
-    .btn-red:hover:not(:disabled) { background: #c0392b; }
-
-    .page { display: none; animation: fadeIn 0.4s ease; }
-    .page.active { display: block; }
-
-    .post-card { border-left: 4px solid var(--brand); padding-left: 20px; background: rgba(3, 17, 22, 0.3); margin-bottom: 20px; }
-
-    /* Teleprompter Ready Styles */
-    .tp-block {
-      background: #020a0d; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--brand);
-      font-size: 14px; line-height: 1.5; color: #fff;
-    }
-    .tp-label { font-size: 10px; text-transform: uppercase; color: var(--brand); font-weight: 700; margin-bottom: 4px; display: block; }
-
-    /* Skeleton Loader */
-    .skeleton-container { display: none; }
-    .skeleton {
-      height: 24px; border-radius: 6px; margin-bottom: 12px;
-      background: linear-gradient(90deg, #0A222B 25%, #113642 50%, #0A222B 75%);
-      background-size: 400% 100%;
-      animation: skeletonLoading 1.5s infinite ease-in-out;
-    }
-    .skeleton.title { height: 32px; width: 50%; margin-bottom: 24px; }
-    .skeleton.block { height: 80px; }
-    @keyframes skeletonLoading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Account Selector */
-    .acc-btn {
-      background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 7px 14px;
-      border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 13px;
-    }
-    .acc-btn.selected { background: rgba(34, 206, 181, 0.1); color: var(--brand); border-color: var(--brand); box-shadow: 0 0 10px rgba(34, 206, 181, 0.2); }
-
-    /* Highlight Boxes */
-    .highlight-box {
-      background: linear-gradient(145deg, rgba(34, 206, 181, 0.05) 0%, rgba(3, 17, 22, 0) 100%);
-      border-left: 4px solid var(--brand); padding: 18px; border-radius: 8px; margin-top: 16px;
-    }
-
-    /* Badges */
-    .badge {
-      background: rgba(34, 206, 181, 0.2); color: var(--brand); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block;
-    }
-    .badge-alert { background: rgba(231, 76, 60, 0.2); color: var(--red); }
-    .badge-gold { background: rgba(241, 196, 15, 0.2); color: var(--gold); }
-    .badge-blue { background: rgba(52, 152, 219, 0.2); color: var(--blue); }
-
-    .mini-action { background: rgba(34, 206, 181, 0.1); color: var(--brand); border: 1px solid var(--brand); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: 0.2s; }
-    .mini-action:hover { background: var(--brand); color: #000; }
-    .mini-copy { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600; transition: 0.2s;}
-    .mini-copy:hover { background: var(--brand); color: #000; border-color: var(--brand); }
-
-    /* Modal Overlay */
-    #overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px); display: none; z-index: 100; justify-content: center; align-items: center;
-    }
-    .modal { background: var(--sidebar); border: 1px solid var(--border); width: 90%; max-width: 680px; padding: 32px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto; }
-
-    /* Tabs System */
-    .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 12px; margin-bottom: 24px; border: 1px solid var(--border); }
-    .tab-btn { flex: 1; padding: 9px 12px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; }
-    .tab-btn.active { background: var(--brand); color: #000; font-weight: 600; }
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; animation: fadeIn 0.3s ease; }
-
-    /* Calendar Styles */
-    .week-block { margin-bottom: 32px; }
-    .week-header {
-      display: flex; align-items: center; gap: 12px; padding: 14px 20px;
-      background: linear-gradient(90deg, rgba(34,206,181,0.1) 0%, transparent 100%);
-      border-left: 4px solid var(--brand); border-radius: 0 10px 10px 0; margin-bottom: 16px;
-    }
-    .week-number { background: var(--brand); color: #000; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
-    .week-title { color: #fff; font-weight: 600; font-size: 16px; }
-    .cal-posts-row { display: flex; gap: 14px; flex-wrap: wrap; }
-    .cal-post-pill {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
-      min-width: 180px; flex: 1; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
-    }
-    .cal-post-pill:hover { border-color: var(--brand); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-    .cal-post-pill::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; }
-    .cal-post-pill.reels::before { background: linear-gradient(90deg, #e74c3c, #fd79a8); }
-    .cal-post-pill.carrossel::before, .cal-post-pill.carousel::before { background: linear-gradient(90deg, #3498db, #a29bfe); }
-    .cal-post-pill.estatico::before, .cal-post-pill.static::before, .cal-post-pill.image::before { background: linear-gradient(90deg, #27ae60, #55efc4); }
-    .cal-format-tag { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 6px; }
-    .cal-post-pill.reels .cal-format-tag { color: #fd79a8; }
-    .cal-post-pill.carrossel .cal-format-tag, .cal-post-pill.carousel .cal-format-tag { color: #a29bfe; }
-    .cal-post-pill.estatico .cal-format-tag, .cal-post-pill.image .cal-format-tag { color: #55efc4; }
-    .cal-theme { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; }
-    .cal-logic { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.3; }
-    .cal-post-num { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
-
-    /* Hashtag Styles */
-    .ht-set {
-      border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s;
-    }
-    .ht-set:hover { border-color: rgba(34,206,181,0.4); }
-    .ht-set-header {
-      padding: 16px 20px; background: rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center;
-      cursor: pointer; user-select: none;
-    }
-    .ht-set-body { padding: 16px 20px; display: none; }
-    .ht-set-body.open { display: block; animation: fadeIn 0.2s ease; }
-    .ht-tags-cloud { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-    .ht-tag {
-      background: rgba(34,206,181,0.08); color: var(--brand); border: 1px solid rgba(34,206,181,0.2);
-      padding: 5px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: 0.2s;
-    }
-    .ht-tag:hover { background: var(--brand); color: #000; }
-    .comp-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    .comp-alta { background: #e74c3c; }
-    .comp-media { background: #f39c12; }
-    .comp-baixa { background: #27ae60; }
-
-    /* Status bar */
-    .status-indicators { padding: 14px 16px; border-top: 1px solid var(--border); margin-top: auto; }
-    .status-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #95a5a6; flex-shrink: 0; }
-
-    /* Top/Worst post bar */
-    .perf-bar { display: flex; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .perf-rank { font-size: 18px; font-weight: 700; width: 28px; text-align: center; }
-    .perf-info { flex: 1; min-width: 0; }
-    .perf-theme { font-size: 13px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .perf-meta { font-size: 11px; color: var(--text-muted); }
-    .perf-likes { font-weight: 700; font-size: 14px; }
-  </style>
+.small{
+  font-size:13px;
+  color:#aaa;
+}
+</style>
 </head>
+
 <body>
-<div id="overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" id="modal-content"></div></div>
 
-<aside>
-  <div class="logo-container" style="display:flex; justify-content:space-between; align-items:center;">
-    <img src="/logo.png?v=2" alt="Ideale Logo" onerror="this.src='https://via.placeholder.com/160x50/051A22/22ceb5?text=IDEALE'">
-    <span class="badge" style="background:#f1c40f20; color:#f1c40f; font-size:9px; padding:2px 6px; border:1px solid #f1c40f40;">PLATINUM</span>
-  </div>
+<div class="container">
 
-  <div class="nav-section">Análise</div>
-  <div class="nav-item active" id="nav-dashboard" onclick="show('dashboard', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path><path d="M9 22V12h6v10"></path></svg>
-    Dashboard 360
-  </div>
-  <div class="nav-item" id="nav-intel" onclick="show('intel', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path d="M12 8v4l3 3"></path></svg>
-    Diagnóstico Avançado
-  </div>
-  <div class="nav-item" id="nav-spy" onclick="show('spy', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-    Spy (Concorrentes)
-  </div>
+<h2>Planejador</h2>
 
-  <div class="nav-section">Criação</div>
-  <div class="nav-item" id="nav-planner" onclick="show('planner', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-    Plano Tático Mensal
-  </div>
-  <div class="nav-item" id="nav-factory" onclick="show('factory', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
-    Fábrica de Post Único
-  </div>
-  <div class="nav-item" id="nav-hashtags" onclick="show('hashtags', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"></path></svg>
-    Hashtag Intelligence
-  </div>
+<select id="account"></select>
 
-  <div class="nav-section">Visualização</div>
-  <div class="nav-item" id="nav-calendar" onclick="show('calendar', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-    Calendário de Conteúdo
-  </div>
-  <div class="nav-item" id="nav-memory" onclick="show('memory', this)">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-    Cofre da Agência
-  </div>
+<select id="goal">
+<option>Crescimento</option>
+<option>Vendas</option>
+<option>Engajamento</option>
+</select>
 
-  <div class="nav-item" style="margin-top: auto;" onclick="logout()">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
-    Sair do Painel
-  </div>
+<select id="tone">
+<option>Profissional</option>
+<option>Descontraído</option>
+<option>Autoridade</option>
+</select>
 
-  <div class="status-indicators">
-    <div class="status-row">
-      <span id="st-ai" class="status-dot"></span> MOTOR GROQ/GEMINI
-    </div>
-    <div class="status-row">
-      <span id="st-sn" class="status-dot"></span> MOTOR SAMBANOVA
-    </div>
-    <div class="status-row">
-      <span id="st-db" class="status-dot"></span> MEMÓRIA ATLAS
-    </div>
-    <div class="status-row" id="fb-throttle-row" style="display:none;">
-      <span style="width:7px;height:7px;border-radius:50%;background:#f39c12;flex-shrink:0;" class="status-dot"></span>
-      <span style="color:#f39c12;">FB THROTTLE ATIVO</span>
-    </div>
-  </div>
-</aside>
+<button onclick="genPlan()">Gerar Plano</button>
 
-<main>
-  <div style="display:flex; justify-content:flex-end; margin-bottom:28px;">
-    <div id="acc-selector" style="display:flex; gap:10px; background:var(--sidebar); padding:6px 10px; border-radius:24px; border:1px solid var(--border);"></div>
-  </div>
+<h3>Posts</h3>
+<div id="posts" class="grid"></div>
 
-  <!-- ============================= DASHBOARD ============================= -->
-  <div id="dashboard" class="page active">
-    <div style="margin-bottom:28px;">
-      <p style="color:var(--brand); font-weight:600; margin-bottom:4px; letter-spacing:1px; font-size:12px;">PAINEL EXECUTIVO</p>
-      <h2>Saúde da Conta e Performance</h2>
-    </div>
+<h3>Calendário</h3>
+<div id="calendar" class="grid"></div>
 
-    <div class="grid-4">
-      <div class="card" style="margin:0;"><h4>Seguidores</h4><p id="d-followers" style="font-size:30px; font-weight:700;">-</p></div>
-      <div class="card" style="margin:0;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h4>Alcance (30d)</h4>
-          <span id="reach-type" class="badge" style="font-size:9px; padding:2px 6px;">Estimado</span>
-        </div>
-        <p id="d-reach" style="font-size:30px; font-weight:700; color:var(--brand);">-</p>
-      </div>
-      <div class="card" style="margin:0;"><h4>Impressões</h4><p id="d-impressions" style="font-size:30px; font-weight:700;">-</p></div>
-      <div class="card" style="margin:0;"><h4>Taxa Engajamento</h4><p id="d-er" style="font-size:30px; font-weight:700; color:var(--brand);">-</p></div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <h3>Evolução de Tração (Últimos 10 Posts)</h3>
-        <canvas id="erChart" height="120"></canvas>
-      </div>
-      <div class="card">
-        <h3>Mix de Formatos (%)</h3>
-        <div style="max-width:220px; margin:0 auto;">
-          <canvas id="formatChart" height="180"></canvas>
-        </div>
-        <div id="format-legend" style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:12px;"></div>
-      </div>
-      <div class="card">
-        <h3>Demografias & Comportamento</h3>
-        <div class="highlight-box" id="demo-block">
-          <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">Inferindo...</span></p>
-          <p style="margin-bottom:12px;"><strong>Público Dominante:</strong> <span class="badge">Inferindo...</span></p>
-          <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">...</span></p>
-        </div>
-      </div>
-      <div class="card">
-        <h3>DNA da Marca (Detectado)</h3>
-        <div class="highlight-box" id="dna-block" style="border-left-color:#f1c40f;">
-          <p style="margin-bottom:12px; font-size:13px;"><strong>Nicho:</strong> <span id="dna-niche" style="color:var(--brand);">Aguardando Auditoria...</span></p>
-          <p style="margin-bottom:12px; font-size:13px;"><strong>Tom de Voz:</strong> <span id="dna-tone" style="color:var(--brand);">Aguardando...</span></p>
-          <p style="font-size:13px;"><strong>Target:</strong> <span id="dna-audience" style="color:var(--brand);">Aguardando...</span></p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 🆕 Top & Worst Posts -->
-    <div class="grid-2" id="topworst-section" style="display:none;">
-      <div class="card">
-        <h3 style="color:#f1c40f;">🏆 Top Posts (Mais Curtidas)</h3>
-        <div id="top-posts-list"></div>
-      </div>
-      <div class="card">
-        <h3 style="color:#e74c3c;">📉 Posts para Atenção</h3>
-        <div id="worst-posts-list"></div>
-      </div>
-    </div>
-
-    <div class="card" id="verdict-container" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <h3>
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-          Leitura Estratégica Ideale
-        </h3>
-        <span id="health-badge" class="badge" style="padding: 7px 14px; font-size:13px;">Analisando...</span>
-      </div>
-      <div class="highlight-box">
-        <p id="verdict-text" style="line-height: 1.7; color: var(--text);">Gerando leitura...</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================= DIAGNÓSTICO ============================= -->
-  <div id="intel" class="page">
-    <div class="card">
-      <h2>Diagnóstico Profundo</h2>
-      <p style="margin-bottom:24px; color:var(--text-muted);">Auditoria completa lendo bio, posts recentes e gerando 3 variações de bio premium com autoridade.</p>
-      <div class="grid-2" style="margin-bottom:0;">
-        <div>
-          <label style="display:flex; justify-content:space-between; align-items:center;">
-            Nicho Exato do Cliente
-            <span class="mini-action" onclick="autofill('i-niche', 'niche')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
-          </label>
-          <input id="i-niche" placeholder="Ex: Estética Avançada e Harmonização">
-        </div>
-        <div>
-          <label style="display:flex; justify-content:space-between; align-items:center;">
-            Público-Alvo Almejado
-            <span class="mini-action" onclick="autofill('i-audience', 'audience')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
-          </label>
-          <input id="i-audience" placeholder="Ex: Mulheres classes A/B, 30-50 anos">
-        </div>
-      </div>
-      <button class="btn" id="btn-intel" onclick="getIntel()">Escanear e Gerar Auditoria Completa</button>
-    </div>
-
-    <div id="intel-skeleton" class="skeleton-container card">
-      <div class="skeleton title"></div>
-      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton block"></div>
-    </div>
-
-    <div id="intel-result" style="display:none;">
-      <div class="card">
-        <h3 style="color:#fff; margin-bottom:12px;">Visão do Estrategista-Chefe</h3>
-        <p id="intel-exec" style="line-height:1.7; color:var(--text-muted);"></p>
-
-        <div class="grid-2" style="margin-top:24px;">
-          <div class="highlight-box" style="border-left-color: #e74c3c; margin-top:0;">
-            <h4 style="color:#e74c3c">Diagnóstico e Falhas</h4>
-            <p style="margin-bottom:8px; font-size:13px;"><strong>Nicho Identificado:</strong> <span id="intel-niche" class="badge"></span></p>
-            <p style="margin-bottom:12px; font-size:13px;"><strong>Tom Detectado:</strong> <span id="intel-tone" class="badge"></span></p>
-            <p id="intel-bio-err" style="font-size:13px; margin-bottom:12px;"></p>
-            <ul id="intel-weaknesses" style="padding-left:20px; font-size:13px; line-height:1.7;"></ul>
-          </div>
-          <div class="highlight-box" style="border-left-color: #27ae60; margin-top:0;">
-            <h4 style="color:#27ae60">Bio Tridimensional (A/B/C)</h4>
-            <div id="intel-bio-sug" style="font-size:13px; margin-bottom:14px; line-height:1.6;"></div>
-            <h4 style="color:#22ceb5">Pilares Sugeridos</h4>
-            <ul id="intel-pillars" style="padding-left:20px; font-size:13px; line-height:1.7;"></ul>
-          </div>
-        </div>
-
-        <button class="btn btn-outline" style="margin-top:24px;" onclick="exportDiagnostic()">Baixar PDF (Apresentação Comercial)</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================= SPY ============================= -->
-  <div id="spy" class="page">
-    <div class="card">
-      <h2>Módulo Spy Geográfico</h2>
-      <p style="margin-bottom:24px; color:var(--text-muted);">Use a IA para descobrir referências na sua região ou escanear visualmente a estratégia de concorrentes.</p>
-      <div class="grid-2">
-        <div>
-          <h4>Descobrir Alvos (Recomendação IA)</h4>
-          <label style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:4px;">
-            Sua Região Alvo <span class="mini-action" onclick="autofill('s-city', 'city')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
-          </label>
-          <input id="s-city" placeholder="Cidade (ex: São Paulo)">
-          <label style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:4px;">
-            Sua Categoria <span class="mini-action" onclick="autofill('s-niche-spy', 'niche')" style="padding:2px 6px; font-size:10px;">✨ IA</span>
-          </label>
-          <input id="s-niche-spy" placeholder="Nicho (ex: Clínicas Odontológicas)">
-          <button class="btn btn-outline" style="padding:10px;" id="btn-suggest" onclick="suggestCompetitors()">🔎 Buscar Referências Fortes</button>
-          <div id="suggest-result" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
-        </div>
-        <div>
-          <h4>Executar Varredura Playwright</h4>
-          <input id="s-username" placeholder="@alvo1, @alvo2 (suporta múltiplos)">
-          <button class="btn" id="btn-spy" onclick="spy()">Rodar Scanner Completo</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="spy-skeleton" class="skeleton-container card"><div class="skeleton block" style="height:300px;"></div></div>
-
-    <div id="spy-result" class="card" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h3>Inteligência Visual Capturada</h3>
-        <button class="mini-action" onclick="saveSpyToSwipeFile()">📦 Salvar Tudo no Cofre</button>
-      </div>
-      <div id="spy-content-area" style="max-height: 700px; overflow-y: auto;"></div>
-    </div>
-  </div>
-
-  <!-- ============================= PLANNER ============================= -->
-  <div id="planner" class="page">
-    <div class="card">
-      <h2>Co-Produtor (Motor Mensal)</h2>
-      <p style="margin-bottom:24px; color:var(--text-muted);">Cria um planejamento completo de 4 semanas com estrutura de funil, roteiros e legendas premium para cada post.</p>
-      <div class="grid-2" style="margin-bottom:12px;">
-        <div>
-          <label>Objetivo da Campanha</label>
-          <select id="p-goal-sel" onchange="toggleCustom('p-goal-sel', 'p-goal-custom')" style="margin-bottom:8px;">
-            <option value="Vendas Diretas / Conversão de Oferta">Vendas Diretas / Conversão de Oferta</option>
-            <option value="Captação de Leads Qualificados">Captação de Leads Qualificados</option>
-            <option value="Construção de Autoridade e Confiança">Construção de Autoridade e Confiança</option>
-            <option value="Crescimento de Audiência / Viralização">Crescimento de Audiência / Viralização</option>
-            <option value="Entretenimento Educativo (Edutainment)">Entretenimento Educativo (Edutainment)</option>
-            <option value="custom">Outro (Personalizado...)</option>
-          </select>
-          <input id="p-goal-custom" placeholder="Digite o seu objetivo..." style="display:none; margin-bottom:16px;">
-        </div>
-        <div>
-          <label>Tom de Voz da Marca</label>
-          <select id="p-tone-sel" onchange="toggleCustom('p-tone-sel', 'p-tone-custom')" style="margin-bottom:8px;">
-            <option value="Profissional, Sofisticado e Provocativo">Profissional, Sofisticado e Provocativo (Padrão)</option>
-            <option value="Íntimo, Vulnerável e Empático">Íntimo, Vulnerável e Empático</option>
-            <option value="Agressivo, Direto e Focado em Oferta">Agressivo, Direto e Focado em Oferta</option>
-            <option value="Científico, Técnico e Analítico">Científico, Técnico e Analítico</option>
-            <option value="Engraçado, Irônico e Ágil">Engraçado, Irônico e Ágil</option>
-            <option value="custom">Outro (Personalizado...)</option>
-          </select>
-          <input id="p-tone-custom" placeholder="Digite o tom de voz..." style="display:none; margin-bottom:16px;">
-        </div>
-      </div>
-      <h4 style="margin-top:12px;">Mix de Entregáveis (Qtd)</h4>
-      <div class="grid-3">
-        <div><label>Reels</label><input type="number" id="p-reels" value="4"></div>
-        <div><label>Carrosséis</label><input type="number" id="p-car" value="4"></div>
-        <div><label>Estáticos</label><input type="number" id="p-img" value="2"></div>
-      </div>
-      <button class="btn" id="btn-plan" onclick="genPlan()" style="margin-top:8px;">Construir Tática de Batalha</button>
-    </div>
-
-    <div id="plan-skeleton" class="skeleton-container card">
-      <div class="skeleton title"></div>
-      <div class="skeleton block"></div><br><div class="skeleton block"></div>
-    </div>
-
-    <div id="plan-result"></div>
-    <div style="display:flex; gap:16px; margin-top:16px;">
-      <button id="btn-pdf-plan" class="btn btn-outline" style="display:none;" onclick="exportPlanPDF()">Baixar Roadmap Tático (PDF)</button>
-      <button id="btn-view-calendar" class="btn" style="display:none; background:rgba(34,206,181,0.15); color:var(--brand); border:1px solid var(--brand);" onclick="show('calendar', document.getElementById('nav-calendar'))">📅 Ver no Calendário</button>
-    </div>
-  </div>
-
-  <!-- ============================= FACTORY ============================= -->
-  <div id="factory" class="page">
-    <div class="card">
-      <h2>Fábrica de Post Único</h2>
-      <p style="margin-bottom:24px; color:var(--text-muted);">Precisou tapar buraco no grid hoje? Crie rapidamente 1 arte profunda usando o cérebro da agência.</p>
-      <div class="grid-2">
-        <div>
-          <label>Formato Desejado</label>
-          <select id="f-format">
-            <option value="Reels (Roteiro falado de até 60s)">Reels (Vídeo de Alto Impacto)</option>
-            <option value="Carrossel (5 a 8 Telas Educativas)">Carrossel de Repressão/Educação</option>
-            <option value="Post Estático Textual">Estático (Imagens Fortes)</option>
-          </select>
-        </div>
-        <div>
-          <label>Intensidade de Vendas (1 a 10)</label>
-          <select id="f-intensity">
-            <option value="3">3 - Leve (Entretenimento/Valor)</option>
-            <option value="7" selected>7 - Moderado (CTA discreto)</option>
-            <option value="10">10 - Headshot (Venda agressiva)</option>
-          </select>
-        </div>
-      </div>
-      <label style="display:flex; justify-content:space-between; align-items:center;">
-        Assunto Principal / Resumo do Conteúdo
-        <span class="mini-action" onclick="autofill('f-subject', 'subject')" style="padding:2px 6px; font-size:10px;">✨ Sugerir</span>
-      </label>
-      <input id="f-subject" placeholder="Ex: 3 Mitos sobre o procedimento X que as pessoas acreditam">
-      <label style="display:flex; justify-content:space-between; align-items:center;">
-        Qual o Ângulo?
-        <span class="mini-action" onclick="autofill('f-angle', 'angle')" style="padding:2px 6px; font-size:10px;">✨ Sugerir</span>
-      </label>
-      <input id="f-angle" placeholder="Ex: Polêmico, desmascarar concorrente, acolhedor, urgência...">
-      <button class="btn" id="btn-fact" onclick="genFactory()">Gerar Post Agora</button>
-    </div>
-
-    <div id="fact-skeleton" class="skeleton-container card"><div class="skeleton title"></div><div class="skeleton block"></div></div>
-    <div id="fact-result" style="display:none;"></div>
-  </div>
-
-  <!-- ============================= HASHTAG INTELLIGENCE ============================= -->
-  <div id="hashtags" class="page">
-    <div style="margin-bottom:28px;">
-      <p style="color:var(--brand); font-weight:600; margin-bottom:4px; letter-spacing:1px; font-size:12px;">SEO DO INSTAGRAM 2026</p>
-      <h2>Hashtag Intelligence Engine</h2>
-      <p style="color:var(--text-muted); margin-top:8px;">Gera 5 sets estratégicos com mix de alta, média e baixa competição para explodir o alcance orgânico nos primeiros 30 minutos.</p>
-    </div>
-
-    <div class="card">
-      <div class="grid-2">
-        <div>
-          <label>Objetivo Estratégico</label>
-          <select id="ht-objective">
-            <option value="Autoridade e Especialidade no Nicho">👑 Autoridade e Especialidade</option>
-            <option value="Vendas e Conversão Direta">💰 Vendas e Conversão</option>
-            <option value="Crescimento de Audiência e Alcance Orgânico">🚀 Crescimento de Audiência</option>
-            <option value="Engajamento, Comentários e Compartilhamentos">💬 Engajamento e Comunidade</option>
-            <option value="Educação e Geração de Valor de Conteúdo">📚 Educação e Valor</option>
-            <option value="Tendências e Potencial de Viralização">🔥 Tendências e Viral</option>
-          </select>
-        </div>
-        <div>
-          <label>Nicho (deixe vazio para usar o da conta ativa)</label>
-          <input id="ht-niche" placeholder="Ex: Personal Trainer, Estética, Advocacia...">
-        </div>
-      </div>
-      <button class="btn" id="btn-ht" onclick="genHashtags()">Gerar 5 Sets Estratégicos de Hashtags</button>
-    </div>
-
-    <div id="ht-skeleton" class="skeleton-container card">
-      <div class="skeleton title"></div>
-      <div class="skeleton block"></div><br><div class="skeleton block"></div>
-    </div>
-
-    <div id="ht-result" style="display:none;"></div>
-  </div>
-
-  <!-- ============================= CALENDÁRIO ============================= -->
-  <div id="calendar" class="page">
-    <div style="margin-bottom:28px;">
-      <p style="color:var(--brand); font-weight:600; margin-bottom:4px; letter-spacing:1px; font-size:12px;">VISUALIZAÇÃO ESTRATÉGICA</p>
-      <h2>Calendário de Conteúdo</h2>
-      <p style="color:var(--text-muted); margin-top:8px;">Visualize seu planejamento mensal como uma timeline estratégica por semana. Clique em um post para ver os detalhes completos.</p>
-    </div>
-
-    <div id="cal-empty" class="card" style="text-align:center; padding:60px; display:block;">
-      <p style="font-size:52px; margin-bottom:16px;">📅</p>
-      <h3 style="color:#fff; margin-bottom:12px; display:block;">Nenhum Plano Gerado Ainda</h3>
-      <p style="color:var(--text-muted); margin-bottom:28px;">Gere um Plano Tático Mensal para visualizar aqui o calendário estratégico interativo.</p>
-      <button class="btn" style="width:auto; padding:14px 32px;" onclick="show('planner', document.getElementById('nav-planner'))">Ir para o Planner</button>
-    </div>
-
-    <div id="cal-content" style="display:none;">
-      <div id="cal-legend" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:24px;">
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted);">
-          <span style="width:12px;height:3px;background:linear-gradient(90deg,#e74c3c,#fd79a8);border-radius:2px;"></span> Reels
-        </span>
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted);">
-          <span style="width:12px;height:3px;background:linear-gradient(90deg,#3498db,#a29bfe);border-radius:2px;"></span> Carrossel
-        </span>
-        <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted);">
-          <span style="width:12px;height:3px;background:linear-gradient(90deg,#27ae60,#55efc4);border-radius:2px;"></span> Estático
-        </span>
-      </div>
-      <div id="cal-weeks"></div>
-    </div>
-  </div>
-
-  <!-- ============================= COFRE / MEMÓRIA ============================= -->
-  <div id="memory" class="page">
-    <div style="margin-bottom:28px;">
-      <p style="color:var(--brand); font-weight:600; margin-bottom:4px; letter-spacing:1px; font-size:12px;">MEMÓRIA PERMANENTE</p>
-      <h2>Cofre da Agência</h2>
-    </div>
-
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <p style="color:var(--text-muted); font-size:14px;">Todo histórico estratégico desta conta — diagnósticos, planos, posts e referências visuais.</p>
-        <button class="btn btn-outline" style="width:auto; padding:8px 18px; font-size:13px;" onclick="loadMemory()">🔄 Atualizar</button>
-      </div>
-
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('mem-diag', this)">📋 Diagnósticos</button>
-        <button class="tab-btn" onclick="switchTab('mem-plans', this)">🗓️ Planos</button>
-        <button class="tab-btn" onclick="switchTab('mem-posts', this)">⚡ Posts Únicos</button>
-        <button class="tab-btn" onclick="switchTab('mem-swipe', this)">📌 Swipe File</button>
-      </div>
-
-      <div id="mem-diag" class="tab-pane active">
-        <div id="hist-diag" style="font-size:14px; max-height:450px; overflow-y:auto;">Carregando...</div>
-      </div>
-      <div id="mem-plans" class="tab-pane">
-        <div id="hist-plan" style="font-size:14px; max-height:450px; overflow-y:auto;">Carregando...</div>
-      </div>
-      <div id="mem-posts" class="tab-pane">
-        <div id="hist-posts" style="font-size:14px; max-height:450px; overflow-y:auto;">Carregando...</div>
-      </div>
-      <div id="mem-swipe" class="tab-pane">
-        <div id="hist-swipe" style="font-size:14px; max-height:450px; overflow-y:auto;">Carregando...</div>
-      </div>
-    </div>
-  </div>
-
-</main>
+</div>
 
 <script>
-let accounts = [], selAcc = null;
-let lastDiagnostic = null;
-let lastPlan = null;
-let lastSpy = null;
 
-// ==========================================
-// INICIALIZAÇÃO
-// ==========================================
-async function init() {
-  const r = await fetch('/api/me');
-  const d = await r.json();
-  if (!d.logged) { location.href = '/'; return; }
-  accounts = d.accounts;
-  const container = document.getElementById('acc-selector');
-  accounts.forEach((a, index) => {
-    const btn = document.createElement('button');
-    btn.className = 'acc-btn' + (index === 0 ? ' selected' : '');
-    btn.textContent = `@${a.username}`;
-    btn.onclick = () => {
-      document.querySelectorAll('.acc-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      selectAccount(a);
-    };
-    container.appendChild(btn);
-  });
-  if (accounts.length) selectAccount(accounts[0]);
-  checkStatus();
-}
+let accounts = [];
+let lastPlan = [];
 
-async function checkStatus() {
-  try {
-    const r = await fetch('/api/debug-status');
-    const d = await r.json();
-    document.getElementById('st-ai').style.background = (d.groq || d.gemini) ? '#27ae60' : '#e74c3c';
-    document.getElementById('st-sn').style.background = d.sambanova ? '#27ae60' : '#e74c3c';
-    document.getElementById('st-db').style.background = d.mongodb ? '#27ae60' : '#e74c3c';
-    if (d.fb_throttle_active) document.getElementById('fb-throttle-row').style.display = 'flex';
-  } catch (e) {}
-  setTimeout(checkStatus, 30000); // Atualiza a cada 30s
-}
+// ================= INIT =================
+async function init(){
+  const res = await fetch("/api/me");
+  const data = await res.json();
 
-async function selectAccount(acc) {
-  selAcc = acc;
-  document.getElementById('d-followers').textContent = (acc.followers_count || 0).toLocaleString('pt-BR');
+  accounts = data.accounts || [];
 
-  const r = await fetch(`/api/dashboard/${acc.id}`);
-  const data = await r.json();
+  const sel = document.getElementById("account");
 
-  if (data.error) {
-    console.error('Dashboard error:', data.error);
-    return;
-  }
-
-  document.getElementById('d-er').textContent = data.metrics.engagement_rate + '%';
-  document.getElementById('d-reach').textContent = '...';
-  document.getElementById('d-impressions').textContent = '...';
-
-  renderTractionChart(data.recent_posts);
-  renderFormatChart(data.format_mix);
-  renderTopWorst(data.top_posts || [], data.worst_posts || []);
-
-  document.getElementById('verdict-container').style.display = 'block';
-  document.getElementById('verdict-text').innerHTML = '<span class="skeleton" style="display:block; width:100%; height:20px; margin-bottom:8px;"></span><span class="skeleton" style="display:block; width:75%; height:20px;"></span>';
-  document.getElementById('demo-block').innerHTML = '<div class="skeleton" style="height:14px; width:60%; margin-bottom:12px;"></div><div class="skeleton" style="height:14px; width:70%; margin-bottom:12px;"></div><div class="skeleton" style="height:14px; width:50%;"></div>';
-
-  fetch('/api/quick-verdict', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: acc.username, followers: acc.followers_count, er: data.metrics.engagement_rate, media: data.recent_posts, igId: acc.id })
-  }).then(r => r.json()).then(res => {
-    document.getElementById('verdict-text').innerHTML = res.verdict;
-    document.getElementById('health-badge').textContent = res.health_status || 'Estável';
-    document.getElementById('d-reach').textContent = (res.real_metrics?.reach || 0).toLocaleString('pt-BR');
-    document.getElementById('d-impressions').textContent = (res.real_metrics?.impressions || 0).toLocaleString('pt-BR');
-
-    const rt = document.getElementById('reach-type');
-    if (res.is_real) { rt.textContent = 'DADOS REAIS'; rt.style.background = 'var(--brand)'; rt.style.color = '#000'; }
-    else { rt.textContent = 'ESTIMADO (IA)'; rt.style.background = 'rgba(255,255,255,0.08)'; rt.style.color = '#fff'; }
-
-    if (res.demographics) {
-      document.getElementById('demo-block').innerHTML = `
-        <p style="margin-bottom:12px;"><strong>Cidades Principais:</strong> <span class="badge">${res.demographics.cities}</span></p>
-        <p style="margin-bottom:12px;"><strong>Público Dominante:</strong> <span class="badge">${res.demographics.gender}</span></p>
-        <p><strong>Melhores Horários:</strong> <span style="color:#fff; font-weight:600;">${res.demographics.time}</span></p>
-      `;
-    }
-  }).catch(e => {
-    document.getElementById('verdict-text').textContent = 'Análise indiponível no momento.';
-  });
-
-  fetch(`/api/identity/${acc.username}`).then(r => r.json()).then(res => {
-    document.getElementById('dna-niche').textContent = res.niche;
-    document.getElementById('dna-tone').textContent = res.tone;
-    document.getElementById('dna-audience').textContent = res.audience;
-  });
-
-  // Limpar outras abas
-  document.getElementById('intel-result').style.display = 'none';
-  document.getElementById('spy-result').style.display = 'none';
-  document.getElementById('plan-result').innerHTML = '';
-  document.getElementById('btn-pdf-plan').style.display = 'none';
-  document.getElementById('btn-view-calendar').style.display = 'none';
-  document.getElementById('fact-result').style.display = 'none';
-}
-
-// ==========================================
-// CHARTS
-// ==========================================
-function renderTractionChart(posts) {
-  const ctx = document.getElementById('erChart');
-  if (window.erChartInst) window.erChartInst.destroy();
-  Chart.defaults.color = '#8aa7a4';
-  Chart.defaults.font.family = 'Outfit';
-  window.erChartInst = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: posts.map((_, i) => `P${i + 1}`).reverse(),
-      datasets: [{
-        label: 'Curtidas',
-        data: posts.map(p => p.like_count).reverse(),
-        borderColor: '#22ceb5', backgroundColor: 'rgba(34, 206, 181, 0.15)',
-        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#22ceb5'
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+  accounts.forEach(a=>{
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.innerText = a.username;
+    sel.appendChild(opt);
   });
 }
 
-function renderFormatChart(mix) {
-  const ctx = document.getElementById('formatChart');
-  if (window.formatChartInst) window.formatChartInst.destroy();
-  const labels = Object.keys(mix);
-  const data = Object.values(mix);
-  const colors = { 'REELS': '#fd79a8', 'IMAGE': '#55efc4', 'CAROUSEL_ALBUM': '#a29bfe', 'VIDEO': '#ffeaa7' };
-  const bgColors = labels.map(l => colors[l] || '#8aa7a4');
-
-  window.formatChartInst = new Chart(ctx, {
-    type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: '#031116', borderWidth: 3 }] },
-    options: {
-      responsive: true, cutout: '68%',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} posts` } } }
-    }
-  });
-
-  const labelMap = { 'REELS': 'Reels', 'IMAGE': 'Estático', 'CAROUSEL_ALBUM': 'Carrossel', 'VIDEO': 'Vídeo' };
-  document.getElementById('format-legend').innerHTML = labels.map((l, i) =>
-    `<span style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted);">
-       <span style="width:10px;height:10px;border-radius:50%;background:${bgColors[i]};"></span>
-       ${labelMap[l] || l} (${data[i]})
-     </span>`
-  ).join('');
-}
-
-function renderTopWorst(top, worst) {
-  const section = document.getElementById('topworst-section');
-  if (!top.length && !worst.length) { section.style.display = 'none'; return; }
-  section.style.display = 'grid';
-
-  const renderBar = (list, emoji) => list.map((p, i) => {
-    const theme = p.caption ? p.caption.substring(0, 55) + '...' : `${p.media_type} post`;
-    const date = new Date(p.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-    return `
-      <div class="perf-bar">
-        <div class="perf-rank">${['🥇','🥈','🥉'][i] || (i+1)+'.'}</div>
-        <div class="perf-info">
-          <div class="perf-theme">${theme}</div>
-          <div class="perf-meta">${p.media_type} · ${date}</div>
-        </div>
-        <div class="perf-likes" style="color:var(--brand);">${(p.like_count || 0).toLocaleString('pt-BR')} ♥</div>
-      </div>`;
-  }).join('');
-
-  document.getElementById('top-posts-list').innerHTML = renderBar(top, '🏆');
-  document.getElementById('worst-posts-list').innerHTML = renderBar(worst, '📉');
-}
-
-// ==========================================
-// NAVIGATION & TABS
-// ==========================================
-function show(id, navEl) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  if (navEl) navEl.classList.add('active');
-  if (id === 'memory') loadMemory();
-  if (id === 'calendar') renderCalendar();
-}
-
-function switchTab(tabId, btn) {
-  const parent = btn.closest('.card');
-  parent.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  btn.classList.add('active');
-}
-
-function showSkeleton(id, show) {
-  document.getElementById(id).style.display = show ? 'block' : 'none';
-}
-
-function closeModal() {
-  document.getElementById('overlay').style.display = 'none';
-}
-
-// ==========================================
-// POST CARD RENDERER (com Copy real)
-// ==========================================
-function copyPostContent(p) {
-  const roteiro = (p.script_or_slides || []).join('\n\n');
-  const fullText = `📌 ${p.theme}\n\n🎬 DIREÇÃO:\n${p.visual_audio_direction}\n\n📝 ROTEIRO/TELAS:\n${roteiro}\n\n✍️ LEGENDA:\n${p.caption || p.copy || ''}\n\n💡 LÓGICA: ${p.strategic_logic || ''}`;
-  navigator.clipboard.writeText(fullText).then(() => {
-    alert('✅ Post copiado! Cole no seu documento, drive ou ferramenta de gestão.');
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = fullText;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    alert('✅ Post copiado para a área de transferência!');
-  });
-}
-
-function renderPostCard(p, isSingle = false) {
-  const screensHtml = (p.script_or_slides || []).map((s, i) => {
-    let label = 'PARTE ' + (i + 1);
-    if (i === 0) label = 'GANCHO (0-3s)';
-    else if (s.toLowerCase().includes('cta') || s.toLowerCase().includes('chamada')) label = 'CHAMADA PARA AÇÃO';
-    else if (p.format && p.format.toLowerCase().includes('reels')) label = 'DESENVOLVIMENTO';
-    return `<div class="tp-block"><span class="tp-label">${label}</span>${s}</div>`;
-  }).join('');
-
-  const pJson = encodeURIComponent(JSON.stringify(p));.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
-
-  return `
-    <div class="card post-card" style="margin-bottom:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="badge" style="background:#fff; color:#000;">${isSingle ? 'POST ÚNICO' : (p.week_funnel || 'POST ' + p.n)} · ${(p.format || '').toUpperCase()}</span>
-        <div style="display:flex; gap:8px;">
-          <button class="mini-action" onclick='evaluatePost(JSON.parse(decodeURIComponent("${pJson}")))'>⭐ Avaliar IA</button>
-          <button class="mini-action" onclick='copyPostContent(JSON.parse(decodeURIComponent("${pJson}")))'>📋 Copiar Tudo</button>
-        </div>
-      </div>
-      <h3 style="margin-top:16px; margin-bottom:8px; display:block; color:#fff;">${p.theme || p.subject || ''}</h3>
-      ${p.strategic_logic ? `
-      <div style="background:rgba(34,206,181,0.05); border-left:3px solid var(--brand); padding:10px; margin-bottom:14px; font-size:12px; color:var(--brand); border-radius:4px;">
-        <strong style="text-transform:uppercase; letter-spacing:1px; font-size:10px;">Lógica Estratégica Ideale:</strong><br>${p.strategic_logic}
-      </div>` : ''}
-      <div class="highlight-box" style="margin-top:0; border-left-color:var(--blue); background:rgba(52,152,219,0.05); padding:12px; margin-bottom:12px;">
-        <strong style="color:var(--blue); font-size:13px;">Direção de Arte / Vídeo:</strong><br>
-        <span style="font-size:13px; color:var(--text-muted);">${p.visual_audio_direction || ''}</span>
-      </div>
-      <div style="margin-top:0;">
-        <strong style="color:var(--red); font-size:13px;">Cronograma / Telas:</strong>
-        <div style="margin-top:8px;">${screensHtml}</div>
-      </div>
-      <div style="margin-top:16px; background:rgba(3,17,22,0.8); padding:16px; border-radius:8px; border:1px dashed var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <strong style="color:var(--brand); font-size:13px;">Legenda Matadora (Copy)</strong>
-          <button class="mini-copy" onclick="navigator.clipboard.writeText(this.closest('div').nextElementSibling.innerText); this.textContent='✅ Copiado!'; setTimeout(()=>this.textContent='Copiar legenda',2000)">Copiar legenda</button>
-        </div>
-        <p style="font-size:13px; line-height:1.7; white-space:pre-wrap;">${p.caption || p.copy || 'Sem legenda.'}</p>
-      </div>
-    </div>`;
-}
-
-// ==========================================
-// DIAGNÓSTICO
-// ==========================================
-async function getIntel() {
-  document.getElementById('intel-result').style.display = 'none';
-  showSkeleton('intel-skeleton', true);
-  const btn = document.getElementById('btn-intel');
-  btn.disabled = true; btn.textContent = '🧠 Analisando...';
-
-  try {
-    const res = await fetch('/api/intelligence', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ igId: selAcc.id, niche: document.getElementById('i-niche').value, audience: document.getElementById('i-audience').value })
-    });
-    lastDiagnostic = await res.json();
-    if (lastDiagnostic.error) throw new Error(lastDiagnostic.error);
-
-    document.getElementById('intel-result').style.display = 'block';
-    document.getElementById('intel-exec').textContent = lastDiagnostic.executive_summary;
-    document.getElementById('intel-bio-err').textContent = lastDiagnostic.bio_analysis || '';
-    document.getElementById('intel-niche').textContent = lastDiagnostic.detected_niche || '-';
-    document.getElementById('intel-tone').textContent = lastDiagnostic.detected_tone || '-';
-    document.getElementById('intel-weaknesses').innerHTML = (lastDiagnostic.weaknesses || []).map(w => `<li style="margin-bottom:4px;">${w}</li>`).join('');
-
-    if (lastDiagnostic.bio_suggestions_3D) {
-      document.getElementById('intel-bio-sug').innerHTML = `
-        <div class="bio-option">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <strong style="color:var(--brand); font-size:11px;">👑 OPÇÃO A: AUTORIDADE</strong>
-            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">Copiar</button>
-          </div>
-          <div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.authority}</div>
-        </div>
-        <div class="bio-option" style="margin-top:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <strong style="color:#a29bfe; font-size:11px;">🫂 OPÇÃO B: CONEXÃO</strong>
-            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">Copiar</button>
-          </div>
-          <div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.connection}</div>
-        </div>
-        <div class="bio-option" style="margin-top:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <strong style="color:#fd79a8; font-size:11px;">🔥 OPÇÃO C: VENDAS</strong>
-            <button class="mini-copy" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.innerText)">Copiar</button>
-          </div>
-          <div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:4px; font-size:13px; line-height:1.4;">${lastDiagnostic.bio_suggestions_3D.conversion}</div>
-        </div>
-      `;
-    }
-    document.getElementById('intel-pillars').innerHTML = (lastDiagnostic.pillars || []).map(p => `<li style="margin-bottom:4px;">${p}</li>`).join('');
-  } catch (e) {
-    alert('Erro no diagnóstico: ' + e.message);
-  } finally {
-    showSkeleton('intel-skeleton', false);
-    btn.disabled = false; btn.textContent = 'Escanear e Gerar Auditoria Completa';
-  }
-}
-
-async function exportDiagnostic() {
-  if (!lastDiagnostic) return alert('Gere um diagnóstico antes.');
-  const res = await fetch('/api/export-diagnostic', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload: lastDiagnostic, username: selAcc.username })
-  });
-  const blob = await res.blob();
-  const a = document.createElement('a'); a.href = window.URL.createObjectURL(blob);
-  a.download = `Diagnostic_${selAcc.username}.pdf`; a.click();
-}
-
-// ==========================================
-// SPY
-// ==========================================
-async function suggestCompetitors() {
-  const city = document.getElementById('s-city').value;
-  const niche = document.getElementById('s-niche-spy').value;
-  const btn = document.getElementById('btn-suggest');
-  btn.textContent = '⏳ Buscando...'; btn.disabled = true;
-  try {
-    const res = await fetch('/api/suggest-competitors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ niche, city }) });
-    const d = await res.json();
-    document.getElementById('suggest-result').innerHTML = (d.competitors || []).map(c => `
-      <span class="badge" style="cursor:pointer; transition: all 0.2s;"
-        onclick="const inp=document.getElementById('s-username'); const val=inp.value.trim(); inp.value = val ? val + ', ' + '${c}' : '${c}'; inp.focus(); this.style.opacity='0.5';">
-        ${c}
-      </span>`).join('');
-  } finally { btn.textContent = '🔎 Buscar Referências Fortes'; btn.disabled = false; }
-}
-
-async function spy() {
-  document.getElementById('spy-result').style.display = 'none';
-  showSkeleton('spy-skeleton', true);
-  const btn = document.getElementById('btn-spy');
-  btn.disabled = true; btn.textContent = '🕵️ Escaneando...';
-  try {
-    const res = await fetch('/api/competitors', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: document.getElementById('s-username').value })
-    });
-    lastSpy = await res.json();
-    document.getElementById('spy-result').style.display = 'block';
-    document.getElementById('spy-content-area').innerHTML = (lastSpy.results || []).map(r => `
-      <div style="margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:24px;">
-        <h3 style="color:#fff; margin-bottom:16px;">🔍 Dossiê Visual: @${r.username}</h3>
-        <div class="grid-2" style="grid-template-columns: 1.3fr 1fr; gap:20px;">
-          ${r.screenshot ? `<img src="${r.screenshot}" style="width:100%; border-radius:12px; border: 1px solid var(--border);">` : `<p style="color:var(--red);">Falha na captura web.</p>`}
-          <div class="highlight-box" style="margin-top:0; border-left-color: var(--brand);">
-            <h4 style="color:var(--brand); margin-bottom:12px;">Análise por Visão IA</h4>
-            <p style="font-size:13px; margin-bottom:10px;"><strong>Vibe:</strong> ${r.analysis.vibe || 'Não detectada'}</p>
-            <p style="font-size:13px; margin-bottom:12px;"><strong>Cores Ativas:</strong> <span class="badge">${r.analysis.colors || 'Mistas'}</span></p>
-            <div style="background:rgba(34,206,181,0.05); padding:12px; border-radius:8px; border:1px dashed var(--brand);">
-              <strong style="color:var(--brand); font-size:12px;">🛡️ Estratégia de Contra-ataque:</strong>
-              <p style="font-size:13px; margin-top:6px; line-height:1.5;">${r.analysis.counter_attack || 'Fortalecer branding autoral.'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    `).join('');
-  } finally {
-    showSkeleton('spy-skeleton', false);
-    btn.disabled = false; btn.textContent = 'Rodar Scanner Completo';
-  }
-}
-
-async function saveSpyToSwipeFile() {
-  if (!lastSpy || !selAcc) return alert('Execute uma varredura primeiro.');
-  try {
-    const res = await fetch('/api/swipe-file/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: selAcc.username,
-        entry: {
-          type: 'spy_scan',
-          targets: (lastSpy.results || []).map(r => r.username),
-          results: lastSpy.results,
-          date: new Date()
-        }
-      })
-    });
-    const d = await res.json();
-    alert(`✅ Varredura salva no Cofre! Total de ${d.total} itens no swipe file.`);
-  } catch (e) {
-    alert('Erro ao salvar: ' + e.message);
-  }
-}
-
-// ==========================================
-// PLANNER
-// ==========================================
-function toggleCustom(selId, inpId) {
-  const isCustom = document.getElementById(selId).value === 'custom';
-  document.getElementById(inpId).style.display = isCustom ? 'block' : 'none';
-}
-
-async function genPlan() {
-  document.getElementById('plan-result').innerHTML = '';
-  document.getElementById('btn-pdf-plan').style.display = 'none';
-  document.getElementById('btn-view-calendar').style.display = 'none';
-  showSkeleton('plan-skeleton', true);
-  const btn = document.getElementById('btn-plan');
-  btn.disabled = true; btn.textContent = '🧠 Construindo estratégia...';
-
-  let gSel = document.getElementById('p-goal-sel').value;
-  let finalGoal = gSel === 'custom' ? document.getElementById('p-goal-custom').value : gSel;
-  let tSel = document.getElementById('p-tone-sel').value;
-  let finalTone = tSel === 'custom' ? document.getElementById('p-tone-custom').value : tSel;
-
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        igId: selAcc.id, goal: finalGoal, tone: finalTone,
-        reels: document.getElementById('p-reels').value,
-        carousels: document.getElementById('p-car').value,
-        singlePosts: document.getElementById('p-img').value
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    lastPlan = data;
-    document.getElementById('plan-result').innerHTML = (lastPlan.posts || []).map(p => renderPostCard(p)).join('');
-    document.getElementById('btn-pdf-plan').style.display = 'block';
-    document.getElementById('btn-view-calendar').style.display = 'block';
-  } catch (e) {
-    document.getElementById('plan-result').innerHTML = `<div class="card" style="border-left-color:var(--red); color:var(--red);"><strong>⚠️ Erro de IA:</strong> ${e.message}</div>`;
-  } finally {
-    showSkeleton('plan-skeleton', false);
-    btn.disabled = false; btn.textContent = 'Construir Tática de Batalha';
-  }
-}
-
-async function exportPlanPDF() {
-  if (!lastPlan) return;
-  const res = await fetch('/api/export-report', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload: lastPlan, username: selAcc.username })
-  });
-  const blob = await res.blob();
-  const a = document.createElement('a'); a.href = window.URL.createObjectURL(blob);
-  a.download = `Planner_${selAcc.username}.pdf`; a.click();
-}
-
-// ==========================================
-// FACTORY
-// ==========================================
-async function genFactory() {
-  document.getElementById('fact-result').style.display = 'none';
-  showSkeleton('fact-skeleton', true);
-  const btn = document.getElementById('btn-fact');
-  btn.disabled = true; btn.textContent = '✍️ Criando post...';
-  try {
-    const res = await fetch('/api/single-post', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        igId: selAcc.id,
-        format: document.getElementById('f-format').value,
-        subject: document.getElementById('f-subject').value,
-        angle: document.getElementById('f-angle').value,
-        intensity: document.getElementById('f-intensity').value
-      })
-    });
-    const p = await res.json();
-    if (p.error) throw new Error(p.error);
-    document.getElementById('fact-result').style.display = 'block';
-    document.getElementById('fact-result').innerHTML = renderPostCard(p, true);
-  } catch (e) {
-    document.getElementById('fact-result').style.display = 'block';
-    document.getElementById('fact-result').innerHTML = `<div class="card" style="border-left-color:var(--red); color:var(--red);"><strong>⚠️ Falha na Fábrica:</strong> ${e.message}</div>`;
-  } finally {
-    showSkeleton('fact-skeleton', false);
-    btn.disabled = false; btn.textContent = 'Gerar Post Agora';
-  }
-}
-
-// ==========================================
-// HASHTAG INTELLIGENCE
-// ==========================================
-async function genHashtags() {
-  document.getElementById('ht-result').style.display = 'none';
-  showSkeleton('ht-skeleton', true);
-  const btn = document.getElementById('btn-ht');
-  btn.disabled = true; btn.textContent = '🔍 Analisando algoritmo...';
-
-  try {
-    const res = await fetch('/api/hashtags', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        igId: selAcc.id,
-        objective: document.getElementById('ht-objective').value,
-        niche: document.getElementById('ht-niche').value
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    const compColors = { alta: '#e74c3c', media: '#f39c12', baixa: '#27ae60' };
-    const setsHtml = (data.sets || []).map((set, i) => `
-      <div class="ht-set">
-        <div class="ht-set-header" onclick="toggleHtSet(this)">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="background:var(--brand); color:#000; font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px;">SET ${i + 1}</span>
-            <div>
-              <div style="font-weight:600; font-size:14px; color:#fff;">${set.name}</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${set.strategy}</div>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-            <span style="font-size:11px; color:${compColors[set.competition] || '#8aa7a4'};">
-              <span class="comp-dot comp-${set.competition || 'media'}"></span>Competição ${set.competition || 'média'}
-            </span>
-            <button class="mini-action" onclick="event.stopPropagation(); copyTagSet(this, ${JSON.stringify(set.tags).replace(/"/g,'&quot;')})">Copiar Set</button>
-            <span style="color:var(--text-muted); font-size:18px;">▾</span>
-          </div>
-        </div>
-        <div class="ht-set-body">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;"><strong>Melhor para:</strong> ${set.best_for || 'Qualquer formato'}</div>
-          <div class="ht-tags-cloud">
-            ${(set.tags || []).map(tag => `<span class="ht-tag" onclick="navigator.clipboard.writeText('${tag}'); this.style.background='var(--brand)'; this.style.color='#000'; setTimeout(()=>{this.style.background='';this.style.color='';}, 1000)">${tag}</span>`).join('')}
-          </div>
-          <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">${set.tags.length} hashtags · Clique em cada uma para copiar individualmente</div>
-        </div>
-      </div>
-    `).join('');
-
-    const bannedHtml = (data.banned_to_avoid || []).length > 0 ? `
-      <div class="card" style="border-left-color:var(--red); margin-top:20px;">
-        <h4 style="color:var(--red)">⚠️ Evitar — Tags Problemáticas (Shadowban Risk)</h4>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-          ${(data.banned_to_avoid || []).map(t => `<span style="background:rgba(231,76,60,0.1); color:var(--red); border:1px solid rgba(231,76,60,0.3); padding:4px 10px; border-radius:20px; font-size:12px; text-decoration:line-through;">${t}</span>`).join('')}
-        </div>
-      </div>` : '';
-
-    const tipHtml = data.pro_tip ? `
-      <div class="card" style="border-left-color:var(--gold); background:rgba(241,196,15,0.03); margin-top:20px;">
-        <p style="font-size:13px; line-height:1.6; color:var(--text);">⭐ <strong style="color:var(--gold);">Pro Tip do Algoritmo:</strong> ${data.pro_tip}</p>
-      </div>` : '';
-
-    document.getElementById('ht-result').innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;">${data.sets.length} Sets Prontos para Uso</h3>
-        <button class="mini-action" onclick="copyAllHashtags()">📋 Copiar Todos os Sets</button>
-      </div>
-      ${setsHtml}${bannedHtml}${tipHtml}
-    `;
-    document.getElementById('ht-result').style.display = 'block';
-    window._lastHashtagData = data;
-  } catch (e) {
-    document.getElementById('ht-result').innerHTML = `<div class="card" style="border-left-color:var(--red); color:var(--red);"><strong>⚠️ Erro:</strong> ${e.message}</div>`;
-    document.getElementById('ht-result').style.display = 'block';
-  } finally {
-    showSkeleton('ht-skeleton', false);
-    btn.disabled = false; btn.textContent = 'Gerar 5 Sets Estratégicos de Hashtags';
-  }
-}
-
-function toggleHtSet(headerEl) {
-  const body = headerEl.nextElementSibling;
-  const arrow = headerEl.querySelector('span:last-child');
-  body.classList.toggle('open');
-  arrow.textContent = body.classList.contains('open') ? '▴' : '▾';
-}
-
-function copyTagSet(btn, tagsJson) {
-  const tags = typeof tagsJson === 'string' ? JSON.parse(tagsJson.replace(/&quot;/g, '"')) : tagsJson;
-  navigator.clipboard.writeText(tags.join(' ')).then(() => {
-    btn.textContent = '✅ Copiado!';
-    setTimeout(() => btn.textContent = 'Copiar Set', 2000);
-  });
-}
-
-function copyAllHashtags() {
-  if (!window._lastHashtagData) return;
-  const all = (window._lastHashtagData.sets || []).map((s, i) => `--- SET ${i + 1}: ${s.name} ---\n${(s.tags || []).join(' ')}`).join('\n\n');
-  navigator.clipboard.writeText(all).then(() => alert('✅ Todos os sets copiados!'));
-}
-
-// ==========================================
-// CALENDÁRIO VISUAL
-// ==========================================
-function renderCalendar() {
-  const calEmpty = document.getElementById('cal-empty');
-  const calContent = document.getElementById('cal-content');
-
-  if (!lastPlan || !lastPlan.posts || !lastPlan.posts.length) {
-    calEmpty.style.display = 'block';
-    calContent.style.display = 'none';
-    return;
-  }
-
-  calEmpty.style.display = 'none';
-  calContent.style.display = 'block';
-
-  // Agrupar posts por semana
-  const weeks = {};
-  (lastPlan.posts || []).forEach(post => {
-    const week = post.week_funnel || 'Planejamento';
-    if (!weeks[week]) weeks[week] = [];
-    weeks[week].push(post);
-  });
-
-  const weekColors = ['var(--brand)', '#a29bfe', '#fd79a8', '#f1c40f'];
-  const weekEntries = Object.entries(weeks);
-
-  document.getElementById('cal-weeks').innerHTML = weekEntries.map(([weekName, posts], wi) => {
-    const weekPosts = posts.map(p => {
-      const formatClass = (p.format || '').toLowerCase().includes('reels') ? 'reels' :
-        (p.format || '').toLowerCase().includes('carro') ? 'carrossel' : 'estatico';
-      const formatLabel = (p.format || '').toLowerCase().includes('reels') ? '🎬 REELS' :
-        (p.format || '').toLowerCase().includes('carro') ? '🎴 CARROSSEL' : '🖼️ ESTÁTICO';
-      const pJson = encodeURIComponent(JSON.stringify(p));.replace(/"/g, '&quot;');
-      return `
-        <div class="cal-post-pill ${formatClass}" onclick='showPostModal(${pJson})' title="Clique para ver detalhes">
-          <div class="cal-post-num">#${p.n || ''}</div>
-          <div class="cal-format-tag">${formatLabel}</div>
-          <div class="cal-theme">${p.theme}</div>
-          ${p.strategic_logic ? `<div class="cal-logic">${p.strategic_logic.substring(0, 70)}...</div>` : ''}
-        </div>`;
-    }).join('');
-
-    return `
-      <div class="week-block">
-        <div class="week-header">
-          <span class="week-number" style="background:${weekColors[wi % weekColors.length]};">SEA ${wi + 1}</span>
-          <span class="week-title">${weekName}</span>
-          <span style="color:var(--text-muted); font-size:12px; margin-left:auto;">${posts.length} post${posts.length !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="cal-posts-row">${weekPosts}</div>
-      </div>`;
-  }).join('');
-}
-
-function showPostModal(p) {
-  const overlay = document.getElementById('overlay');
-  const modal = document.getElementById('modal-content');
-  overlay.style.display = 'flex';
-  modal.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <div>
-        <span class="badge">${p.week_funnel || ''} · ${(p.format || '').toUpperCase()}</span>
-        <h3 style="margin-top:8px; display:block; color:#fff;">${p.theme}</h3>
-      </div>
-      <button class="mini-action" onclick="closeModal()">Fechar</button>
-    </div>
-    ${renderPostCard(p)}
-  `;
-}
-
-// ==========================================
-// COFRE / MEMÓRIA
-// ==========================================
-async function loadMemory() {
-  if (!selAcc) return;
-  try {
-    const res = await fetch(`/api/memory/${selAcc.username}`);
-    const db = await res.json();
-
-    // Diagnósticos
-    const dHtml = db.diagnostics.length
-      ? db.diagnostics.slice().reverse().map(x => `
-          <div style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="expandDiag(this, ${JSON.stringify(x.executive_summary || '').replace(/"/g,'&quot;')})">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:13px;">📋 ${new Date(x.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}</strong>
-              <span class="badge" style="font-size:10px;">${x.detected_niche || 'Geral'}</span>
-            </div>
-            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">${(x.executive_summary || '').substring(0, 100)}...</p>
-          </div>`)
-          .join('')
-      : '<p style="color:var(--text-muted); padding:12px;">Nenhum diagnóstico salvo ainda.</p>';
-
-    // Planos
-    const pHtml = db.planners.length
-      ? db.planners.slice().reverse().map(x => `
-          <div style="padding:12px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:13px;">🗓️ ${new Date(x.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}</strong>
-              <span class="badge" style="font-size:10px;">${(x.posts || []).length} posts</span>
-            </div>
-            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Obj: ${(x.goal || '').substring(0, 70)}</p>
-          </div>`)
-          .join('')
-      : '<p style="color:var(--text-muted); padding:12px;">Nenhum plano mensal salvo ainda.</p>';
-
-    // Posts únicos
-    const postsHtml = (db.single_posts || []).length
-      ? (db.single_posts || []).map(x => `
-          <div style="padding:12px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong style="font-size:13px;">⚡ ${new Date(x.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}</strong>
-              <span class="badge badge-blue" style="font-size:10px;">${(x.format || '').split('(')[0].trim()}</span>
-            </div>
-            <p style="font-size:13px; color:#fff; margin-top:4px; font-weight:500;">${x.theme || x.subject || 'Post gerado'}</p>
-            <p style="font-size:12px; color:var(--text-muted);">${(x.caption || '').substring(0, 100)}...</p>
-          </div>`)
-          .join('')
-      : '<p style="color:var(--text-muted); padding:12px;">Nenhum post único gerado ainda. Use a Fábrica de Post Único!</p>';
-
-    // Swipe File
-    const swipeHtml = (db.swipe_file || []).length
-      ? (db.swipe_file || []).slice().reverse().map((x, i) => `
-          <div style="padding:14px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong style="font-size:13px;">📌 Varredura #${db.swipe_file.length - i}</strong>
-              <span style="font-size:11px; color:var(--text-muted);">${new Date(x.date).toLocaleDateString('pt-BR')}</span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              ${(x.targets || []).map(t => `<span class="badge">@${t}</span>`).join('')}
-            </div>
-            ${(x.results || []).map(r => `
-              <div style="margin-top:10px; font-size:12px; color:var(--text-muted); padding-left:12px; border-left:2px solid var(--border);">
-                <strong style="color:#fff;">@${r.username}</strong> — ${r.analysis?.counter_attack || 'Ver análise'}
-              </div>`).join('')}
-          </div>`)
-          .join('')
-      : '<p style="color:var(--text-muted); padding:12px;">Ainda sem referências salvas. Use o botão "Salvar Tudo no Cofre" no Módulo Spy.</p>';
-
-    document.getElementById('hist-diag').innerHTML = dHtml;
-    document.getElementById('hist-plan').innerHTML = pHtml;
-    document.getElementById('hist-posts').innerHTML = postsHtml;
-    document.getElementById('hist-swipe').innerHTML = swipeHtml;
-  } catch (e) {
-    console.error('Erro ao carregar memória:', e);
-  }
-}
-
-// ==========================================
-// AUTOFILL
-// ==========================================
-async function autofill(inputId, fieldType) {
-  const btn = event.currentTarget;
-  const originalText = btn.textContent;
-  btn.textContent = '⏳...';
-  try {
-    const res = await fetch('/api/autofill', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ igId: selAcc.id, field_type: fieldType })
-    });
-    const data = await res.json();
-    const val = data.suggestion || '';
-    document.getElementById(inputId).value = val;
-    if (val.includes('Erro')) {
-      document.getElementById(inputId).style.borderColor = 'var(--red)';
-    } else {
-      document.getElementById(inputId).style.borderColor = 'var(--brand)';
-      setTimeout(() => document.getElementById(inputId).style.borderColor = 'var(--border)', 2000);
-    }
-  } finally {
-    btn.textContent = originalText;
-  }
-}
-
-// ==========================================
-// AVALIAÇÃO DE POST
-// ==========================================
-async function evaluatePost(p) {
-  const overlay = document.getElementById('overlay');
-  const modal = document.getElementById('modal-content');
-  overlay.style.display = 'flex';
-  modal.innerHTML = `<h3 style="color:#fff;">⭐ Simulando Reação Humana 2026...</h3><div class="skeleton block" style="margin-top:16px;"></div>`;
-
-  try {
-    const res = await fetch('/api/evaluate-post', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: p.theme, script_or_slides: p.script_or_slides, caption: p.caption, username: selAcc.username })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error);
-
-    const scoreColor = d.score >= 8 ? 'var(--brand)' : d.score >= 6 ? '#f39c12' : 'var(--red)';
-
-    modal.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h2 style="margin:0;">Score Ideale: <span style="color:${scoreColor};">${d.score}/10</span></h2>
-        <button class="mini-action" onclick="closeModal()">✕ Fechar</button>
-      </div>
-      ${d.score >= 8 ? `<div style="background:rgba(34,206,181,0.1); padding:8px 12px; border-radius:6px; margin-bottom:16px; font-size:12px; color:var(--brand); text-align:center;">
-        🧬 <strong>Auto-Melhoramento:</strong> Este post foi salvo como referência de sucesso no DNA da conta.
-      </div>` : ''}
-      <div class="grid-2" style="gap:16px;">
-        <div class="highlight-box" style="margin:0; border-left-color:var(--brand);">
-          <h4 style="color:var(--brand)">Análise de Retenção</h4>
-          <p style="font-size:13px; margin-bottom:8px;"><strong>Hook (0-3s):</strong> ${d.analysis.hook}</p>
-          <p style="font-size:13px; margin:8px 0;"><strong>Corpo:</strong> ${d.analysis.body}</p>
-          <p style="font-size:13px;"><strong>CTA:</strong> ${d.analysis.cta}</p>
-        </div>
-        <div class="highlight-box" style="margin:0; border-left-color:var(--gold); background:rgba(241,196,15,0.03);">
-          <h4 style="color:var(--gold)">Legenda Refinada (2026 SEO)</h4>
-          <p style="font-size:13px; line-height:1.6; white-space:pre-wrap; margin-bottom:10px;">${d.refined_caption}</p>
-          <button class="btn btn-outline" style="padding:6px; font-size:11px;" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText); this.textContent='✅ Copiado!'; setTimeout(()=>this.textContent='Copiar Refinamento',2000)">Copiar Refinamento</button>
-        </div>
-      </div>
-    `;
-  } catch (e) {
-    modal.innerHTML = `<h3 style="color:var(--red);">Erro na Análise</h3><p style="font-size:14px; color:var(--text-muted); margin:16px 0;">${e.message}</p><button class="btn" onclick="closeModal()">Fechar</button>`;
-  }
-}
-
-// ==========================================
-// AUTH
-// ==========================================
-function logout() {
-  fetch('/api/auth/logout').then(() => location.href = '/');
-}
-
-// ==========================================
-// START
-// ==========================================
 init();
+
+// ================= GERAR PLANO =================
+async function genPlan(){
+
+  const igId = document.getElementById("account").value;
+  const goal = document.getElementById("goal").value;
+  const tone = document.getElementById("tone").value;
+
+  document.getElementById("posts").innerHTML = "Gerando...";
+  document.getElementById("calendar").innerHTML = "";
+
+  const res = await fetch("/api/generate",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ igId, goal, tone })
+  });
+
+  const data = await res.json();
+
+  lastPlan = data.posts || [];
+
+  renderPosts(lastPlan);
+  renderCalendar(lastPlan);
+}
+
+// ================= RENDER POSTS =================
+function renderPosts(posts){
+
+  const el = document.getElementById("posts");
+  el.innerHTML = "";
+
+  posts.forEach(p=>{
+
+    const pJson = encodeURIComponent(
+      JSON.stringify(p).replace(/'/g, '&apos;').replace(/"/g, '&quot;')
+    );
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <b>${p.format}</b><br>
+      <strong>${p.theme}</strong>
+
+      <p class="small">${(p.caption || "").substring(0,120)}...</p>
+
+      <button onclick='copyPostContent(JSON.parse(decodeURIComponent("${pJson}")))'>
+        Copiar
+      </button>
+
+      <button onclick='evaluatePost(JSON.parse(decodeURIComponent("${pJson}")))'>
+        Avaliar
+      </button>
+    `;
+
+    el.appendChild(div);
+  });
+}
+
+// ================= CALENDÁRIO =================
+function renderCalendar(posts){
+
+  const el = document.getElementById("calendar");
+  el.innerHTML = "";
+
+  posts.forEach(p=>{
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <strong>${p.format}</strong><br>
+      ${p.theme}
+    `;
+
+    el.appendChild(div);
+  });
+}
+
+// ================= COPY =================
+function copyPostContent(p){
+
+  const text = `
+${p.theme}
+
+${p.caption}
+
+${(p.script_or_slides || []).join("\n")}
+`;
+
+  navigator.clipboard.writeText(text);
+
+  alert("Copiado!");
+}
+
+// ================= AVALIAR =================
+function evaluatePost(p){
+
+  let score = 0;
+
+  if(p.caption.length > 100) score += 2;
+  if(p.script_or_slides?.length >= 3) score += 2;
+  if(!p.caption.toLowerCase().includes("você sabia")) score += 2;
+
+  alert("Score do post: " + score + "/6");
+}
+
 </script>
+
 </body>
 </html>
