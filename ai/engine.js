@@ -4,61 +4,86 @@ function buildClients(env) {
   return {
     openai: {
       key: env.OPENAI_API_KEY,
-      model: env.OPENAI_MODEL || "gpt-3.5-turbo"
+      model: "gpt-3.5-turbo"
+    },
+    groq: {
+      key: env.GROQ_API_KEY,
+      model: "llama3-70b-8192"
     }
   };
 }
 
-// 🔥 extrai JSON mesmo se vier bagunçado
+async function callOpenAI(client, system, user) {
+  const res = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      model: client.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  return res.data.choices[0].message.content;
+}
+
+async function callGroq(client, system, user) {
+  const res = await axios.post(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      model: client.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  return res.data.choices[0].message.content;
+}
+
 function extractJSON(text) {
   try {
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    return JSON.parse(match[0]);
+    return match ? JSON.parse(match[0]) : { posts: [] };
   } catch {
-    return null;
+    return { posts: [] };
   }
 }
 
 async function runLLM({ clients, system, user }) {
   try {
-    const { openai } = clients;
-
-    const res = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        model: openai.model,
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${openai.key}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    const text = res.data.choices[0].message.content;
-
-    console.log("🧠 IA respondeu:\n", text);
-
-    const parsed = extractJSON(text);
-
-    if (!parsed) {
-      console.error("❌ JSON não encontrado");
-      return { posts: [] };
+    if (clients.openai.key) {
+      const text = await callOpenAI(clients.openai, system, user);
+      return extractJSON(text);
     }
-
-    return parsed;
-
   } catch (err) {
-    console.error("❌ ERRO IA:", err.message);
-    return { posts: [] };
+    console.log("⚠️ OpenAI falhou, tentando Groq...");
   }
+
+  try {
+    if (clients.groq.key) {
+      const text = await callGroq(clients.groq, system, user);
+      return extractJSON(text);
+    }
+  } catch (err) {
+    console.log("❌ Groq também falhou");
+  }
+
+  return { posts: [] };
 }
 
 module.exports = { buildClients, runLLM };
