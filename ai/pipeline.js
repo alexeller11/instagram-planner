@@ -1,38 +1,53 @@
 const { runLLM } = require("./engine");
 
-async function generate({ clients, system, prompt, memory }) {
-  const fullPrompt = `
-${system}
+async function generate({ clients, system, memory }) {
 
-TEMAS JÁ USADOS:
-${memory}
+  const prompt = `
+Você é um estrategista de conteúdo para redes sociais.
 
-TAREFA:
-${prompt}
+Nicho: OFICINA MECÂNICA (carros)
 
-RETORNE APENAS JSON VÁLIDO.
+Objetivo:
+Gerar conteúdo que:
+- prenda atenção
+- gere identificação
+- mostre autoridade
+- faça o cliente confiar
 
-FORMATO:
+Crie 6 posts.
+
+REGRAS IMPORTANTES:
+- NÃO use frases genéricas (tipo "você sabia", "nos dias de hoje")
+- NÃO fale de forma ampla
+- Use situações reais de oficina
+- Use problemas que clientes realmente vivem
+- Use linguagem simples e direta
+
+Cada post deve ter:
+- theme (curto e específico)
+- caption (texto envolvente)
+- format (reels, carrossel ou estatico)
+
+Exemplo de nível esperado:
+- "Cliente chegou com barulho no motor e quase perdeu tudo"
+- "O erro que faz seu carro consumir mais combustível sem você perceber"
+
+Retorne apenas JSON:
 {
   "posts": [
     {
-      "theme": "tema",
-      "caption": "texto",
+      "theme": "...",
+      "caption": "...",
       "format": "reels"
     }
   ]
 }
-
-REGRAS:
-- NÃO escreva texto fora do JSON
-- NÃO use markdown
-- NÃO explique nada
 `;
 
   const result = await runLLM({
     clients,
-    system: "Você é um gerador de JSON puro.",
-    user: fullPrompt
+    system: "Você responde apenas JSON puro.",
+    user: prompt
   });
 
   return result || { posts: [] };
