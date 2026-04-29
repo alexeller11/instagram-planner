@@ -71,6 +71,7 @@ async function runLLM({ clients, system, user }) {
     if (clients.nvidia?.key) {
       console.log("🟣 Tentando NVIDIA...");
       const text = await callNvidia(clients.nvidia, system, user);
+      console.log("🧠 NVIDIA OK");
       return extractJSON(text);
     }
   } catch (err) {
@@ -81,6 +82,7 @@ async function runLLM({ clients, system, user }) {
     if (clients.groq?.key) {
       console.log("🟢 Tentando GROQ...");
       const text = await callGroq(clients.groq, system, user);
+      console.log("🧠 GROQ OK");
       return extractJSON(text);
     }
   } catch (err) {
