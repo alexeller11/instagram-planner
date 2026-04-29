@@ -11,7 +11,16 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGODB_URI || "");
+// ================= LOG =================
+const log = {
+  info: (...a) => console.log("[INFO]", ...a),
+  error: (...a) => console.error("[ERROR]", ...a),
+};
+
+// ================= DATABASE =================
+mongoose.connect(process.env.MONGODB_URI || "")
+  .then(() => log.info("✅ Mongo conectado"))
+  .catch(err => log.error("❌ Mongo erro:", err.message));
 
 const Client = mongoose.model("Client", new mongoose.Schema({
   username: String,
@@ -31,7 +40,6 @@ async function getClient(username, niche) {
     await c.save();
   }
 
-  // atualiza nicho se vier novo
   if (niche && c.niche !== niche) {
     c.niche = niche;
     await c.save();
@@ -40,18 +48,27 @@ async function getClient(username, niche) {
   return c;
 }
 
+// ================= IA =================
 const clients = buildClients(process.env);
+
+// ================= ROTAS =================
 
 app.get("/", (req, res) => {
   res.send("🚀 API Instagram Planner está online");
 });
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// ================= GERAÇÃO =================
 
 app.get("/api/generate", async (req, res) => {
   try {
     const username = req.query.username || "teste";
     const niche = req.query.niche || "negócios locais";
 
-    console.log("🔍 Cliente:", username, "| Nicho:", niche);
+    log.info("🔍 Cliente:", username, "| Nicho:", niche);
 
     const client = await getClient(username, niche);
 
@@ -61,31 +78,61 @@ app.get("/api/generate", async (req, res) => {
       memory: (client.memory.last || []).join(", ")
     });
 
-    let posts = Array.isArray(result.posts) ? result.posts : [];
+    console.log("🧠 RESPOSTA BRUTA IA:", result);
 
-    if (!posts.length) {
-      posts = [
+    // 🔥 SUPORTE A TODOS FORMATOS
+    let output = [];
+
+    if (Array.isArray(result.posts)) {
+      output = result.posts;
+    } else if (Array.isArray(result.calendar)) {
+      output = result.calendar;
+    } else if (Array.isArray(result.month_plan)) {
+      output = result.month_plan;
+    }
+
+    // 🔥 FALLBACK
+    if (!output.length) {
+      log.error("⚠️ IA retornou vazio, usando fallback");
+
+      output = [
         {
-          theme: "Conteúdo temporariamente indisponível",
-          caption: "Estamos ajustando sua estratégia de conteúdo.",
+          theme: "Conteúdo indisponível",
+          caption: "Estamos ajustando sua estratégia.",
           format: "estatico"
         }
       ];
     }
 
-    posts = avoidRepetition(posts, client.memory);
+    // 🔥 SE FOR POSTS SIMPLES → aplica memória
+    if (Array.isArray(result.posts)) {
+      let posts = avoidRepetition(output, client.memory);
+      client.memory = updateMemory(client.memory, posts);
+      await client.save();
+      return res.json({ type: "posts", data: posts });
+    }
 
-    client.memory = updateMemory(client.memory, posts);
-    await client.save();
+    // 🔥 CALENDÁRIO SEMANAL
+    if (Array.isArray(result.calendar)) {
+      return res.json({ type: "weekly_calendar", data: output });
+    }
 
-    res.json({ posts });
+    // 🔥 CALENDÁRIO MENSAL
+    if (Array.isArray(result.month_plan)) {
+      return res.json({ type: "monthly_calendar", data: output });
+    }
+
+    // fallback final
+    res.json({ type: "unknown", data: output });
 
   } catch (err) {
-    console.error("❌ erro:", err.message);
+    log.error("❌ erro:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ================= START =================
+
 app.listen(PORT, () => {
-  console.log("🚀 API rodando:", PORT);
+  log.info(`🚀 API rodando na porta ${PORT}`);
 });
