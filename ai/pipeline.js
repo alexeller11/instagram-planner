@@ -1,24 +1,39 @@
 const { runLLM } = require("./engine");
 
 async function generate({ clients, system, prompt, memory }) {
-  const combinedSystem = `${system}
+  const fullPrompt = `
+${system}
 
-ANTI-REPETIÇÃO:
+TEMAS JÁ USADOS:
 ${memory}
 
-REGRAS:
-- Não gerar conteúdo genérico
-- Não repetir temas
-- Criar posts diferentes entre si
+TAREFA:
+${prompt}
 
-Saída obrigatória em JSON:
-{ "posts": [ { "theme": "...", "caption": "...", "format": "reels|carrossel|estatico" } ] }
+FORMATO DE RESPOSTA (OBRIGATÓRIO):
+Responda apenas JSON válido, sem texto antes ou depois.
+
+Exemplo:
+{
+  "posts": [
+    {
+      "theme": "Tema do post",
+      "caption": "Texto do post",
+      "format": "reels"
+    }
+  ]
+}
+
+REGRAS:
+- NÃO escreva explicações
+- NÃO escreva texto fora do JSON
+- NÃO use markdown
 `;
 
   const res = await runLLM({
     clients,
-    system: combinedSystem,
-    user: prompt
+    system: "Você responde apenas JSON puro.",
+    user: fullPrompt
   });
 
   return res || { posts: [] };
