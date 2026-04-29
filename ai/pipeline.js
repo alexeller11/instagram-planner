@@ -2,59 +2,76 @@ const { runLLM } = require("./engine");
 
 async function generate({ clients, niche, memory }) {
 
-  // 🔹 1. GERAÇÃO BRUTA
-  const basePrompt = `
-Crie 6 ideias de posts para o nicho: ${niche}
+  const prompt = `
+Você é um estrategista de conteúdo que cria posts PRONTOS PARA PUBLICAÇÃO.
 
-Evite:
-- genérico
-- clichês
-- frases prontas
+NICHO:
+${niche}
 
-Retorne JSON:
+OBJETIVO:
+Criar conteúdo que:
+- prenda atenção imediatamente
+- gere identificação
+- pareça real
+- estimule ação
+
+ESTRUTURA OBRIGATÓRIA:
+
+Cada post deve conter:
+
+- theme: ideia central curta
+- format: reels, carrossel ou estatico
+
+- hook: primeira frase extremamente chamativa
+- caption: desenvolvimento (história, contexto ou explicação)
+- cta: chamada para ação (comentário, salvar, chamar no direct, etc)
+- visual_hint: sugestão de imagem ou vídeo
+
+REGRAS IMPORTANTES:
+- NÃO usar frases genéricas
+- NÃO parecer propaganda
+- usar situações reais do nicho
+- escrever como humano, não como empresa
+
+FORMATO POR TIPO:
+
+REELS:
+- hook forte + tensão
+- caption curto
+
+CARROSSEL:
+- educativo ou explicativo
+- quebrar em lógica de sequência
+
+ESTÁTICO:
+- opinião forte OU insight direto
+
+Evite repetir:
+${memory}
+
+RETORNE APENAS JSON:
+
 {
   "posts": [
     {
       "theme": "...",
+      "format": "reels",
+      "hook": "...",
       "caption": "...",
-      "format": "reels"
+      "cta": "...",
+      "visual_hint": "..."
     }
   ]
 }
 `;
 
-  const base = await runLLM({
+  const result = await runLLM({
     clients,
-    system: "Você gera ideias de conteúdo.",
-    user: basePrompt
+    system: "Você responde apenas JSON puro.",
+    user: prompt
   });
 
-  if (!base?.posts?.length) return { posts: [] };
-
-  // 🔥 2. REFINAMENTO (AQUI MUDA TUDO)
-  const refinePrompt = `
-Reescreva esses posts para nível agência premium.
-
-REGRAS:
-- mais impacto
-- mais específico
-- mais humano
-- menos genérico
-- parecer história real
-
-Posts:
-${JSON.stringify(base.posts)}
-
-Retorne JSON no mesmo formato.
-`;
-
-  const refined = await runLLM({
-    clients,
-    system: "Você melhora conteúdo para alto impacto.",
-    user: refinePrompt
-  });
-
-  return refined || base;
+  return result || { posts: [] };
 }
 
 module.exports = { generate };
