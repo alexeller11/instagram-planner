@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const path = require("path");
 
 const { buildClients } = require("./ai/engine");
 const { generate } = require("./ai/pipeline");
@@ -8,6 +9,9 @@ const { updateMemory, avoidRepetition } = require("./ai/memory");
 
 const app = express();
 app.use(express.json());
+
+// 🔥 SERVIR FRONTEND
+app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
 
@@ -53,8 +57,9 @@ const clients = buildClients(process.env);
 
 // ================= ROTAS =================
 
+// 🔥 AGORA O FRONT ABRE AQUI
 app.get("/", (req, res) => {
-  res.send("🚀 API Instagram Planner está online");
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
 app.get("/health", (req, res) => {
@@ -80,7 +85,6 @@ app.get("/api/generate", async (req, res) => {
 
     console.log("🧠 RESPOSTA BRUTA IA:", result);
 
-    // 🔥 SUPORTE A TODOS FORMATOS
     let output = [];
 
     if (Array.isArray(result.posts)) {
@@ -91,39 +95,27 @@ app.get("/api/generate", async (req, res) => {
       output = result.month_plan;
     }
 
-    // 🔥 FALLBACK
     if (!output.length) {
-      log.error("⚠️ IA retornou vazio, usando fallback");
+      log.error("⚠️ IA retornou vazio");
 
-      output = [
-        {
-          theme: "Conteúdo indisponível",
-          caption: "Estamos ajustando sua estratégia.",
-          format: "estatico"
-        }
-      ];
+      return res.json({
+        type: "fallback",
+        data: [
+          {
+            theme: "Conteúdo em ajuste",
+            caption: "Estamos refinando sua estratégia.",
+            format: "estatico"
+          }
+        ]
+      });
     }
 
-    // 🔥 SE FOR POSTS SIMPLES → aplica memória
-    if (Array.isArray(result.posts)) {
-      let posts = avoidRepetition(output, client.memory);
-      client.memory = updateMemory(client.memory, posts);
-      await client.save();
-      return res.json({ type: "posts", data: posts });
-    }
-
-    // 🔥 CALENDÁRIO SEMANAL
-    if (Array.isArray(result.calendar)) {
-      return res.json({ type: "weekly_calendar", data: output });
-    }
-
-    // 🔥 CALENDÁRIO MENSAL
-    if (Array.isArray(result.month_plan)) {
-      return res.json({ type: "monthly_calendar", data: output });
-    }
-
-    // fallback final
-    res.json({ type: "unknown", data: output });
+    res.json({
+      type: result.month_plan ? "monthly_calendar" :
+            result.calendar ? "weekly_calendar" :
+            "posts",
+      data: output
+    });
 
   } catch (err) {
     log.error("❌ erro:", err.message);
