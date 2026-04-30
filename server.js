@@ -3,21 +3,19 @@ const express = require("express");
 const path = require("path");
 
 const { buildClients } = require("./ai/engine");
-const { generatePlan30 } = require("./ai/pipeline");
+const { dashboard360, diagnostico, planoMensal, concorrencia } = require("./ai/pipeline");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
 const PORT = process.env.PORT || 3000;
 
-// ===== FRONT =====
 app.use(express.static(path.join(__dirname, "public")));
-
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public/index.html")));
 app.get("/app", (req, res) => res.sendFile(path.join(__dirname, "public/app.html")));
 
-// ===== CLIENTES =====
-const clients = [
+// contas fixas (como está hoje no seu repo) :contentReference[oaicite:3]{index=3}
+const accounts = [
   { id: "1", username: "qualitycar_autocenter", niche: "oficina mecânica automotiva especializada em manutenção, revisão e diagnóstico" },
   { id: "2", username: "luiztintas", niche: "loja de tintas e materiais de pintura" },
   { id: "3", username: "drogamaisfarma", niche: "farmácia e drogaria" },
@@ -27,39 +25,57 @@ const clients = [
   { id: "7", username: "limilklaticinios", niche: "laticínios e produção de derivados de leite" }
 ];
 
-// ===== IA =====
 const aiClients = buildClients(process.env);
 
-// ===== API =====
-
-// clientes (sem login)
 app.get("/api/me", (req, res) => {
-  res.json({
-    logged: true,
-    accounts: clients
-  });
+  res.json({ logged: true, accounts });
 });
 
-// gerar plano
-app.post("/api/generate", async (req, res) => {
+function getAcc(igId) {
+  return accounts.find(a => a.id === String(igId)) || accounts[0];
+}
+
+app.post("/api/dashboard", async (req, res) => {
   try {
-    const { igId, goal, tone } = req.body;
-    const acc = clients.find(c => c.id === igId) || clients[0];
-
-    const result = await generatePlan30({
-      clients: aiClients,
-      niche: acc.niche,
-      goal: goal || "Crescimento",
-      tone: tone || "Profissional"
-    });
-
-    res.json(result);
+    const acc = getAcc(req.body?.igId);
+    const data = await dashboard360({ clients: aiClients, niche: acc.niche, username: acc.username });
+    res.json(data);
   } catch (e) {
-    console.error("ERRO:", e.message);
-    res.json({ posts: [] });
+    res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log("🚀 SERVER RODANDO:", PORT);
+app.post("/api/diagnostico", async (req, res) => {
+  try {
+    const acc = getAcc(req.body?.igId);
+    const data = await diagnostico({ clients: aiClients, niche: acc.niche, username: acc.username });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
+
+app.post("/api/plano", async (req, res) => {
+  try {
+    const acc = getAcc(req.body?.igId);
+    const goal = req.body?.goal || "Autoridade";
+    const mix = req.body?.mix || { reels: 14, carrosseis: 10, estaticos: 6 };
+    const data = await planoMensal({ clients: aiClients, niche: acc.niche, username: acc.username, goal, mix });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message, posts: [] });
+  }
+});
+
+app.post("/api/concorrencia", async (req, res) => {
+  try {
+    const acc = getAcc(req.body?.igId);
+    const city = req.body?.city || "Linhares";
+    const data = await concorrencia({ clients: aiClients, niche: acc.niche, city });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(PORT, () => console.log("🚀 SERVER RODANDO:", PORT));
