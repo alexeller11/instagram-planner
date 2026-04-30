@@ -2,13 +2,25 @@ const axios = require("axios");
 
 function buildClients(env) {
   return {
-    nvidia: {
-      key: env.NVIDIA_API_KEY,
-      model: env.NVIDIA_MODEL || "meta/llama-3.1-70b-instruct"
+    openai: {
+      key: env.OPENAI_API_KEY,
+      model: env.OPENAI_MODEL || "gpt-4o-mini"
     },
     groq: {
       key: env.GROQ_API_KEY,
       model: env.GROQ_MODEL || "llama-3.3-70b-versatile"
+    },
+    gemini: {
+      key: env.GEMINI_API_KEY,
+      model: env.GEMINI_MODEL || "gemini-2.5-flash"
+    },
+    sambanova: {
+      key: env.SAMBANOVA_API_KEY,
+      model: env.SAMBANOVA_MODEL || "Meta-Llama-3.1-70B-Instruct"
+    },
+    nvidia: {
+      key: env.NVIDIA_API_KEY,
+      model: env.NVIDIA_MODEL || "meta/llama-3.1-70b-instruct"
     }
   };
 }
@@ -30,6 +42,79 @@ function tryParseJSON(text) {
   } catch {
     return {};
   }
+}
+
+async function callOpenAI(client, system, user) {
+  const res = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      model: client.model,
+      temperature: 0.4,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 90000
+    }
+  );
+
+  return res.data?.choices?.[0]?.message?.content || "";
+}
+
+async function callGemini(client, system, user) {
+  const res = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/${client.model}:generateContent?key=${client.key}`,
+    {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: `${system}\n\n${user}` }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.4
+      }
+    },
+    {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 90000
+    }
+  );
+
+  return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+async function callSambaNova(client, system, user) {
+  const res = await axios.post(
+    "https://api.sambanova.ai/v1/chat/completions",
+    {
+      model: client.model,
+      temperature: 0.4,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${client.key}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 90000
+    }
+  );
+
+  return res.data?.choices?.[0]?.message?.content || "";
 }
 
 async function callNvidia(client, system, user) {
@@ -79,26 +164,30 @@ async function callGroq(client, system, user) {
 }
 
 async function runLLM({ clients, system, user }) {
-  try {
-    if (clients.nvidia?.key) {
-      const text = await callNvidia(clients.nvidia, system, user);
-      const data = tryParseJSON(text);
-      if (Object.keys(data || {}).length) return data;
+  const providers = [
+    { name: "OpenAI", key: "openai", fn: callOpenAI },
+    { name: "Groq", key: "groq", fn: callGroq },
+    { name: "Gemini", key: "gemini", fn: callGemini },
+    { name: "SambaNova", key: "sambanova", fn: callSambaNova },
+    { name: "NVIDIA", key: "nvidia", fn: callNvidia }
+  ];
+
+  for (const provider of providers) {
+    try {
+      if (clients[provider.key]?.key) {
+        const text = await provider.fn(clients[provider.key], system, user);
+        const data = tryParseJSON(text);
+        if (Object.keys(data || {}).length) {
+          console.log(`✓ ${provider.name} respondeu com sucesso`);
+          return data;
+        }
+      }
+    } catch (e) {
+      console.log(`✗ ${provider.name} falhou:`, e.response?.status || e.message);
     }
-  } catch (e) {
-    console.log("NVIDIA falhou:", e.response?.status || e.message);
   }
 
-  try {
-    if (clients.groq?.key) {
-      const text = await callGroq(clients.groq, system, user);
-      const data = tryParseJSON(text);
-      if (Object.keys(data || {}).length) return data;
-    }
-  } catch (e) {
-    console.log("GROQ falhou:", e.response?.status || e.message);
-  }
-
+  console.warn("⚠ Nenhum provedor de IA disponível");
   return {};
 }
 

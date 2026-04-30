@@ -25,25 +25,29 @@ function uniqueStrings(arr = []) {
 async function ask(clients, prompt) {
   return await runLLM({
     clients,
-    system: `
-Você responde SOMENTE JSON válido. Sem markdown. Sem blocos de código. Sem texto extra.
+    system: `Você responde SOMENTE JSON válido. Sem markdown. Sem blocos de código. Sem texto extra.
 
 VOCÊ É O MAIOR ESTRATEGISTA DE CONTEÚDO E COPYWRITER DE RESPOSTA DIRETA DO BRASIL.
 Sua escrita é hipnótica, agressiva e focada em extrair dinheiro do bolso do cliente através de autoridade e desejo.
 
 REGRAS DE OURO (NUNCA QUEBRE):
-1. PROIBIDO clichês: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução", "Muitas pessoas sofrem com".
-2. GANCHOS (Hooks): Use a técnica da "Curiosidade Insuportável" ou "Ameaça Imediata". Ex: "O erro de R$ 5.000 que você comete todo dia no seu carro" ou "Por que sua visão está morrendo e você não percebeu".
-3. LEGENDA (AIDA DE ELITE): 
-   - Mínimo de 400 palavras.
-   - Use Storytelling agressivo.
-   - Quebre objeções que o cliente nem sabia que tinha.
-   - CTA (Chamada para Ação) deve ser um comando imperativo e urgente.
-4. ROTEIROS DE REELS: 
-   - Ritmo frenético.
-   - Indique cortes a cada 2-3 segundos.
-   - Textos de impacto na tela.
-5. PERSONA: Um especialista bilionário que não tem tempo para amadorismo. Direto, autoritário e magnético.
+1. PROIBIDO clichês: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução", "Muitas pessoas sofrem com", "Saiba mais", "Clique aqui", "Não perca", "Aprenda", "Descubra o segredo", "Você não vai acreditar".
+2. GANCHOS (Hooks): Use a técnica da "Curiosidade Insuportável" ou "Ameaça Imediata". Ex: "O erro de R$ 5.000 que você comete todo dia no seu carro" ou "Por que sua visão está morrendo e você não percebeu". Sempre específico, nunca genérico. Mínimo 15 palavras.
+3. LEGENDA (AIDA DE ELITE):
+   - Mínimo de 400 palavras, máximo 600.
+   - Use Storytelling agressivo com dados reais e números específicos.
+   - Quebre objeções profundas que o cliente nem sabia que tinha.
+   - CTA (Chamada para Ação) deve ser um comando imperativo e urgente: "Clique no link da bio AGORA", "Responda com um emoji", "Salve este post", "Compartilhe com um amigo que precisa".
+   - Estrutura: Abertura explosiva → Problema específico → Prova social → Solução → Urgência → CTA.
+4. ROTEIROS DE REELS:
+   - Ritmo frenético com cortes a cada 2-3 segundos.
+   - Indique transições: "CORTE RÁPIDO", "ZOOM IN", "TRANSIÇÃO DINÂMICA", "EFEITO SONORO: [descrição]".
+   - Textos de impacto na tela em MAIÚSCULAS.
+   - Mínimo 8 cenas, máximo 12.
+   - Inclua efeitos sonoros sugeridos e movimentos de câmera.
+5. PERSONA: Um especialista bilionário que não tem tempo para amadorismo. Direto, autoritário, magnético e brutalmente honesto.
+6. QUALIDADE: Cada post deve ser uma obra-prima de copywriting. Nada genérico. Nada fraco. Tudo deve vender.
+7. ESPECIFICIDADE: Use números reais, dados, estatísticas. Nunca fale em abstratos.
 `.trim(),
     user: prompt
   });
@@ -81,23 +85,22 @@ async function analisarCliente({
   city,
   contentPillars
 }) {
-  const prompt = `
-Analise este cliente como se fosse um Mestre de Marketing. 
+  const prompt = `Analise este cliente como se fosse um Mestre de Marketing de Resposta Direta.
 Dados: Marca ${brandName}, Username @${username}, Nicho ${niche}, Oferta ${offer}.
 
-Retorne um mapeamento psicológico brutal da audiência e ângulos editoriais que ninguém mais está usando.
+Retorne um mapeamento psicológico BRUTAL da audiência e ângulos editoriais que ninguém mais está usando.
+Seja específico, agressivo e focado em VENDA. Nada genérico.
 
 JSON:
 {
-  "niche_analysis": "string",
-  "audience_summary": "string",
-  "pain_points": ["string"],
-  "desires": ["string"],
-  "objections": ["string"],
-  "positioning_focus": ["string"],
-  "content_angles": ["string"]
-}
-`.trim();
+  "niche_analysis": "string com análise profunda e específica do nicho",
+  "audience_summary": "string descrevendo a audiência ideal com detalhes psicográficos",
+  "pain_points": ["string", "string", "string", "string", "string", "string"],
+  "desires": ["string", "string", "string", "string", "string", "string"],
+  "objections": ["string", "string", "string", "string", "string", "string"],
+  "positioning_focus": ["string", "string", "string", "string", "string", "string"],
+  "content_angles": ["string", "string", "string", "string", "string", "string", "string", "string"]
+}`.trim();
 
   const d = await ask(clients, prompt);
 
@@ -113,19 +116,18 @@ JSON:
 }
 
 async function dashboard360({ clients, clientData, analysis }) {
-  const prompt = `
-Cliente: ${JSON.stringify(clientData)}
-Crie 3 Bios que fazem o seguidor sentir vergonha de não seguir o perfil. 
-Liste 6 melhorias de perfil e 4 insights de domínio.
+  const prompt = `Cliente: ${JSON.stringify(clientData)}
+Crie 3 Bios que fazem o seguidor sentir VERGONHA de não seguir o perfil.
+Cada bio deve ser uma arma de persuasão. Mínimo 80 caracteres cada.
+Liste 6 melhorias de perfil ESPECÍFICAS (não genéricas) e 4 insights de domínio que geram lucro.
 
 JSON:
 {
-  "bio": ["string"],
-  "melhorias": ["string"],
-  "posicionamento": "string",
-  "insights": ["string"]
-}
-`.trim();
+  "bio": ["string", "string", "string"],
+  "melhorias": ["string", "string", "string", "string", "string", "string"],
+  "posicionamento": "string com posicionamento de mercado",
+  "insights": ["string", "string", "string", "string"]
+}`.trim();
 
   const d = await ask(clients, prompt);
 
@@ -138,18 +140,17 @@ JSON:
 }
 
 async function diagnostico({ clients, clientData, analysis, objective }) {
-  const prompt = `
-Diagnóstico de Performance para @${clientData.username}. 
-Seja brutalmente honesto sobre problemas e aponte oportunidades de lucro imediato.
+  const prompt = `Diagnóstico de Performance para @${clientData.username}.
+Seja brutalmente honesto sobre problemas e aponte oportunidades de lucro IMEDIATO.
+Cada item deve ser específico e acionável. Nada genérico.
 
 JSON:
 {
-  "problemas": ["string"],
-  "oportunidades": ["string"],
-  "acoes_14_dias": ["string"],
-  "prioridade_agencia": ["string"]
-}
-`.trim();
+  "problemas": ["string", "string", "string", "string", "string", "string", "string"],
+  "oportunidades": ["string", "string", "string", "string", "string", "string", "string"],
+  "acoes_14_dias": ["string", "string", "string", "string", "string", "string", "string", "string", "string", "string"],
+  "prioridade_agencia": ["string", "string", "string", "string", "string"]
+}`.trim();
 
   const d = await ask(clients, prompt);
 
@@ -174,40 +175,44 @@ async function planoMensal({
 }) {
   const total = qtyReels + qtyCarrossel + qtyFoto;
 
-  const prompt = `
-ESTRATÉGIA DE GUERRA PARA @${clientData.username}.
+  const prompt = `ESTRATÉGIA DE GUERRA PARA @${clientData.username}.
 Objetivo: ${goal}. Tom: ${tone}.
 
-Gere ${total} posts sendo: ${qtyReels} Reels, ${qtyCarrossel} Carrosséis e ${qtyFoto} Fotos.
-CADA POST DEVE SER UMA OBRA DE ARTE DE COPYWRITING.
+Gere EXATAMENTE ${total} posts sendo: ${qtyReels} Reels, ${qtyCarrossel} Carrosséis e ${qtyFoto} Fotos.
+CADA POST DEVE SER UMA OBRA-PRIMA DE COPYWRITING DE RESPOSTA DIRETA.
+NÃO GERE MENOS. NÃO GERE GENÉRICO.
 
-- REELS: Roteiro detalhado cena a cena (mínimo 6 cenas).
-- CARROSSEL: Estrutura de 10 slides com retenção máxima.
-- LEGENDA: Mínimo 400 palavras. Técnica AIDA de Resposta Direta.
+EXEMPLO DE GANCHO ELITE:
+❌ "Você quer saber como crescer no Instagram?"
+✓ "A razão pela qual 99% dos empreendedores fracassa no Instagram é que eles não entendem a psicologia do algoritmo"
+
+- REELS: Roteiro detalhado cena a cena (MÍNIMO 8 cenas, máximo 12). Inclua transições, efeitos sonoros e textos de impacto.
+- CARROSSEL: Estrutura de 10 slides com retenção máxima. Cada slide deve ter um gatilho psicológico diferente.
+- LEGENDA: MÍNIMO 400 palavras, máximo 600. Técnica AIDA de Resposta Direta com prova social e urgência.
 
 JSON:
 {
   "posts": [
     {
-      "theme": "string",
+      "theme": "string com título específico e agressivo",
       "format": "Reels|Carrossel|Foto",
-      "hook": "Gancho brutal",
-      "script_or_slides": ["Cena 1: ...", "Cena 2: ...", "Cena 3: ...", "Cena 4: ...", "Cena 5: ...", "Cena 6: ..."],
-      "caption": "Legenda LONGA (mínimo 400 palavras) e extremamente persuasiva",
-      "creative_direction": "Direção de arte e edição",
+      "hook": "Gancho brutal e específico (mínimo 15 palavras)",
+      "script_or_slides": ["Cena 1: ...", "Cena 2: ...", "Cena 3: ...", "Cena 4: ...", "Cena 5: ...", "Cena 6: ...", "Cena 7: ...", "Cena 8: ..."],
+      "caption": "Legenda LONGA (400-600 palavras) com storytelling agressivo, dados reais, prova social e CTA urgente",
+      "creative_direction": "Direção de arte, edição, efeitos sonoros e movimento de câmera",
       "goal": "string",
       "viral_score": { "score": 0, "reason": "string" }
     }
   ]
-}
-`.trim();
+}`.trim();
 
   const d = await ask(clients, prompt);
   let posts = safeArray(d?.posts).map((p, i) => sanitizePost(p, i, goal));
 
   // Fallback para garantir que não venha apenas 1
   if (posts.length < 3) {
-      const d2 = await ask(clients, prompt + " (FOQUE EM GERAR A LISTA COMPLETA DE POSTS AGORA)");
+      console.warn(`⚠ Apenas ${posts.length} posts gerados. Solicitando lista completa...`);
+      const d2 = await ask(clients, prompt + " (FOQUE EM GERAR A LISTA COMPLETA DE POSTS AGORA. MÍNIMO " + total + " POSTS.)");
       posts = [...posts, ...safeArray(d2?.posts).map((p, i) => sanitizePost(p, i + posts.length, goal))];
   }
 
@@ -222,18 +227,17 @@ JSON:
 }
 
 async function concorrencia({ clients, clientData, analysis }) {
-  const prompt = `
-Mapeie a concorrência para @${clientData.username}. 
-Ache os pontos fracos deles e onde podemos esmagar o mercado.
+  const prompt = `Mapeie a concorrência para @${clientData.username} como um estrategista de guerra de mercado.
+Identifique os 6 maiores concorrentes, seus pontos fracos ESPECÍFICOS e onde podemos esmagar o mercado.
+Seja brutal e específico. Nada genérico.
 
 JSON:
 {
   "concorrentes": [
-    { "nome": "string", "perfil": "string", "positioning": "string", "opportunity": "string" }
+    { "nome": "string com nome real do concorrente", "perfil": "@username", "positioning": "string com análise específica do posicionamento", "opportunity": "string com oportunidade específica de ataque" }
   ],
-  "plano_para_ganhar": ["string"]
-}
-`.trim();
+  "plano_para_ganhar": ["string", "string", "string", "string", "string", "string", "string", "string", "string", "string"]
+}`.trim();
 
   const d = await ask(clients, prompt);
 
