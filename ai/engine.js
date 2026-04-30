@@ -20,10 +20,10 @@ function tryParseJSON(text) {
     const fenced = raw.match(/```json\s*([\s\S]*?)```/i);
     if (fenced?.[1]) return JSON.parse(fenced[1]);
 
-    const firstBracket = raw.indexOf("{");
-    const lastBracket = raw.lastIndexOf("}");
-    if (firstBracket !== -1 && lastBracket !== -1) {
-      return JSON.parse(raw.slice(firstBracket, lastBracket + 1));
+    const first = raw.indexOf("{");
+    const last = raw.lastIndexOf("}");
+    if (first !== -1 && last !== -1) {
+      return JSON.parse(raw.slice(first, last + 1));
     }
 
     return {};
@@ -37,7 +37,7 @@ async function callNvidia(client, system, user) {
     "https://integrate.api.nvidia.com/v1/chat/completions",
     {
       model: client.model,
-      temperature: 0.45,
+      temperature: 0.4,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -60,7 +60,7 @@ async function callGroq(client, system, user) {
     "https://api.groq.com/openai/v1/chat/completions",
     {
       model: client.model,
-      temperature: 0.45,
+      temperature: 0.4,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -82,8 +82,8 @@ async function runLLM({ clients, system, user }) {
   try {
     if (clients.nvidia?.key) {
       const text = await callNvidia(clients.nvidia, system, user);
-      const json = tryParseJSON(text);
-      if (Object.keys(json).length) return json;
+      const data = tryParseJSON(text);
+      if (Object.keys(data || {}).length) return data;
     }
   } catch (e) {
     console.log("NVIDIA falhou:", e.response?.status || e.message);
@@ -92,8 +92,8 @@ async function runLLM({ clients, system, user }) {
   try {
     if (clients.groq?.key) {
       const text = await callGroq(clients.groq, system, user);
-      const json = tryParseJSON(text);
-      if (Object.keys(json).length) return json;
+      const data = tryParseJSON(text);
+      if (Object.keys(data || {}).length) return data;
     }
   } catch (e) {
     console.log("GROQ falhou:", e.response?.status || e.message);
