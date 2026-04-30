@@ -15,17 +15,24 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 const PORT = process.env.PORT || 3000;
 
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/app.html")));
-app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/app.html")));
 
+// Rota principal agora aponta para o dashboard (layout superior)
+app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
+app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
+app.get("/legacy", (_, res) => res.sendFile(path.join(__dirname, "public/app.html")));
+
+// Ajuste nos caminhos de dados
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
-const METRICS_FILE = path.join(__dirname, "data", "metrics", "metrics.json");
+const METRICS_FILE = path.join(__dirname, "data", "clients", "metrics", "metrics.json");
 
 function readJson(file, fallback = null) {
   try {
+    if (!fs.existsSync(file)) return fallback;
     return JSON.parse(fs.readFileSync(file, "utf-8"));
-  } catch {
+  } catch (e) {
+    console.error(`Erro ao ler ${file}:`, e.message);
     return fallback;
   }
 }
@@ -109,6 +116,7 @@ function normalizeClient(acc) {
 
 const aiClients = buildClients(process.env);
 
+// Endpoints da API
 app.get("/api/me", (_, res) => {
   const accounts = getAccounts().map((acc) => ({
     id: acc.id,

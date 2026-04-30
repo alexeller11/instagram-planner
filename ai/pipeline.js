@@ -32,12 +32,12 @@ Sem blocos de código.
 Sem comentários.
 Sem texto antes ou depois do JSON.
 
-Você é um estrategista sênior de conteúdo para Instagram no Brasil.
-Escreve como um profissional experiente de agência.
+Você é um estrategista sênior de conteúdo para Instagram no Brasil, trabalhando em uma agência de publicidade de alto nível.
+Escreve como um profissional experiente, criativo e focado em performance.
 Nada de clichês.
 Nada de frases genéricas de marketing.
 Nada de conteúdo para gestão interna da empresa, a menos que isso tenha valor claro para a audiência do perfil.
-O conteúdo deve ser pensado para quem consome o perfil, não para o dono operar melhor o negócio.
+O conteúdo deve ser pensado para quem consome o perfil, gerando desejo, autoridade ou conexão.
 `.trim(),
     user: prompt
   });
@@ -63,6 +63,10 @@ function sanitizePost(post, index, fallbackGoal) {
   };
 }
 
+/**
+ * Removido o viés de nicho fixo (oficina). 
+ * Agora o filtro é focado em qualidade e evitar conteúdo puramente institucional/interno.
+ */
 function looksBad(post) {
   const text = [
     post.theme,
@@ -72,17 +76,14 @@ function looksBad(post) {
   ].join(" ").toLowerCase();
 
   const bannedTerms = [
-    "mantenha sua oficina limpa",
-    "mantenha sua equipe motivada",
-    "produtividade da oficina",
-    "funcionários",
-    "você está perdendo dinheiro por falta de eficiência",
+    "gestão interna",
+    "equipe motivada",
+    "produtividade interna",
+    "funcionários felizes",
     "excelência",
-    "transforme",
     "dicas imperdíveis",
     "história de sucesso",
-    "serviços oferecidos",
-    "normas de segurança da oficina"
+    "serviços oferecidos"
   ];
 
   return bannedTerms.some(term => text.includes(term));
@@ -115,17 +116,15 @@ Dados disponíveis:
 - Pilares de conteúdo: ${safeArray(contentPillars).join(", ")}
 
 Tarefas:
-1) Confirmar ou refinar o nicho do perfil.
-2) Descrever a audiência real desse perfil.
-3) Listar as principais dores, desejos e objeções dessa audiência.
-4) Explicar o que esse perfil deveria comunicar para gerar percepção de valor.
-5) Definir ângulos editoriais úteis para conteúdo.
+1) Confirmar ou refinar o nicho do perfil (seja específico, ex: "Estética Avançada" em vez de "Beleza").
+2) Descrever a audiência real (quem compra e por que compra).
+3) Listar dores, desejos e objeções profundas (não óbvias).
+4) Explicar o que esse perfil deveria comunicar para ser desejado.
+5) Definir ângulos editoriais criativos para agência.
 
 Regras:
-- Não invente contexto absurdo.
 - Trabalhe com raciocínio plausível e prático.
-- Nada genérico.
-- Nada de linguagem vazia.
+- Nada genérico. Nada de linguagem vazia.
 
 JSON:
 {
@@ -154,19 +153,15 @@ JSON:
 
 async function dashboard360({ clients, clientData, analysis }) {
   const prompt = `
-Cliente:
-${JSON.stringify(clientData, null, 2)}
+Cliente: ${JSON.stringify(clientData, null, 2)}
+Análise: ${JSON.stringify(analysis, null, 2)}
 
-Análise do perfil:
-${JSON.stringify(analysis, null, 2)}
-
-Crie um dashboard estratégico de Instagram.
-
+Crie um dashboard estratégico. 
 Entregue:
-1) 3 bios fortes e naturais.
-2) 6 melhorias reais de perfil.
-3) 1 posicionamento claro.
-4) 4 insights úteis para tomada de decisão da agência.
+1) 3 bios fortes (Máximo 150 caracteres cada).
+2) 6 melhorias de perfil (Bio, Destaques, Foto, Link).
+3) 1 posicionamento claro de mercado.
+4) 4 insights para a agência dominar o nicho do cliente.
 
 JSON:
 {
@@ -189,18 +184,11 @@ JSON:
 
 async function diagnostico({ clients, clientData, analysis, objective }) {
   const prompt = `
-Cliente:
-${JSON.stringify(clientData, null, 2)}
+Cliente: ${JSON.stringify(clientData, null, 2)}
+Análise: ${JSON.stringify(analysis, null, 2)}
+Objetivo: ${objective}
 
-Análise estratégica:
-${JSON.stringify(analysis, null, 2)}
-
-Objetivo:
-${objective}
-
-Faça um diagnóstico de Instagram para uma agência de performance.
-
-Quero:
+Diagnóstico para agência de performance:
 - problemas observáveis,
 - oportunidades aproveitáveis,
 - ações em 14 dias,
@@ -239,40 +227,18 @@ async function planoMensal({
   const total = qtyReels + qtyCarrossel + qtyFoto;
 
   const prompt = `
-Cliente:
-${JSON.stringify(clientData, null, 2)}
+Cliente: ${JSON.stringify(clientData, null, 2)}
+Análise: ${JSON.stringify(analysis, null, 2)}
+Objetivo: ${goal}
+Secundários: ${safeArray(secondaryGoals).join(", ")}
+Tom: ${tone}
 
-Análise estratégica do perfil:
-${JSON.stringify(analysis, null, 2)}
+IMPORTANTE: 
+- Não assuma nicho fixo. Identifique o nicho pela análise acima.
+- Crie conteúdo para a AUDIÊNCIA, não para o dono do negócio.
+- Evite "posts institucionais" chatos. Foque em entretenimento, educação e venda.
 
-Objetivo principal: ${goal}
-Objetivos secundários: ${safeArray(secondaryGoals).join(", ") || "nenhum"}
-Tom desejado: ${tone}
-
-IMPORTANTE:
-- Crie conteúdo para a audiência do perfil.
-- Não assuma nicho fixo.
-- Não use contexto de cliente anterior.
-- Não crie conteúdo para ensinar gestão interna do negócio.
-- Use a análise acima como base principal.
-
-Quantidade obrigatória:
-- Reels: ${qtyReels}
-- Carrossel: ${qtyCarrossel}
-- Foto: ${qtyFoto}
-- Total: ${total}
-
-Cada post deve ter:
-- theme
-- format
-- hook
-- script_or_slides
-- caption
-- creative_direction
-- goal
-- viral_score { score, reason }
-
-A nota de viralização vai de 0 a 10 e deve ser honesta.
+Quantidades: Reels (${qtyReels}), Carrossel (${qtyCarrossel}), Foto (${qtyFoto}). Total: ${total}.
 
 JSON:
 {
@@ -285,10 +251,7 @@ JSON:
       "caption": "string",
       "creative_direction": "string",
       "goal": "string",
-      "viral_score": {
-        "score": 0,
-        "reason": "string"
-      }
+      "viral_score": { "score": 0, "reason": "string" }
     }
   ]
 }
@@ -312,18 +275,21 @@ JSON:
 
 async function concorrencia({ clients, clientData, analysis }) {
   const prompt = `
-Cliente:
-${JSON.stringify(clientData, null, 2)}
-
-Análise:
-${JSON.stringify(analysis, null, 2)}
+Cliente: ${JSON.stringify(clientData, null, 2)}
+Análise: ${JSON.stringify(analysis, null, 2)}
 
 Liste concorrentes plausíveis e monte um plano para ganhar espaço no Instagram.
+Analise: Posicionamento, Estilo de Conteúdo e Fraquezas.
 
 JSON:
 {
   "concorrentes": [
-    { "nome": "string", "perfil": "string" }
+    { 
+      "nome": "string", 
+      "perfil": "string",
+      "positioning": "string",
+      "opportunity": "como ganhar deles"
+    }
   ],
   "plano_para_ganhar": ["string"]
 }
@@ -334,7 +300,9 @@ JSON:
   return {
     concorrentes: safeArray(d?.concorrentes).map((c) => ({
       nome: cleanText(c?.nome),
-      perfil: cleanText(c?.perfil)
+      perfil: cleanText(c?.perfil),
+      positioning: cleanText(c?.positioning),
+      opportunity: cleanText(c?.opportunity)
     })).slice(0, 6),
     plano_para_ganhar: uniqueStrings(safeArray(d?.plano_para_ganhar).map(cleanText)).slice(0, 10)
   };
