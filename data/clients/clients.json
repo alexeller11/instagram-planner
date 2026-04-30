@@ -2,29 +2,69 @@
   {
     "id": "1",
     "username": "qualitycar_autocenter",
+    "brandName": "Quality Car Auto Center",
     "niche": "oficina mecânica",
-    "igUserId": "17840000000000001",
-    "accessToken": "EAAB_FAKE_TOKEN_1"
+    "targetAudience": "motoristas e donos de carro que querem evitar prejuízo, entender sinais do veículo e encontrar uma oficina confiável",
+    "audiencePainPoints": [
+      "medo de gastar mais do que deveria",
+      "dúvida se o orçamento está honesto",
+      "barulhos e sinais que não sabem interpretar",
+      "receio de ficar sem carro em dia útil"
+    ],
+    "brandTone": "humano, técnico sem ser complicado, confiável e direto",
+    "offer": "manutenção preventiva e corretiva com diagnóstico claro",
+    "city": "Linhares",
+    "contentPillars": ["educação", "bastidores", "prova técnica", "dúvidas comuns"]
   },
   {
     "id": "2",
     "username": "bortotclinicadeolhos",
+    "brandName": "Bortot Clínica de Olhos",
     "niche": "clínica oftalmológica",
-    "igUserId": "17840000000000002",
-    "accessToken": "EAAB_FAKE_TOKEN_2"
+    "targetAudience": "adultos e famílias com dúvidas sobre visão, exames, desconfortos visuais e acompanhamento oftalmológico",
+    "audiencePainPoints": [
+      "medo de exame",
+      "adiamento da consulta",
+      "dúvidas sobre sintomas visuais",
+      "insegurança com atendimento"
+    ],
+    "brandTone": "acolhedor, claro, confiável e profissional",
+    "offer": "consultas, exames e acompanhamento oftalmológico",
+    "city": "Linhares",
+    "contentPillars": ["educação", "acolhimento", "rotina clínica", "prevenção"]
   },
   {
     "id": "3",
     "username": "cliente_teste_01",
+    "brandName": "Odonto Prime",
     "niche": "odontologia",
-    "igUserId": "17840000000000003",
-    "accessToken": "EAAB_FAKE_TOKEN_3"
+    "targetAudience": "adultos que querem cuidar do sorriso, aliviar desconfortos e se sentir mais seguros para marcar consulta",
+    "audiencePainPoints": [
+      "medo de dor",
+      "adiamento do tratamento",
+      "vergonha do sorriso",
+      "dúvida sobre preço e necessidade do procedimento"
+    ],
+    "brandTone": "próximo, profissional, simples e tranquilizador",
+    "offer": "consultas odontológicas, prevenção e tratamentos estéticos e funcionais",
+    "city": "Linhares",
+    "contentPillars": ["educação", "quebra de objeções", "rotina clínica", "prova de cuidado"]
   },
   {
     "id": "4",
     "username": "cliente_teste_02",
+    "brandName": "Viva Imóveis",
     "niche": "imobiliária",
-    "igUserId": "17840000000000004",
-    "accessToken": "EAAB_FAKE_TOKEN_4"
+    "targetAudience": "pessoas e famílias que estão avaliando comprar, vender ou alugar um imóvel e têm medo de tomar decisão errada",
+    "audiencePainPoints": [
+      "medo de fazer mau negócio",
+      "dúvida sobre documentação",
+      "ansiedade antes da compra",
+      "dificuldade de comparar opções"
+    ],
+    "brandTone": "seguro, consultivo, direto e acessível",
+    "offer": "intermediação imobiliária com orientação prática e atendimento próximo",
+    "city": "Linhares",
+    "contentPillars": ["educação", "comparação", "bastidores", "confiança"]
   }
 ]
