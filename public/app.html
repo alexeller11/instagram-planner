@@ -9,23 +9,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#0b1020;
-      --panel:#121933;
-      --panel-2:#18213f;
-      --line:#293252;
-      --text:#eef2ff;
-      --muted:#a9b4d0;
-      --primary:#6d8cff;
-      --primary-2:#8aa0ff;
-      --success:#22c55e;
-      --danger:#ef4444;
+      --bg:#09101f;
+      --panel:#11182d;
+      --panel-2:#18213b;
+      --panel-3:#1c2746;
+      --line:#2a3558;
+      --text:#edf2ff;
+      --muted:#9eabcb;
+      --primary:#5f86ff;
+      --primary-2:#86a2ff;
+      --green:#22c55e;
+      --yellow:#f59e0b;
+      --red:#ef4444;
       --radius:18px;
+      --shadow:0 18px 40px rgba(0,0,0,.25);
     }
     *{box-sizing:border-box}
     body{
       margin:0;
       font-family:Inter,sans-serif;
-      background:linear-gradient(180deg,#08101f 0%, #0d1327 100%);
+      background:linear-gradient(180deg,#07101d 0%, #0c1428 100%);
       color:var(--text);
     }
     .app{
@@ -34,13 +37,13 @@
       min-height:100vh;
     }
     .sidebar{
-      border-right:1px solid var(--line);
-      background:rgba(10,15,30,.75);
-      backdrop-filter:blur(12px);
-      padding:24px;
       position:sticky;
       top:0;
       height:100vh;
+      padding:24px;
+      border-right:1px solid var(--line);
+      background:rgba(10,15,30,.8);
+      backdrop-filter:blur(14px);
     }
     .brand{
       font-size:22px;
@@ -48,168 +51,198 @@
       margin-bottom:24px;
     }
     .brand span{color:var(--primary-2)}
-    .menu{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
+    .menu{display:flex;flex-direction:column;gap:10px}
     .menu button{
-      width:100%;
       text-align:left;
       border:1px solid transparent;
-      background:transparent;
       color:var(--muted);
-      padding:14px 16px;
+      background:transparent;
       border-radius:14px;
+      padding:14px 16px;
+      font-weight:700;
       cursor:pointer;
-      font-weight:600;
     }
-    .menu button.active,
-    .menu button:hover{
+    .menu button.active,.menu button:hover{
       background:var(--panel);
       border-color:var(--line);
       color:var(--text);
     }
-    .main{
-      padding:28px;
-    }
+    .main{padding:24px}
     .topbar{
       display:flex;
       justify-content:space-between;
-      align-items:center;
       gap:16px;
-      margin-bottom:24px;
       flex-wrap:wrap;
+      margin-bottom:20px;
     }
-    .title h1{
-      margin:0;
-      font-size:28px;
-    }
-    .title p{
-      margin:6px 0 0;
-      color:var(--muted);
-    }
-    .control{
+    .title h1{margin:0;font-size:28px}
+    .title p{margin:6px 0 0;color:var(--muted)}
+    .controls{
       display:flex;
       gap:12px;
-      align-items:center;
       flex-wrap:wrap;
+      align-items:center;
     }
-    select, .btn{
+    select,input,button{
+      font:inherit;
+    }
+    .field,.btn{
       background:var(--panel);
       color:var(--text);
       border:1px solid var(--line);
       border-radius:12px;
       padding:12px 14px;
-      font:inherit;
     }
     .btn{
       cursor:pointer;
-      background:var(--primary);
-      border-color:transparent;
-      color:white;
       font-weight:700;
     }
-    .btn.secondary{
-      background:var(--panel);
-      border-color:var(--line);
-      color:var(--text);
+    .btn.primary{
+      background:var(--primary);
+      border-color:transparent;
+      color:#fff;
+    }
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-bottom:18px;
+    }
+    .card{
+      background:rgba(17,24,45,.92);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:var(--shadow);
     }
     .grid{
       display:grid;
       grid-template-columns:repeat(12,1fr);
       gap:16px;
     }
-    .card{
-      grid-column:span 12;
-      background:rgba(18,25,51,.88);
+    .span-12{grid-column:span 12}
+    .span-6{grid-column:span 6}
+    .span-4{grid-column:span 4}
+    .metric{
+      background:linear-gradient(180deg,rgba(28,39,70,.95),rgba(17,24,45,.95));
       border:1px solid var(--line);
-      border-radius:var(--radius);
-      padding:18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:16px;
     }
-    .card h3,.card h4{
-      margin-top:0;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      background:#202a4d;
-      color:#c8d3f5;
-      font-size:12px;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-      margin-bottom:12px;
-    }
-    .muted{color:var(--muted)}
-    .list{
-      display:grid;
-      gap:12px;
-    }
-    .mini-card{
+    .metric small{display:block;color:var(--muted);margin-bottom:8px}
+    .metric strong{font-size:28px}
+    .list{display:grid;gap:12px}
+    .mini{
       background:var(--panel-2);
       border:1px solid var(--line);
-      padding:14px;
       border-radius:14px;
+      padding:14px;
+    }
+    .planner{
+      display:grid;
+      grid-template-columns:repeat(12,1fr);
+      gap:16px;
+    }
+    .planner-form{
+      grid-column:span 4;
+      display:grid;
+      gap:12px;
+      align-self:start;
+      position:sticky;
+      top:16px;
+    }
+    .planner-results{
+      grid-column:span 8;
     }
     .post-grid{
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
       gap:16px;
     }
     .post-card{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
       background:var(--panel);
       border:1px solid var(--line);
       border-radius:18px;
       padding:18px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
     }
-    .post-card h3{
-      margin:0;
-      font-size:20px;
-    }
-    .post-meta{
-      display:flex;
-      justify-content:space-between;
+    .badge{
+      display:inline-flex;
       align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
+      gap:8px;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      background:#223055;
+      color:#dce5ff;
+      border-radius:999px;
+      padding:8px 10px;
     }
-    .post-section{
+    .score{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
       background:var(--panel-2);
+      border:1px solid var(--line);
+    }
+    .score strong{font-size:22px}
+    .score.good strong{color:var(--green)}
+    .score.mid strong{color:var(--yellow)}
+    .score.low strong{color:var(--red)}
+    .section{
+      background:var(--panel-2);
+      border:1px solid var(--line);
       border-radius:14px;
       padding:12px;
     }
-    .post-section strong{
-      display:block;
-      margin-bottom:8px;
-      color:#dbe4ff;
-    }
-    .copy-btn{
-      margin-top:auto;
-      width:100%;
-      border:0;
-      background:var(--primary);
-      color:#fff;
-      border-radius:12px;
-      padding:12px;
-      font-weight:700;
-      cursor:pointer;
-    }
+    .section h4{margin:0 0 8px 0}
     .empty,.error,.loading{
-      padding:20px;
-      border-radius:16px;
+      padding:18px;
+      border-radius:14px;
       border:1px dashed var(--line);
       color:var(--muted);
       background:rgba(255,255,255,.02);
     }
-    .error{color:#ffd3d3;border-color:#5b2a32;background:rgba(239,68,68,.08)}
+    .error{
+      color:#ffd7d7;
+      border-color:#663742;
+      background:rgba(239,68,68,.10);
+    }
+    .two{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .checks{
+      display:grid;
+      gap:8px;
+    }
+    .checks label{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      color:var(--text);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    th,td{
+      text-align:left;
+      padding:10px;
+      border-bottom:1px solid var(--line);
+    }
+    @media (max-width: 1100px){
+      .planner-form,.planner-results{grid-column:span 12}
+      .planner-form{position:static}
+    }
     @media (max-width: 900px){
       .app{grid-template-columns:1fr}
       .sidebar{
@@ -218,7 +251,8 @@
         border-right:0;
         border-bottom:1px solid var(--line);
       }
-      .main{padding:18px}
+      .span-6,.span-4{grid-column:span 12}
+      .two{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -226,7 +260,6 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">Instagram <span>Planner</span></div>
-
       <nav class="menu">
         <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
         <button class="nav-btn" data-tab="diagnostico">Diagnóstico</button>
@@ -239,16 +272,18 @@
       <div class="topbar">
         <div class="title">
           <h1 id="pageTitle">Dashboard</h1>
-          <p id="pageSubtitle">Planejamento estratégico para Instagram</p>
+          <p id="pageSubtitle">Visão estratégica + leitura operacional para agência.</p>
         </div>
 
-        <div class="control">
-          <select id="acc"></select>
-          <button class="btn secondary" id="reloadBtn">Atualizar</button>
+        <div class="controls">
+          <select class="field" id="acc"></select>
+          <input class="field" type="date" id="startDate" />
+          <input class="field" type="date" id="endDate" />
+          <button class="btn" id="reloadBtn">Atualizar</button>
         </div>
       </div>
 
-      <section id="out" class="grid"></section>
+      <section id="out"></section>
     </main>
   </div>
 
@@ -256,226 +291,473 @@
     let accounts = [];
     let selected = null;
     let currentTab = "dashboard";
-    let posts = [];
+    let lastPosts = [];
 
     const out = document.getElementById("out");
-    const accSelect = document.getElementById("acc");
+    const acc = document.getElementById("acc");
+    const reloadBtn = document.getElementById("reloadBtn");
+    const startDate = document.getElementById("startDate");
+    const endDate = document.getElementById("endDate");
     const pageTitle = document.getElementById("pageTitle");
     const pageSubtitle = document.getElementById("pageSubtitle");
-    const reloadBtn = document.getElementById("reloadBtn");
 
-    function setActiveTab(tab){
+    function escapeHtml(str = "") {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setActiveTab(tab) {
       currentTab = tab;
       document.querySelectorAll(".nav-btn").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.tab === tab);
       });
 
       const labels = {
-        dashboard: ["Dashboard", "Visão geral do perfil e posicionamento"],
-        diagnostico: ["Diagnóstico", "Problemas, oportunidades e ações recomendadas"],
-        plano: ["Plano", "Calendário de conteúdo e ideias de posts"],
-        concorrencia: ["Concorrência", "Referências do mercado e plano para ganhar"]
+        dashboard: ["Dashboard", "Visão estratégica + leitura operacional para agência."],
+        diagnostico: ["Diagnóstico", "Falhas, oportunidades e prioridades práticas."],
+        plano: ["Plano", "Planejamento de conteúdo orientado por objetivo e formato."],
+        concorrencia: ["Concorrência", "Leitura de mercado e plano para ganhar espaço."]
       };
 
       pageTitle.textContent = labels[tab][0];
       pageSubtitle.textContent = labels[tab][1];
     }
 
-    function renderLoading(message = "Carregando..."){
-      out.innerHTML = `<div class="card"><div class="loading">${message}</div></div>`;
+    function renderLoading(msg = "Carregando...") {
+      out.innerHTML = `<div class="card"><div class="loading">${escapeHtml(msg)}</div></div>`;
     }
 
-    function renderError(message = "Erro ao carregar dados"){
-      out.innerHTML = `<div class="card"><div class="error">${message}</div></div>`;
+    function renderError(msg = "Erro ao carregar") {
+      out.innerHTML = `<div class="card"><div class="error">${escapeHtml(msg)}</div></div>`;
     }
 
-    function renderEmpty(message = "Nenhum dado disponível"){
-      out.innerHTML = `<div class="card"><div class="empty">${message}</div></div>`;
+    function renderEmpty(msg = "Sem dados") {
+      out.innerHTML = `<div class="card"><div class="empty">${escapeHtml(msg)}</div></div>`;
     }
 
-    function escapeHtml(str = ""){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    async function post(url, extra = {}){
-      const response = await fetch(url, {
+    async function apiPost(url, payload = {}) {
+      const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ igId: selected?.id, ...extra })
+        body: JSON.stringify({
+          igId: selected?.id,
+          startDate: startDate.value || null,
+          endDate: endDate.value || null,
+          ...payload
+        })
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro na requisição");
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Falha na requisição");
       return data;
     }
 
-    function block(title, items = []){
+    function block(title, items = []) {
       return `
-        <div class="card">
+        <div class="card span-12">
           <h3>${escapeHtml(title)}</h3>
           <div class="list">
             ${items.length
-              ? items.map(item => `<div class="mini-card">${escapeHtml(item)}</div>`).join("")
+              ? items.map(item => `<div class="mini">${escapeHtml(item)}</div>`).join("")
               : `<div class="empty">Sem dados nesta seção.</div>`}
           </div>
         </div>
       `;
     }
 
-    function renderDashboard(d){
-      out.innerHTML = `
-        ${block("Bio", d.bio || [])}
-        ${block("Melhorias", d.melhorias || [])}
-        <div class="card">
-          <h3>Posicionamento</h3>
-          <div class="mini-card">${escapeHtml(d.posicionamento || "Sem posicionamento disponível.")}</div>
-        </div>
-      `;
-    }
-
-    function renderDiagnostico(d){
-      out.innerHTML = `
-        ${block("Problemas", d.problemas || [])}
-        ${block("Oportunidades", d.oportunidades || [])}
-        ${block("Ações em 14 dias", d.acoes_14_dias || [])}
-      `;
-    }
-
-    function renderPlano(d){
-      posts = d.posts || [];
-      if (!posts.length) return renderEmpty("Nenhum post foi gerado para este cliente.");
+    function renderDashboard(data) {
+      const p = data.profile || {};
+      const m = data.metrics || {};
+      const s = m.summary || {};
 
       out.innerHTML = `
-        <div class="card">
-          <h3>Plano de conteúdo</h3>
-          <p class="muted">Posts gerados para <strong>${escapeHtml(selected?.username || "")}</strong>.</p>
-          <div class="post-grid">
-            ${posts.map((p, i) => `
-              <article class="post-card">
-                <div class="post-meta">
-                  <span class="pill">${escapeHtml(p.format || "Post")}</span>
-                  <span class="muted">#${i + 1}</span>
-                </div>
+        <div class="grid">
+          <div class="card span-12">
+            <h3>Resumo de métricas</h3>
+            <div class="grid">
+              <div class="metric span-4">
+                <small>Alcance</small>
+                <strong>${Number(s.alcance || 0).toLocaleString("pt-BR")}</strong>
+              </div>
+              <div class="metric span-4">
+                <small>Impressões</small>
+                <strong>${Number(s.impressoes || 0).toLocaleString("pt-BR")}</strong>
+              </div>
+              <div class="metric span-4">
+                <small>Engajamentos</small>
+                <strong>${Number(s.engajamentos || 0).toLocaleString("pt-BR")}</strong>
+              </div>
+              <div class="metric span-4">
+                <small>Seguidores ganhos</small>
+                <strong>${Number(s.seguidores_ganhos || 0).toLocaleString("pt-BR")}</strong>
+              </div>
+              <div class="metric span-4">
+                <small>Posts publicados</small>
+                <strong>${Number(s.posts_publicados || 0).toLocaleString("pt-BR")}</strong>
+              </div>
+              <div class="metric span-4">
+                <small>Taxa média de engajamento</small>
+                <strong>${Number(s.taxa_engajamento_media || 0).toLocaleString("pt-BR")}%</strong>
+              </div>
+            </div>
+          </div>
 
-                <h3>${escapeHtml(p.theme || p.title || `Post ${i + 1}`)}</h3>
+          ${block("Bio", p.bio || [])}
+          ${block("Melhorias", p.melhorias || [])}
 
-                <div class="post-section">
-                  <strong>Hook</strong>
-                  <div>${escapeHtml(p.hook || "Sem hook gerado.")}</div>
-                </div>
+          <div class="card span-6">
+            <h3>Posicionamento</h3>
+            <div class="mini">${escapeHtml(p.posicionamento || "Sem posicionamento disponível.")}</div>
+          </div>
 
-                <div class="post-section">
-                  <strong>Roteiro / Slides</strong>
-                  <div>${Array.isArray(p.script_or_slides) && p.script_or_slides.length
-                    ? p.script_or_slides.map(s => `<div>• ${escapeHtml(s)}</div>`).join("")
-                    : "Sem roteiro disponível."}</div>
-                </div>
+          <div class="card span-6">
+            <h3>Insights para a agência</h3>
+            <div class="list">
+              ${(p.insights || []).length
+                ? (p.insights || []).map(i => `<div class="mini">${escapeHtml(i)}</div>`).join("")
+                : `<div class="empty">Sem insights no momento.</div>`}
+            </div>
+          </div>
 
-                <div class="post-section">
-                  <strong>Legenda</strong>
-                  <div>${escapeHtml(p.caption || "Sem legenda disponível.")}</div>
-                </div>
-
-                <button class="copy-btn" onclick="copyPost(${i})">Copiar legenda</button>
-              </article>
-            `).join("")}
+          <div class="card span-12">
+            <h3>Top conteúdos por engajamento</h3>
+            ${(m.top_contents || []).length ? `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Título</th>
+                    <th>Formato</th>
+                    <th>Alcance</th>
+                    <th>Impressões</th>
+                    <th>Engajamentos</th>
+                    <th>ER</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(m.top_contents || []).map(item => `
+                    <tr>
+                      <td>${escapeHtml(item.date || "-")}</td>
+                      <td>${escapeHtml(item.titulo || "-")}</td>
+                      <td>${escapeHtml(item.formato || "-")}</td>
+                      <td>${Number(item.alcance || 0).toLocaleString("pt-BR")}</td>
+                      <td>${Number(item.impressoes || 0).toLocaleString("pt-BR")}</td>
+                      <td>${Number(item.engajamentos || 0).toLocaleString("pt-BR")}</td>
+                      <td>${Number(item.taxa_engajamento || 0).toLocaleString("pt-BR")}%</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            ` : `<div class="empty">Sem métricas para o período selecionado.</div>`}
           </div>
         </div>
       `;
     }
 
-    function renderConcorrencia(d){
+    function renderDiagnostico(data) {
       out.innerHTML = `
-        ${block("Concorrentes", (d.concorrentes || []).map(x => `${x.nome} - ${x.perfil}`))}
-        ${block("Plano para ganhar", d.plano_para_ganhar || [])}
+        <div class="grid">
+          ${block("Problemas", data.problemas || [])}
+          ${block("Oportunidades", data.oportunidades || [])}
+          ${block("Ações em 14 dias", data.acoes_14_dias || [])}
+          ${block("Prioridades da agência", data.prioridade_agencia || [])}
+        </div>
       `;
     }
 
-    async function load(tab = currentTab){
+    function scoreClass(score) {
+      if (score >= 8) return "good";
+      if (score >= 5) return "mid";
+      return "low";
+    }
+
+    function plannerFilters() {
+      return `
+        <div class="planner">
+          <div class="planner-form">
+            <div class="card">
+              <h3>Configuração do plano</h3>
+
+              <div class="list">
+                <div>
+                  <label>Objetivo principal</label>
+                  <select class="field" id="goal">
+                    <option>Engajamento</option>
+                    <option selected>Autoridade</option>
+                    <option>Aumento de seguidores</option>
+                    <option>Conversão</option>
+                    <option>Relacionamento</option>
+                    <option>Posicionamento local</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Objetivos secundários</label>
+                  <div class="checks">
+                    <label><input type="checkbox" value="Engajamento" class="secondary-goal"> Engajamento</label>
+                    <label><input type="checkbox" value="Autoridade" class="secondary-goal"> Autoridade</label>
+                    <label><input type="checkbox" value="Aumento de seguidores" class="secondary-goal"> Aumento de seguidores</label>
+                    <label><input type="checkbox" value="Conversão" class="secondary-goal"> Conversão</label>
+                    <label><input type="checkbox" value="Prova social" class="secondary-goal"> Prova social</label>
+                    <label><input type="checkbox" value="Educação do mercado" class="secondary-goal"> Educação do mercado</label>
+                  </div>
+                </div>
+
+                <div class="two">
+                  <div>
+                    <label>Qtd. Reels</label>
+                    <input class="field" id="qtyReels" type="number" min="0" value="8">
+                  </div>
+                  <div>
+                    <label>Qtd. Carrossel</label>
+                    <input class="field" id="qtyCarrossel" type="number" min="0" value="6">
+                  </div>
+                </div>
+
+                <div>
+                  <label>Qtd. Foto/Post</label>
+                  <input class="field" id="qtyFoto" type="number" min="0" value="2">
+                </div>
+
+                <div>
+                  <label>Cidade/base</label>
+                  <input class="field" id="city" value="Linhares">
+                </div>
+
+                <div>
+                  <label>Tom da marca</label>
+                  <input class="field" id="tone" value="humano, especialista, direto e sem clichê">
+                </div>
+
+                <button class="btn primary" id="generatePlanBtn">Gerar plano</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="planner-results">
+            <div class="card">
+              <h3>Plano de conteúdo</h3>
+              <div id="plannerResultArea">
+                <div class="empty">Configure o plano ao lado e clique em gerar.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPlanPosts(posts = []) {
+      if (!posts.length) {
+        return `<div class="empty">Nenhum conteúdo gerado.</div>`;
+      }
+
+      return `
+        <div class="post-grid">
+          ${posts.map((p, i) => `
+            <article class="post-card">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+                <span class="badge">${escapeHtml(p.format || "Post")}</span>
+                <span>#${i + 1}</span>
+              </div>
+
+              <h3 style="margin:0">${escapeHtml(p.theme || `Post ${i + 1}`)}</h3>
+
+              <div class="score ${scoreClass(Number(p.viral_score?.score || 0))}">
+                <div>
+                  <small style="display:block;color:var(--muted)">Nota de viralização</small>
+                  <strong>${Number(p.viral_score?.score || 0).toFixed(1)}</strong>
+                </div>
+                <div style="max-width:220px;color:var(--muted);font-size:13px">
+                  ${escapeHtml(p.viral_score?.reason || "Sem justificativa.")}
+                </div>
+              </div>
+
+              <div class="section">
+                <h4>Objetivo</h4>
+                <div>${escapeHtml(p.goal || "-")}</div>
+              </div>
+
+              <div class="section">
+                <h4>Hook</h4>
+                <div>${escapeHtml(p.hook || "-")}</div>
+              </div>
+
+              <div class="section">
+                <h4>Roteiro / Slides</h4>
+                <div class="list">
+                  ${(p.script_or_slides || []).length
+                    ? (p.script_or_slides || []).map(s => `<div>${escapeHtml(s)}</div>`).join("")
+                    : `<div class="muted">Sem roteiro.</div>`}
+                </div>
+              </div>
+
+              <div class="section">
+                <h4>Legenda</h4>
+                <div>${escapeHtml(p.caption || "-")}</div>
+              </div>
+
+              <div class="section">
+                <h4>Direção criativa</h4>
+                <div>${escapeHtml(p.creative_direction || "-")}</div>
+              </div>
+
+              <button class="btn primary" onclick="copyCaption(${i})">Copiar legenda</button>
+            </article>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderPlanoShell() {
+      out.innerHTML = plannerFilters();
+
+      const btn = document.getElementById("generatePlanBtn");
+      btn.addEventListener("click", async () => {
+        const goal = document.getElementById("goal").value;
+        const secondaryGoals = [...document.querySelectorAll(".secondary-goal:checked")].map(el => el.value);
+        const qtyReels = Number(document.getElementById("qtyReels").value || 0);
+        const qtyCarrossel = Number(document.getElementById("qtyCarrossel").value || 0);
+        const qtyFoto = Number(document.getElementById("qtyFoto").value || 0);
+        const city = document.getElementById("city").value || "Linhares";
+        const tone = document.getElementById("tone").value || "humano, especialista, direto e sem clichê";
+        const area = document.getElementById("plannerResultArea");
+
+        area.innerHTML = `<div class="loading">Gerando plano estratégico...</div>`;
+
+        try {
+          const data = await apiPost("/api/plano", {
+            goal,
+            secondaryGoals,
+            qtyReels,
+            qtyCarrossel,
+            qtyFoto,
+            city,
+            tone
+          });
+
+          lastPosts = data.posts || [];
+          area.innerHTML = renderPlanPosts(lastPosts);
+        } catch (e) {
+          area.innerHTML = `<div class="error">${escapeHtml(e.message || "Erro ao gerar plano.")}</div>`;
+        }
+      });
+    }
+
+    function renderConcorrencia(data) {
+      out.innerHTML = `
+        <div class="grid">
+          <div class="card span-12">
+            <h3>Concorrentes</h3>
+            <div class="list">
+              ${(data.concorrentes || []).length
+                ? (data.concorrentes || []).map(c => `<div class="mini">${escapeHtml(c.nome)} — ${escapeHtml(c.perfil)}</div>`).join("")
+                : `<div class="empty">Sem concorrentes no momento.</div>`}
+            </div>
+          </div>
+
+          <div class="card span-12">
+            <h3>Plano para ganhar espaço</h3>
+            <div class="list">
+              ${(data.plano_para_ganhar || []).length
+                ? (data.plano_para_ganhar || []).map(i => `<div class="mini">${escapeHtml(i)}</div>`).join("")
+                : `<div class="empty">Sem plano disponível.</div>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function load(tab = currentTab) {
       if (!selected) return renderEmpty("Nenhum cliente selecionado.");
       setActiveTab(tab);
-      renderLoading("Buscando dados...");
 
       try {
         if (tab === "dashboard") {
-          const d = await post("/api/dashboard");
-          renderDashboard(d);
+          renderLoading("Buscando dashboard...");
+          const data = await apiPost("/api/dashboard");
+          return renderDashboard(data);
         }
 
         if (tab === "diagnostico") {
-          const d = await post("/api/diagnostico");
-          renderDiagnostico(d);
+          renderLoading("Gerando diagnóstico...");
+          const data = await apiPost("/api/diagnostico", {
+            objective: "tomada de decisão, clareza estratégica e conteúdo que converte melhor"
+          });
+          return renderDiagnostico(data);
         }
 
         if (tab === "plano") {
-          const d = await post("/api/plano", { goal: "Autoridade" });
-          renderPlano(d);
+          return renderPlanoShell();
         }
 
         if (tab === "concorrencia") {
-          const d = await post("/api/concorrencia", { city: "Linhares" });
-          renderConcorrencia(d);
+          renderLoading("Analisando concorrência...");
+          const data = await apiPost("/api/concorrencia", {
+            city: document.getElementById("city")?.value || "Linhares"
+          });
+          return renderConcorrencia(data);
         }
-      } catch (error) {
-        renderError(error.message || "Falha ao carregar a seção.");
+      } catch (e) {
+        renderError(e.message || "Falha ao carregar seção.");
       }
     }
 
-    async function init(){
+    async function init() {
       renderLoading("Carregando clientes...");
+
       try {
         const r = await fetch("/api/me");
-        const d = await r.json();
+        const data = await r.json();
 
-        accounts = d.accounts || [];
-        accSelect.innerHTML = "";
+        accounts = data.accounts || [];
+        acc.innerHTML = "";
 
         if (!accounts.length) {
           selected = null;
-          return renderEmpty("Nenhum cliente cadastrado. Verifique o arquivo de clientes.");
+          return renderEmpty("Nenhum cliente cadastrado.");
         }
 
-        accounts.forEach(a => {
-          const option = document.createElement("option");
-          option.value = a.id;
-          option.textContent = `${a.username} • ${a.niche}`;
-          accSelect.appendChild(option);
+        accounts.forEach((item) => {
+          const opt = document.createElement("option");
+          opt.value = item.id;
+          opt.textContent = `${item.username} • ${item.niche}`;
+          acc.appendChild(opt);
         });
 
         selected = accounts[0];
 
-        accSelect.addEventListener("change", () => {
-          selected = accounts.find(a => a.id == accSelect.value);
+        acc.addEventListener("change", () => {
+          selected = accounts.find(a => a.id == acc.value) || accounts[0];
           load(currentTab);
         });
 
         reloadBtn.addEventListener("click", () => load(currentTab));
+
         document.querySelectorAll(".nav-btn").forEach(btn => {
           btn.addEventListener("click", () => load(btn.dataset.tab));
         });
 
         load("dashboard");
-      } catch (error) {
+      } catch {
         renderError("Não foi possível carregar os clientes.");
       }
     }
 
-    async function copyPost(index){
+    async function copyCaption(index) {
       try {
-        const text = posts[index]?.caption || "";
-        await navigator.clipboard.writeText(text);
+        const caption = lastPosts[index]?.caption || "";
+        await navigator.clipboard.writeText(caption);
         alert("Legenda copiada.");
       } catch {
-        alert("Não foi possível copiar.");
+        alert("Não foi possível copiar a legenda.");
       }
     }
 
-    window.copyPost = copyPost;
+    window.copyCaption = copyCaption;
     init();
   </script>
 </body>
