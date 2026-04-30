@@ -1,6 +1,30 @@
 [
-  { "id": "1", "username": "qualitycar_autocenter", "niche": "oficina mecânica" },
-  { "id": "2", "username": "bortotclinicadeolhos", "niche": "clínica oftalmológica" },
-  { "id": "3", "username": "cliente_teste_01", "niche": "odontologia" },
-  { "id": "4", "username": "cliente_teste_02", "niche": "imobiliária" }
+  {
+    "id": "1",
+    "username": "qualitycar_autocenter",
+    "niche": "oficina mecânica",
+    "igUserId": "17840000000000001",
+    "accessToken": "EAAB_FAKE_TOKEN_1"
+  },
+  {
+    "id": "2",
+    "username": "bortotclinicadeolhos",
+    "niche": "clínica oftalmológica",
+    "igUserId": "17840000000000002",
+    "accessToken": "EAAB_FAKE_TOKEN_2"
+  },
+  {
+    "id": "3",
+    "username": "cliente_teste_01",
+    "niche": "odontologia",
+    "igUserId": "17840000000000003",
+    "accessToken": "EAAB_FAKE_TOKEN_3"
+  },
+  {
+    "id": "4",
+    "username": "cliente_teste_02",
+    "niche": "imobiliária",
+    "igUserId": "17840000000000004",
+    "accessToken": "EAAB_FAKE_TOKEN_4"
+  }
 ]
