@@ -41,15 +41,21 @@ button{margin:5px;padding:8px;background:#ff6b35;color:#fff;border:0}
 let accounts=[],selected,posts=[];
 
 async function init(){
-  const r=await fetch("/api/me");const d=await r.json();
-  accounts=d.accounts;selected=accounts[0];
+  const r=await fetch("/api/me");
+  const d=await r.json();
+
+  accounts=d.accounts;
+  selected=accounts[0];
 
   const sel=document.getElementById("acc");
+
   accounts.forEach(a=>{
     const o=document.createElement("option");
-    o.value=a.id;o.innerText=a.username;
+    o.value=a.id;
+    o.innerText=a.username;
     sel.appendChild(o);
   });
+
   sel.onchange=()=>selected=accounts.find(a=>a.id==sel.value);
 
   load("dashboard");
@@ -93,13 +99,9 @@ async function load(tab){
         <div class="card">
           <b>${p.format}</b>
           <h3>${p.theme}</h3>
-
           <p><b>Hook:</b> ${p.hook}</p>
-
           <p>${p.script_or_slides.join("<br>")}</p>
-
           <p>${p.caption}</p>
-
           <button onclick="copy(${i})">Copiar</button>
         </div>
       `).join("")}
@@ -109,8 +111,10 @@ async function load(tab){
   if(tab==="concorrencia"){
     const d=await post("/api/concorrencia",{city:"Linhares"});
     out(`
-      <h2>Concorrentes</h2>${d.concorrentes.map(x=>c(x.nome+" - "+x.perfil)).join("")}
-      <h2>Plano</h2>${d.plano_para_ganhar.map(c).join("")}
+      <h2>Concorrentes</h2>
+      ${d.concorrentes.map(x=>c(x.nome+" - "+x.perfil)).join("")}
+      <h2>Plano</h2>
+      ${d.plano_para_ganhar.map(c).join("")}
     `);
   }
 }
