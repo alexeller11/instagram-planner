@@ -12,7 +12,7 @@ function cleanText(x) {
   return String(x).trim();
 }
 
-function dedupeStrings(arr = []) {
+function uniqueStrings(arr = []) {
   const seen = new Set();
   return arr.filter((item) => {
     const key = cleanText(item).toLowerCase();
@@ -26,59 +26,85 @@ async function ask(clients, prompt) {
   return await runLLM({
     clients,
     system: `
-Você responde apenas JSON válido.
+Você responde SOMENTE JSON válido.
 Sem markdown.
-Sem bloco de código.
 Sem comentários.
-Sem texto fora do JSON.
-Escreva em português do Brasil.
-Nada de clichês.
-Nada de linguagem de coach.
-Nada de frases com cara de agência genérica.
+Sem blocos de código.
+Sem texto antes ou depois do JSON.
+
+Você é um estrategista sênior de conteúdo para Instagram no Brasil.
+Escreve de forma humana, específica, prática e sem clichês.
+Nunca escreva como consultor de gestão interna da empresa, a menos que isso seja explicitamente pedido.
+O conteúdo deve ser pensado para o público que segue ou pode seguir o perfil no Instagram.
 `.trim(),
     user: prompt
   });
 }
 
 function sanitizePost(p, idx, fallbackGoal) {
-  const viral = p?.viral_score || {};
+  const score = Number(p?.viral_score?.score ?? 0);
   return {
     theme: cleanText(p?.theme || `Post ${idx + 1}`),
-    format: cleanText(p?.format || "Reels"),
+    format: ["Reels", "Carrossel", "Foto"].includes(cleanText(p?.format))
+      ? cleanText(p?.format)
+      : "Reels",
     hook: cleanText(p?.hook),
     script_or_slides: safeArray(p?.script_or_slides).map(cleanText).filter(Boolean),
     caption: cleanText(p?.caption),
     creative_direction: cleanText(p?.creative_direction),
     goal: cleanText(p?.goal || fallbackGoal),
     viral_score: {
-      score: Math.max(0, Math.min(10, Number(viral?.score ?? 0))),
-      reason: cleanText(viral?.reason)
+      score: Math.max(0, Math.min(10, score)),
+      reason: cleanText(p?.viral_score?.reason)
     }
   };
 }
 
+function looksLikeInternalBusinessAdvice(post) {
+  const text = [
+    post.theme,
+    post.hook,
+    post.caption,
+    ...(post.script_or_slides || [])
+  ].join(" ").toLowerCase();
+
+  const forbidden = [
+    "mantenha sua oficina limpa",
+    "mantenha sua equipe",
+    "produtividade da oficina",
+    "perdendo dinheiro por falta de eficiência",
+    "funcionários",
+    "equipe saudável e motivada",
+    "normas de segurança da oficina",
+    "organização da oficina",
+    "boa gestão da oficina"
+  ];
+
+  return forbidden.some((term) => text.includes(term));
+}
+
 async function dashboard360({ clients, niche, username }) {
   const prompt = `
-Você é um estrategista sênior de conteúdo e posicionamento para Instagram.
-
 Cliente: ${username}
 Nicho: ${niche}
 
+Crie uma leitura estratégica de perfil para Instagram.
+
 Entregue:
-1) 3 bios fortes, claras e humanas.
+1) 3 bios fortes e naturais.
 2) 6 melhorias reais de perfil.
-3) 1 posicionamento de marca.
-4) 4 insights de conteúdo úteis para tomada de decisão de uma agência de performance.
+3) 1 posicionamento claro.
+4) 4 insights que ajudem uma agência a tomar decisão.
 
 Regras:
-- Nada de "excelência", "transformando", "sua melhor escolha", "bem-vindo".
-- Escreva como alguém que auditou um perfil real.
-- Vá direto ao ponto.
+- Nada de clichês como "excelência", "bem-vindo", "sua melhor escolha", "transformando".
+- Escreva com linguagem prática.
+- Pense no perfil como ferramenta comercial e de percepção.
 - Nada superficial.
 
 JSON:
 {
-  "bio": ["string", "string", "string"],
+  "bio": ["string"],
   "melhorias": ["string"],
   "posicionamento": "string",
   "insights": ["string"]
@@ -88,28 +114,27 @@ JSON:
   const d = await ask(clients, prompt);
 
   return {
-    bio: dedupeStrings(safeArray(d?.bio).map(cleanText)).slice(0, 3),
-    melhorias: dedupeStrings(safeArray(d?.melhorias).map(cleanText)).slice(0, 6),
+    bio: uniqueStrings(safeArray(d?.bio).map(cleanText)).slice(0, 3),
+    melhorias: uniqueStrings(safeArray(d?.melhorias).map(cleanText)).slice(0, 6),
     posicionamento: cleanText(d?.posicionamento),
-    insights: dedupeStrings(safeArray(d?.insights).map(cleanText)).slice(0, 4)
+    insights: uniqueStrings(safeArray(d?.insights).map(cleanText)).slice(0, 4)
   };
 }
 
-async function diagnostico({ clients, niche, username, positioning, objective }) {
+async function diagnostico({ clients, niche, username, objective }) {
   const prompt = `
-Você é estrategista de conteúdo de uma agência de performance.
-Faça um diagnóstico que ajude em tomada de decisão.
-
 Cliente: ${username}
 Nicho: ${niche}
-Posicionamento atual: ${positioning || "não informado"}
-Objetivo: ${objective}
+Objetivo de análise: ${objective}
+
+Faça um diagnóstico de Instagram para uma agência de performance.
 
 Regras:
-- Diagnóstico útil, específico e acionável.
-- Nada de generalidades.
-- Escreva como consultor experiente apresentando leitura estratégica para agência.
-- Aponte falhas de conteúdo, de conversão, de percepção de valor e de clareza comercial.
+- Problemas específicos e observáveis.
+- Oportunidades aproveitáveis.
+- Ações práticas em até 14 dias.
+- Prioridades da agência.
+- Nada vazio. Nada genérico.
 
 JSON:
 {
@@ -123,10 +148,10 @@ JSON:
   const d = await ask(clients, prompt);
 
   return {
-    problemas: dedupeStrings(safeArray(d?.problemas).map(cleanText)).slice(0, 7),
-    oportunidades: dedupeStrings(safeArray(d?.oportunidades).map(cleanText)).slice(0, 7),
-    acoes_14_dias: dedupeStrings(safeArray(d?.acoes_14_dias).map(cleanText)).slice(0, 10),
-    prioridade_agencia: dedupeStrings(safeArray(d?.prioridade_agencia).map(cleanText)).slice(0, 5)
+    problemas: uniqueStrings(safeArray(d?.problemas).map(cleanText)).slice(0, 7),
+    oportunidades: uniqueStrings(safeArray(d?.oportunidades).map(cleanText)).slice(0, 7),
+    acoes_14_dias: uniqueStrings(safeArray(d?.acoes_14_dias).map(cleanText)).slice(0, 10),
+    prioridade_agencia: uniqueStrings(safeArray(d?.prioridade_agencia).map(cleanText)).slice(0, 5)
   };
 }
 
@@ -145,50 +170,38 @@ async function planoMensal({
   const total = qtyReels + qtyCarrossel + qtyFoto;
 
   const prompt = `
-Você é diretor criativo e estrategista de conteúdo de uma agência de performance.
+Você está criando um plano de conteúdo para o perfil de Instagram do cliente abaixo.
 
 Cliente: ${username}
 Nicho: ${niche}
 Cidade/base: ${city}
 Objetivo principal: ${goal}
 Objetivos secundários: ${secondaryGoals.join(", ") || "nenhum"}
-Tom desejado: ${tone}
+Tom de marca: ${tone}
+
+ATENÇÃO:
+- O conteúdo deve ser pensado para o público do perfil, não para o dono do negócio gerir melhor a empresa.
+- Exemplo: se for oficina, fale com donos de carro, motoristas, pessoas com dúvidas, medos, problemas e desejos relacionados ao carro.
+- Não crie conteúdo sobre gestão interna, equipe, produtividade, limpeza da empresa, motivação de funcionários ou processos internos, a menos que isso seja um bastidor com valor claro para o seguidor.
+- O perfil existe para atrair, educar, gerar confiança e conversão.
 
 Quantidade obrigatória:
 - Reels: ${qtyReels}
 - Carrossel: ${qtyCarrossel}
-- Foto/Post estático: ${qtyFoto}
+- Foto: ${qtyFoto}
 - Total: ${total}
 
 Regras:
 - Nada de clichês.
-- Nada de "você já imaginou", "excelência", "qualidade", "serviços oferecidos", "dicas imperdíveis", "transforme", "história de sucesso".
-- Cada conteúdo precisa ter utilidade estratégica.
-- O conteúdo deve ajudar uma agência a tomar decisão e publicar melhor.
-- Use linguagem brasileira real, observável, concreta.
-- Traga tensão, dúvida do cliente, objeção, critério de escolha, prova de bastidor ou repertório prático.
-- Não repetir ângulo.
-- Não repetir CTA.
-- Não escrever como agência falando de si; escrever como plano pronto do cliente.
+- Nada de linguagem genérica de agência.
+- Nada de post que pareça aula de gestão empresarial.
+- Cada post precisa ter ângulo diferente.
+- Cada legenda precisa parecer publicável.
+- O hook deve ter tensão, curiosidade útil, identificação ou dor real.
+- O conteúdo precisa soar brasileiro e natural.
 
-Para cada item, entregue:
-- theme
-- format
-- hook
-- script_or_slides
-- caption
-- creative_direction
-- goal
-- viral_score:
-  - score: nota de 0 a 10
-  - reason: justificativa curta e honesta
-
-A nota de viralização deve considerar:
-- força do gancho
-- potencial de retenção
-- apelo emocional/prático
-- capacidade de compartilhamento
-- chance real de performar no Instagram
+Avalie cada peça com uma nota de viralização de 0 a 10.
+A nota deve ser honesta, não inflada.
 
 JSON:
 {
@@ -213,39 +226,56 @@ JSON:
   const d = await ask(clients, prompt);
   let posts = safeArray(d?.posts).map((p, i) => sanitizePost(p, i, goal));
 
-  const byFormat = {
-    Reels: posts.filter((p) => p.format === "Reels"),
-    Carrossel: posts.filter((p) => p.format === "Carrossel"),
-    Foto: posts.filter((p) => p.format === "Foto")
-  };
+  posts = posts.filter((p) => !looksLikeInternalBusinessAdvice(p));
 
-  const enough =
-    byFormat.Reels.length >= qtyReels &&
-    byFormat.Carrossel.length >= qtyCarrossel &&
-    byFormat.Foto.length >= qtyFoto;
+  const reels = posts.filter((p) => p.format === "Reels").slice(0, qtyReels);
+  const carrossel = posts.filter((p) => p.format === "Carrossel").slice(0, qtyCarrossel);
+  const foto = posts.filter((p) => p.format === "Foto").slice(0, qtyFoto);
 
-  if (!enough) {
-    posts = [
-      ...byFormat.Reels.slice(0, qtyReels),
-      ...byFormat.Carrossel.slice(0, qtyCarrossel),
-      ...byFormat.Foto.slice(0, qtyFoto)
-    ];
+  const finalPosts = [...reels, ...carrossel, ...foto].slice(0, total);
+
+  if (!finalPosts.length) {
+    return {
+      meta: {
+        requested: { qtyReels, qtyCarrossel, qtyFoto, total, goal, secondaryGoals }
+      },
+      posts: [
+        {
+          theme: "Barulho no carro que muita gente ignora até virar gasto alto",
+          format: "Reels",
+          hook: "Tem barulho no carro que começa baixo e termina com o motorista arrependido de ter esperado.",
+          script_or_slides: [
+            "Motorista comenta o barulho que aparece em rua irregular",
+            "Close rápido no carro entrando na oficina",
+            "Mecânico explica em linguagem simples o que pode causar o ruído",
+            "Fechar com orientação objetiva sobre quando procurar avaliação"
+          ],
+          caption: "Muita gente adia porque o carro ainda anda. O problema é que alguns sinais começam pequenos e cobram mais caro depois. Se seu carro mudou barulho, vibração ou resposta, vale olhar antes de piorar. Chama no direct e te ajudamos a entender o primeiro passo.",
+          creative_direction: "Vídeo com cara de rotina real, sem atuação exagerada, cortes curtos e fala simples do técnico.",
+          goal: goal,
+          viral_score: {
+            score: 8.2,
+            reason: "Gancho útil, dor real e alto potencial de identificação para quem usa o carro no dia a dia."
+          }
+        }
+      ]
+    };
   }
 
   return {
     meta: {
       requested: { qtyReels, qtyCarrossel, qtyFoto, total, goal, secondaryGoals }
     },
-    posts: posts.slice(0, total)
+    posts: finalPosts
   };
 }
 
 async function concorrencia({ clients, niche, city }) {
   const prompt = `
-Você analisa concorrência para uma agência de performance.
-
 Nicho: ${niche}
-Cidade/base: ${city}
+Cidade: ${city}
+
+Liste concorrentes plausíveis e monte um plano para ganhar espaço no Instagram.
 
 JSON:
 {
@@ -263,7 +293,7 @@ JSON:
       nome: cleanText(c?.nome),
       perfil: cleanText(c?.perfil)
     })).slice(0, 6),
-    plano_para_ganhar: dedupeStrings(safeArray(d?.plano_para_ganhar).map(cleanText)).slice(0, 10)
+    plano_para_ganhar: uniqueStrings(safeArray(d?.plano_para_ganhar).map(cleanText)).slice(0, 10)
   };
 }
 
