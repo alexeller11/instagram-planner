@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const { buildClients } = require("./ai/engine");
 const {
+  analisarCliente,
   dashboard360,
   diagnostico,
   planoMensal,
@@ -91,26 +92,72 @@ function buildMetrics(username, startDate, endDate) {
   };
 }
 
+function normalizeClient(acc) {
+  return {
+    id: acc.id,
+    username: acc.username,
+    brandName: acc.brandName || acc.username,
+    niche: acc.niche || "",
+    targetAudience: acc.targetAudience || "",
+    audiencePainPoints: Array.isArray(acc.audiencePainPoints) ? acc.audiencePainPoints : [],
+    brandTone: acc.brandTone || "",
+    offer: acc.offer || "",
+    city: acc.city || "",
+    contentPillars: Array.isArray(acc.contentPillars) ? acc.contentPillars : []
+  };
+}
+
 const aiClients = buildClients(process.env);
 
 app.get("/api/me", (_, res) => {
-  res.json({ logged: true, accounts: getAccounts() });
+  const accounts = getAccounts().map((acc) => ({
+    id: acc.id,
+    username: acc.username,
+    brandName: acc.brandName || acc.username,
+    niche: acc.niche || "",
+    city: acc.city || ""
+  }));
+
+  res.json({ logged: true, accounts });
+});
+
+app.post("/api/analisar", async (req, res) => {
+  try {
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({
+      clients: aiClients,
+      ...clientData
+    });
+
+    res.json({ clientData, analysis });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post("/api/dashboard", async (req, res) => {
   try {
-    const acc = getAccount(req.body?.igId);
-    if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({
+      clients: aiClients,
+      ...clientData
+    });
 
     const profile = await dashboard360({
       clients: aiClients,
-      niche: acc.niche,
-      username: acc.username
+      clientData,
+      analysis
     });
 
-    const metrics = buildMetrics(acc.username, req.body?.startDate, req.body?.endDate);
+    const metrics = buildMetrics(clientData.username, req.body?.startDate, req.body?.endDate);
 
-    res.json({ profile, metrics });
+    res.json({ analysis, profile, metrics });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -118,21 +165,27 @@ app.post("/api/dashboard", async (req, res) => {
 
 app.post("/api/diagnostico", async (req, res) => {
   try {
-    const acc = getAccount(req.body?.igId);
-    if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({
+      clients: aiClients,
+      ...clientData
+    });
 
     const data = await diagnostico({
       clients: aiClients,
-      niche: acc.niche,
-      username: acc.username,
-      objective: req.body?.objective || "tomada de decisão e clareza de conteúdo"
+      clientData,
+      analysis,
+      objective: req.body?.objective || "tomada de decisão, priorização e criação de conteúdo"
     });
 
     if (!data?.problemas?.length) {
       return res.status(422).json({ error: "Diagnóstico retornou vazio" });
     }
 
-    res.json(data);
+    res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -140,23 +193,28 @@ app.post("/api/diagnostico", async (req, res) => {
 
 app.post("/api/plano", async (req, res) => {
   try {
-    const acc = getAccount(req.body?.igId);
-    if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
+
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({
+      clients: aiClients,
+      ...clientData
+    });
 
     const data = await planoMensal({
       clients: aiClients,
-      niche: acc.niche,
-      username: acc.username,
+      clientData,
+      analysis,
       goal: req.body?.goal || "Autoridade",
       secondaryGoals: Array.isArray(req.body?.secondaryGoals) ? req.body.secondaryGoals : [],
       qtyReels: Number(req.body?.qtyReels || 8),
       qtyCarrossel: Number(req.body?.qtyCarrossel || 6),
       qtyFoto: Number(req.body?.qtyFoto || 2),
-      city: req.body?.city || "Linhares",
-      tone: req.body?.tone || "humano, direto, especialista e sem clichê"
+      tone: req.body?.tone || clientData.brandTone || "humano, direto, especialista e sem clichê"
     });
 
-    res.json(data);
+    res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message, posts: [] });
   }
@@ -164,16 +222,22 @@ app.post("/api/plano", async (req, res) => {
 
 app.post("/api/concorrencia", async (req, res) => {
   try {
-    const acc = getAccount(req.body?.igId);
-    if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({
+      clients: aiClients,
+      ...clientData
+    });
 
     const data = await concorrencia({
       clients: aiClients,
-      niche: acc.niche,
-      city: req.body?.city || "Linhares"
+      clientData,
+      analysis
     });
 
-    res.json(data);
+    res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
