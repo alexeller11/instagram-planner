@@ -1,18 +1,26 @@
 const { runLLM } = require("./engine");
 
+// ===== HELPERS =====
 function safeArray(x){
   return Array.isArray(x) ? x : [];
+}
+
+function cleanText(x){
+  if(!x) return "";
+  if(typeof x === "string") return x;
+  if(typeof x === "object") return Object.values(x).join(" ");
+  return String(x);
 }
 
 async function ask(clients, prompt){
   return await runLLM({
     clients,
-    system: "Responda apenas JSON válido.",
+    system: "Responda apenas JSON válido. Sem texto fora do JSON.",
     user: prompt
   });
 }
 
-// ================= DASHBOARD =================
+// ===== DASHBOARD =====
 async function dashboard360({ clients, niche, username }){
 
   const prompt = `
@@ -35,13 +43,13 @@ JSON:
   const d = await ask(clients, prompt);
 
   return {
-    bio: safeArray(d?.bio),
-    melhorias: safeArray(d?.melhorias),
-    posicionamento: d?.posicionamento || ""
+    bio: safeArray(d?.bio).map(cleanText),
+    melhorias: safeArray(d?.melhorias).map(cleanText),
+    posicionamento: cleanText(d?.posicionamento)
   };
 }
 
-// ================= DIAGNOSTICO =================
+// ===== DIAGNÓSTICO =====
 async function diagnostico({ clients, niche }){
 
   const prompt = `
@@ -63,13 +71,13 @@ JSON:
   const d = await ask(clients, prompt);
 
   return {
-    problemas: safeArray(d?.problemas),
-    oportunidades: safeArray(d?.oportunidades),
-    acoes_14_dias: safeArray(d?.acoes_14_dias)
+    problemas: safeArray(d?.problemas).map(cleanText),
+    oportunidades: safeArray(d?.oportunidades).map(cleanText),
+    acoes_14_dias: safeArray(d?.acoes_14_dias).map(cleanText)
   };
 }
 
-// ================= PLANO =================
+// ===== PLANO =====
 async function planoMensal({ clients, niche, username, goal }){
 
   const prompt = `
@@ -105,16 +113,26 @@ JSON:
       format:"Reels",
       hook:"Gancho direto",
       script_or_slides:["Abertura","Conteúdo","CTA"],
-      caption:"Fallback",
+      caption:"Conteúdo de fallback",
       creative_direction:"Vídeo simples",
       goal:goal
     }));
   }
 
+  posts = posts.map(p => ({
+    theme: cleanText(p.theme),
+    format: cleanText(p.format),
+    hook: cleanText(p.hook),
+    caption: cleanText(p.caption),
+    creative_direction: cleanText(p.creative_direction),
+    goal: cleanText(p.goal),
+    script_or_slides: safeArray(p.script_or_slides).map(cleanText)
+  }));
+
   return { posts };
 }
 
-// ================= CONCORRENCIA =================
+// ===== CONCORRÊNCIA =====
 async function concorrencia({ clients, niche, city }){
 
   const prompt = `
@@ -130,8 +148,11 @@ JSON:
   const d = await ask(clients, prompt);
 
   return {
-    concorrentes: safeArray(d?.concorrentes),
-    plano_para_ganhar: safeArray(d?.plano_para_ganhar)
+    concorrentes: safeArray(d?.concorrentes).map(c => ({
+      nome: cleanText(c.nome),
+      perfil: cleanText(c.perfil)
+    })),
+    plano_para_ganhar: safeArray(d?.plano_para_ganhar).map(cleanText)
   };
 }
 
