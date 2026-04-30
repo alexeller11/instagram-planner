@@ -3,263 +3,438 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Instagram Planner</title>
+  <title>Instagram Planner Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#09101f;
-      --panel:#11182d;
-      --panel-2:#18213b;
-      --panel-3:#1c2746;
-      --line:#2a3558;
-      --text:#edf2ff;
-      --muted:#9eabcb;
-      --primary:#5f86ff;
-      --primary-2:#86a2ff;
-      --green:#22c55e;
-      --yellow:#f59e0b;
-      --red:#ef4444;
-      --radius:18px;
-      --shadow:0 18px 40px rgba(0,0,0,.25);
+      --bg:#07111f;
+      --bg-2:#0a1628;
+      --panel:#0f1b31;
+      --panel-2:#14213c;
+      --panel-3:#1a2a4b;
+      --line:#25365d;
+      --text:#edf4ff;
+      --muted:#9caac9;
+      --primary:#5b8cff;
+      --primary-2:#7ca4ff;
+      --success:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --radius-sm:12px;
+      --radius-md:18px;
+      --radius-lg:24px;
+      --shadow:0 24px 60px rgba(0,0,0,.28);
     }
+
     *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
     body{
       margin:0;
       font-family:Inter,sans-serif;
-      background:linear-gradient(180deg,#07101d 0%, #0c1428 100%);
+      background:
+        radial-gradient(circle at top left, rgba(91,140,255,.16), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(124,164,255,.12), transparent 26%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       color:var(--text);
     }
+
     .app{
       display:grid;
       grid-template-columns:280px 1fr;
       min-height:100vh;
     }
+
     .sidebar{
       position:sticky;
       top:0;
       height:100vh;
-      padding:24px;
+      padding:24px 20px;
       border-right:1px solid var(--line);
-      background:rgba(10,15,30,.8);
-      backdrop-filter:blur(14px);
+      background:rgba(7,17,31,.82);
+      backdrop-filter:blur(16px);
     }
-    .brand{
-      font-size:22px;
-      font-weight:800;
-      margin-bottom:24px;
+
+    .logo{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      margin-bottom:28px;
     }
-    .brand span{color:var(--primary-2)}
-    .menu{display:flex;flex-direction:column;gap:10px}
-    .menu button{
-      text-align:left;
-      border:1px solid transparent;
-      color:var(--muted);
-      background:transparent;
+
+    .logo-mark{
+      width:42px;
+      height:42px;
       border-radius:14px;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 10px 24px rgba(91,140,255,.35);
+    }
+
+    .logo-text strong{
+      display:block;
+      font-size:18px;
+      line-height:1.1;
+    }
+
+    .logo-text span{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .menu{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .menu button{
+      border:1px solid transparent;
+      background:transparent;
+      color:var(--muted);
       padding:14px 16px;
+      border-radius:14px;
+      font:inherit;
       font-weight:700;
       cursor:pointer;
+      text-align:left;
     }
-    .menu button.active,.menu button:hover{
-      background:var(--panel);
-      border-color:var(--line);
+
+    .menu button.active,
+    .menu button:hover{
       color:var(--text);
+      background:rgba(20,33,60,.92);
+      border-color:var(--line);
     }
-    .main{padding:24px}
-    .topbar{
+
+    .main{
+      padding:24px;
+    }
+
+    .hero{
       display:flex;
       justify-content:space-between;
       gap:16px;
       flex-wrap:wrap;
-      margin-bottom:20px;
-    }
-    .title h1{margin:0;font-size:28px}
-    .title p{margin:6px 0 0;color:var(--muted)}
-    .controls{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    select,input,button{
-      font:inherit;
-    }
-    .field,.btn{
-      background:var(--panel);
-      color:var(--text);
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:12px 14px;
-    }
-    .btn{
-      cursor:pointer;
-      font-weight:700;
-    }
-    .btn.primary{
-      background:var(--primary);
-      border-color:transparent;
-      color:#fff;
-    }
-    .toolbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
+      align-items:flex-start;
       margin-bottom:18px;
     }
-    .card{
-      background:rgba(17,24,45,.92);
+
+    .hero h1{
+      margin:0;
+      font-size:30px;
+      line-height:1.08;
+    }
+
+    .hero p{
+      margin:8px 0 0;
+      color:var(--muted);
+      max-width:720px;
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    .field, .btn{
+      border-radius:12px;
       border:1px solid var(--line);
-      border-radius:var(--radius);
-      padding:18px;
+      background:rgba(15,27,49,.96);
+      color:var(--text);
+      padding:12px 14px;
+      font:inherit;
+    }
+
+    .btn{
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .btn.primary{
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      border-color:transparent;
+      color:white;
+      box-shadow:0 12px 28px rgba(91,140,255,.28);
+    }
+
+    .btn.ghost{
+      background:rgba(15,27,49,.7);
+    }
+
+    .surface{
+      background:rgba(15,27,49,.9);
+      border:1px solid var(--line);
+      border-radius:var(--radius-lg);
       box-shadow:var(--shadow);
     }
+
     .grid{
       display:grid;
       grid-template-columns:repeat(12,1fr);
       gap:16px;
     }
+
     .span-12{grid-column:span 12}
+    .span-8{grid-column:span 8}
     .span-6{grid-column:span 6}
     .span-4{grid-column:span 4}
+    .span-3{grid-column:span 3}
+
+    .card{
+      padding:18px;
+    }
+
+    .card h3{
+      margin:0 0 14px;
+      font-size:18px;
+    }
+
     .metric{
-      background:linear-gradient(180deg,rgba(28,39,70,.95),rgba(17,24,45,.95));
+      padding:18px;
+      border-radius:18px;
+      background:linear-gradient(180deg,rgba(26,42,75,.92),rgba(15,27,49,.96));
+      border:1px solid var(--line);
+    }
+
+    .metric small{
+      display:block;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+
+    .metric strong{
+      font-size:28px;
+      line-height:1;
+    }
+
+    .metric span{
+      display:block;
+      margin-top:10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .list{
+      display:grid;
+      gap:12px;
+    }
+
+    .item{
+      background:rgba(20,33,60,.95);
       border:1px solid var(--line);
       border-radius:16px;
-      padding:16px;
-    }
-    .metric small{display:block;color:var(--muted);margin-bottom:8px}
-    .metric strong{font-size:28px}
-    .list{display:grid;gap:12px}
-    .mini{
-      background:var(--panel-2);
-      border:1px solid var(--line);
-      border-radius:14px;
       padding:14px;
+      color:var(--text);
     }
-    .planner{
+
+    .planner-layout{
       display:grid;
-      grid-template-columns:repeat(12,1fr);
+      grid-template-columns:360px 1fr;
       gap:16px;
+      align-items:start;
     }
-    .planner-form{
-      grid-column:span 4;
-      display:grid;
-      gap:12px;
-      align-self:start;
+
+    .planner-sidebar{
       position:sticky;
-      top:16px;
+      top:20px;
+      padding:18px;
     }
+
     .planner-results{
-      grid-column:span 8;
-    }
-    .post-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-      gap:16px;
-    }
-    .post-card{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:18px;
       padding:18px;
+      min-height:400px;
     }
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.03em;
-      text-transform:uppercase;
-      background:#223055;
-      color:#dce5ff;
-      border-radius:999px;
-      padding:8px 10px;
-    }
-    .score{
+
+    .planner-results-header{
       display:flex;
-      align-items:center;
       justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:14px;
-      background:var(--panel-2);
-      border:1px solid var(--line);
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:16px;
     }
-    .score strong{font-size:22px}
-    .score.good strong{color:var(--green)}
-    .score.mid strong{color:var(--yellow)}
-    .score.low strong{color:var(--red)}
-    .section{
-      background:var(--panel-2);
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px;
+
+    .form-grid{
+      display:grid;
+      gap:12px;
     }
-    .section h4{margin:0 0 8px 0}
-    .empty,.error,.loading{
-      padding:18px;
-      border-radius:14px;
-      border:1px dashed var(--line);
-      color:var(--muted);
-      background:rgba(255,255,255,.02);
-    }
-    .error{
-      color:#ffd7d7;
-      border-color:#663742;
-      background:rgba(239,68,68,.10);
-    }
+
     .two{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:12px;
     }
+
     .checks{
       display:grid;
       gap:8px;
+      margin-top:8px;
     }
+
     .checks label{
       display:flex;
-      gap:10px;
       align-items:center;
+      gap:10px;
       color:var(--text);
+      font-size:14px;
     }
+
+    .hint{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .post-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+      gap:16px;
+    }
+
+    .post-card{
+      background:rgba(20,33,60,.96);
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .top-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border-radius:999px;
+      padding:8px 10px;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      background:rgba(91,140,255,.16);
+      color:#dce7ff;
+      border:1px solid rgba(124,164,255,.24);
+    }
+
+    .score-box{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      background:rgba(10,22,40,.72);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px;
+    }
+
+    .score-box strong{
+      font-size:24px;
+      line-height:1;
+    }
+
+    .score-box.good strong{color:var(--success)}
+    .score-box.mid strong{color:var(--warn)}
+    .score-box.low strong{color:var(--danger)}
+
+    .section{
+      background:rgba(10,22,40,.7);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px;
+    }
+
+    .section h4{
+      margin:0 0 8px;
+      font-size:14px;
+      color:#dce7ff;
+    }
+
+    .section ul{
+      margin:0;
+      padding-left:18px;
+    }
+
+    .empty,.error,.loading{
+      padding:18px;
+      border-radius:16px;
+      background:rgba(10,22,40,.6);
+      border:1px dashed var(--line);
+      color:var(--muted);
+    }
+
+    .error{
+      color:#ffd6d6;
+      border-color:#70404d;
+      background:rgba(239,68,68,.10);
+    }
+
     table{
       width:100%;
       border-collapse:collapse;
       font-size:14px;
     }
-    th,td{
+
+    th, td{
       text-align:left;
-      padding:10px;
+      padding:12px 10px;
       border-bottom:1px solid var(--line);
+      vertical-align:top;
     }
-    @media (max-width: 1100px){
-      .planner-form,.planner-results{grid-column:span 12}
-      .planner-form{position:static}
+
+    .subtle{
+      color:var(--muted);
+      font-size:13px;
     }
-    @media (max-width: 900px){
-      .app{grid-template-columns:1fr}
+
+    @media (max-width: 1180px){
+      .planner-layout{
+        grid-template-columns:1fr;
+      }
+      .planner-sidebar{
+        position:static;
+      }
+    }
+
+    @media (max-width: 980px){
+      .app{
+        grid-template-columns:1fr;
+      }
       .sidebar{
         position:relative;
         height:auto;
         border-right:0;
         border-bottom:1px solid var(--line);
       }
-      .span-6,.span-4{grid-column:span 12}
-      .two{grid-template-columns:1fr}
+      .span-8,.span-6,.span-4,.span-3{
+        grid-column:span 12;
+      }
+      .two{
+        grid-template-columns:1fr;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">Instagram <span>Planner</span></div>
+      <div class="logo">
+        <div class="logo-mark"></div>
+        <div class="logo-text">
+          <strong>Instagram Planner</strong>
+          <span>Agência • Conteúdo • Performance</span>
+        </div>
+      </div>
+
       <nav class="menu">
         <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
         <button class="nav-btn" data-tab="diagnostico">Diagnóstico</button>
@@ -269,19 +444,19 @@
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <div class="title">
+      <section class="hero">
+        <div>
           <h1 id="pageTitle">Dashboard</h1>
-          <p id="pageSubtitle">Visão estratégica + leitura operacional para agência.</p>
+          <p id="pageSubtitle">Leitura estratégica do perfil, métricas e decisões de conteúdo.</p>
         </div>
 
         <div class="controls">
-          <select class="field" id="acc"></select>
-          <input class="field" type="date" id="startDate" />
-          <input class="field" type="date" id="endDate" />
-          <button class="btn" id="reloadBtn">Atualizar</button>
+          <select id="acc" class="field"></select>
+          <input id="startDate" class="field" type="date">
+          <input id="endDate" class="field" type="date">
+          <button id="reloadBtn" class="btn ghost">Atualizar</button>
         </div>
-      </div>
+      </section>
 
       <section id="out"></section>
     </main>
@@ -295,9 +470,9 @@
 
     const out = document.getElementById("out");
     const acc = document.getElementById("acc");
-    const reloadBtn = document.getElementById("reloadBtn");
     const startDate = document.getElementById("startDate");
     const endDate = document.getElementById("endDate");
+    const reloadBtn = document.getElementById("reloadBtn");
     const pageTitle = document.getElementById("pageTitle");
     const pageSubtitle = document.getElementById("pageSubtitle");
 
@@ -310,17 +485,17 @@
         .replaceAll("'", "&#039;");
     }
 
-    function setActiveTab(tab) {
+    function setTab(tab) {
       currentTab = tab;
       document.querySelectorAll(".nav-btn").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.tab === tab);
       });
 
       const labels = {
-        dashboard: ["Dashboard", "Visão estratégica + leitura operacional para agência."],
-        diagnostico: ["Diagnóstico", "Falhas, oportunidades e prioridades práticas."],
-        plano: ["Plano", "Planejamento de conteúdo orientado por objetivo e formato."],
-        concorrencia: ["Concorrência", "Leitura de mercado e plano para ganhar espaço."]
+        dashboard: ["Dashboard", "Leitura estratégica do perfil, métricas e decisões de conteúdo."],
+        diagnostico: ["Diagnóstico", "Problemas, oportunidades e prioridades para a agência agir."],
+        plano: ["Plano", "Planejamento editorial orientado por objetivo, formato e audiência do perfil."],
+        concorrencia: ["Concorrência", "Leitura do mercado e plano para disputar atenção no Instagram."]
       };
 
       pageTitle.textContent = labels[tab][0];
@@ -328,19 +503,19 @@
     }
 
     function renderLoading(msg = "Carregando...") {
-      out.innerHTML = `<div class="card"><div class="loading">${escapeHtml(msg)}</div></div>`;
+      out.innerHTML = `<div class="surface card"><div class="loading">${escapeHtml(msg)}</div></div>`;
     }
 
     function renderError(msg = "Erro ao carregar") {
-      out.innerHTML = `<div class="card"><div class="error">${escapeHtml(msg)}</div></div>`;
+      out.innerHTML = `<div class="surface card"><div class="error">${escapeHtml(msg)}</div></div>`;
     }
 
-    function renderEmpty(msg = "Sem dados") {
-      out.innerHTML = `<div class="card"><div class="empty">${escapeHtml(msg)}</div></div>`;
+    function renderEmpty(msg = "Sem dados disponíveis") {
+      out.innerHTML = `<div class="surface card"><div class="empty">${escapeHtml(msg)}</div></div>`;
     }
 
     async function apiPost(url, payload = {}) {
-      const r = await fetch(url, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -351,81 +526,71 @@
         })
       });
 
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Falha na requisição");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Falha na requisição");
       return data;
     }
 
-    function block(title, items = []) {
-      return `
-        <div class="card span-12">
-          <h3>${escapeHtml(title)}</h3>
-          <div class="list">
-            ${items.length
-              ? items.map(item => `<div class="mini">${escapeHtml(item)}</div>`).join("")
-              : `<div class="empty">Sem dados nesta seção.</div>`}
-          </div>
-        </div>
-      `;
+    function renderList(items = []) {
+      if (!items.length) return `<div class="empty">Sem dados nesta seção.</div>`;
+      return `<div class="list">${items.map(i => `<div class="item">${escapeHtml(i)}</div>`).join("")}</div>`;
     }
 
     function renderDashboard(data) {
-      const p = data.profile || {};
-      const m = data.metrics || {};
-      const s = m.summary || {};
+      const profile = data.profile || {};
+      const metrics = data.metrics || {};
+      const summary = metrics.summary || {};
+      const top = metrics.top_contents || [];
 
       out.innerHTML = `
         <div class="grid">
-          <div class="card span-12">
-            <h3>Resumo de métricas</h3>
-            <div class="grid">
-              <div class="metric span-4">
-                <small>Alcance</small>
-                <strong>${Number(s.alcance || 0).toLocaleString("pt-BR")}</strong>
-              </div>
-              <div class="metric span-4">
-                <small>Impressões</small>
-                <strong>${Number(s.impressoes || 0).toLocaleString("pt-BR")}</strong>
-              </div>
-              <div class="metric span-4">
-                <small>Engajamentos</small>
-                <strong>${Number(s.engajamentos || 0).toLocaleString("pt-BR")}</strong>
-              </div>
-              <div class="metric span-4">
-                <small>Seguidores ganhos</small>
-                <strong>${Number(s.seguidores_ganhos || 0).toLocaleString("pt-BR")}</strong>
-              </div>
-              <div class="metric span-4">
-                <small>Posts publicados</small>
-                <strong>${Number(s.posts_publicados || 0).toLocaleString("pt-BR")}</strong>
-              </div>
-              <div class="metric span-4">
-                <small>Taxa média de engajamento</small>
-                <strong>${Number(s.taxa_engajamento_media || 0).toLocaleString("pt-BR")}%</strong>
-              </div>
-            </div>
+          <div class="surface metric span-3">
+            <small>Alcance</small>
+            <strong>${Number(summary.alcance || 0).toLocaleString("pt-BR")}</strong>
+            <span>Pessoas alcançadas no período.</span>
           </div>
 
-          ${block("Bio", p.bio || [])}
-          ${block("Melhorias", p.melhorias || [])}
+          <div class="surface metric span-3">
+            <small>Impressões</small>
+            <strong>${Number(summary.impressoes || 0).toLocaleString("pt-BR")}</strong>
+            <span>Volume total de exibições.</span>
+          </div>
 
-          <div class="card span-6">
+          <div class="surface metric span-3">
+            <small>Engajamentos</small>
+            <strong>${Number(summary.engajamentos || 0).toLocaleString("pt-BR")}</strong>
+            <span>Interações consolidadas.</span>
+          </div>
+
+          <div class="surface metric span-3">
+            <small>Taxa média</small>
+            <strong>${Number(summary.taxa_engajamento_media || 0).toLocaleString("pt-BR")}%</strong>
+            <span>ER média dos conteúdos.</span>
+          </div>
+
+          <div class="surface card span-6">
+            <h3>Bio</h3>
+            ${renderList(profile.bio || [])}
+          </div>
+
+          <div class="surface card span-6">
+            <h3>Melhorias</h3>
+            ${renderList(profile.melhorias || [])}
+          </div>
+
+          <div class="surface card span-6">
             <h3>Posicionamento</h3>
-            <div class="mini">${escapeHtml(p.posicionamento || "Sem posicionamento disponível.")}</div>
+            <div class="item">${escapeHtml(profile.posicionamento || "Sem posicionamento.")}</div>
           </div>
 
-          <div class="card span-6">
+          <div class="surface card span-6">
             <h3>Insights para a agência</h3>
-            <div class="list">
-              ${(p.insights || []).length
-                ? (p.insights || []).map(i => `<div class="mini">${escapeHtml(i)}</div>`).join("")
-                : `<div class="empty">Sem insights no momento.</div>`}
-            </div>
+            ${renderList(profile.insights || [])}
           </div>
 
-          <div class="card span-12">
-            <h3>Top conteúdos por engajamento</h3>
-            ${(m.top_contents || []).length ? `
+          <div class="surface card span-12">
+            <h3>Top conteúdos</h3>
+            ${top.length ? `
               <table>
                 <thead>
                   <tr>
@@ -439,7 +604,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${(m.top_contents || []).map(item => `
+                  ${top.map(item => `
                     <tr>
                       <td>${escapeHtml(item.date || "-")}</td>
                       <td>${escapeHtml(item.titulo || "-")}</td>
@@ -452,7 +617,7 @@
                   `).join("")}
                 </tbody>
               </table>
-            ` : `<div class="empty">Sem métricas para o período selecionado.</div>`}
+            ` : `<div class="empty">Sem métricas no período selecionado.</div>`}
           </div>
         </div>
       `;
@@ -461,10 +626,22 @@
     function renderDiagnostico(data) {
       out.innerHTML = `
         <div class="grid">
-          ${block("Problemas", data.problemas || [])}
-          ${block("Oportunidades", data.oportunidades || [])}
-          ${block("Ações em 14 dias", data.acoes_14_dias || [])}
-          ${block("Prioridades da agência", data.prioridade_agencia || [])}
+          <div class="surface card span-6">
+            <h3>Problemas</h3>
+            ${renderList(data.problemas || [])}
+          </div>
+          <div class="surface card span-6">
+            <h3>Oportunidades</h3>
+            ${renderList(data.oportunidades || [])}
+          </div>
+          <div class="surface card span-6">
+            <h3>Ações em 14 dias</h3>
+            ${renderList(data.acoes_14_dias || [])}
+          </div>
+          <div class="surface card span-6">
+            <h3>Prioridades da agência</h3>
+            ${renderList(data.prioridade_agencia || [])}
+          </div>
         </div>
       `;
     }
@@ -475,197 +652,203 @@
       return "low";
     }
 
-    function plannerFilters() {
-      return `
-        <div class="planner">
-          <div class="planner-form">
-            <div class="card">
-              <h3>Configuração do plano</h3>
+    function renderPlannerShell() {
+      out.innerHTML = `
+        <div class="planner-layout">
+          <aside class="surface planner-sidebar">
+            <h3 style="margin-top:0">Configuração do plano</h3>
 
-              <div class="list">
+            <div class="form-grid">
+              <div>
+                <label>Objetivo principal</label>
+                <select id="goal" class="field" style="width:100%;margin-top:8px">
+                  <option>Engajamento</option>
+                  <option selected>Autoridade</option>
+                  <option>Aumento de seguidores</option>
+                  <option>Conversão</option>
+                  <option>Relacionamento</option>
+                  <option>Posicionamento local</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Objetivos secundários</label>
+                <div class="checks">
+                  <label><input type="checkbox" class="secondary-goal" value="Engajamento"> Engajamento</label>
+                  <label><input type="checkbox" class="secondary-goal" value="Autoridade"> Autoridade</label>
+                  <label><input type="checkbox" class="secondary-goal" value="Aumento de seguidores"> Aumento de seguidores</label>
+                  <label><input type="checkbox" class="secondary-goal" value="Conversão"> Conversão</label>
+                  <label><input type="checkbox" class="secondary-goal" value="Prova social"> Prova social</label>
+                  <label><input type="checkbox" class="secondary-goal" value="Educação do mercado"> Educação do mercado</label>
+                </div>
+              </div>
+
+              <div class="two">
                 <div>
-                  <label>Objetivo principal</label>
-                  <select class="field" id="goal">
-                    <option>Engajamento</option>
-                    <option selected>Autoridade</option>
-                    <option>Aumento de seguidores</option>
-                    <option>Conversão</option>
-                    <option>Relacionamento</option>
-                    <option>Posicionamento local</option>
-                  </select>
+                  <label>Qtd. Reels</label>
+                  <input id="qtyReels" class="field" style="width:100%;margin-top:8px" type="number" min="0" value="8">
                 </div>
-
                 <div>
-                  <label>Objetivos secundários</label>
-                  <div class="checks">
-                    <label><input type="checkbox" value="Engajamento" class="secondary-goal"> Engajamento</label>
-                    <label><input type="checkbox" value="Autoridade" class="secondary-goal"> Autoridade</label>
-                    <label><input type="checkbox" value="Aumento de seguidores" class="secondary-goal"> Aumento de seguidores</label>
-                    <label><input type="checkbox" value="Conversão" class="secondary-goal"> Conversão</label>
-                    <label><input type="checkbox" value="Prova social" class="secondary-goal"> Prova social</label>
-                    <label><input type="checkbox" value="Educação do mercado" class="secondary-goal"> Educação do mercado</label>
-                  </div>
+                  <label>Qtd. Carrossel</label>
+                  <input id="qtyCarrossel" class="field" style="width:100%;margin-top:8px" type="number" min="0" value="6">
                 </div>
+              </div>
 
-                <div class="two">
-                  <div>
-                    <label>Qtd. Reels</label>
-                    <input class="field" id="qtyReels" type="number" min="0" value="8">
-                  </div>
-                  <div>
-                    <label>Qtd. Carrossel</label>
-                    <input class="field" id="qtyCarrossel" type="number" min="0" value="6">
-                  </div>
-                </div>
+              <div>
+                <label>Qtd. Foto/Post</label>
+                <input id="qtyFoto" class="field" style="width:100%;margin-top:8px" type="number" min="0" value="2">
+              </div>
 
-                <div>
-                  <label>Qtd. Foto/Post</label>
-                  <input class="field" id="qtyFoto" type="number" min="0" value="2">
-                </div>
+              <div>
+                <label>Cidade/base</label>
+                <input id="city" class="field" style="width:100%;margin-top:8px" value="Linhares">
+              </div>
 
-                <div>
-                  <label>Cidade/base</label>
-                  <input class="field" id="city" value="Linhares">
-                </div>
+              <div>
+                <label>Tom da marca</label>
+                <input id="tone" class="field" style="width:100%;margin-top:8px" value="humano, direto, especialista e sem clichê">
+              </div>
 
-                <div>
-                  <label>Tom da marca</label>
-                  <input class="field" id="tone" value="humano, especialista, direto e sem clichê">
-                </div>
+              <p class="hint">
+                O plano será criado para a audiência do perfil, não para gestão interna do negócio.
+              </p>
 
-                <button class="btn primary" id="generatePlanBtn">Gerar plano</button>
+              <button id="generatePlanBtn" class="btn primary">Gerar plano</button>
+            </div>
+          </aside>
+
+          <section class="surface planner-results" id="plannerArea">
+            <div class="planner-results-header">
+              <div>
+                <h3 style="margin:0">Plano de conteúdo</h3>
+                <div class="subtle">Conteúdo pensado para decisão, criatividade e execução.</div>
               </div>
             </div>
-          </div>
 
-          <div class="planner-results">
-            <div class="card">
-              <h3>Plano de conteúdo</h3>
-              <div id="plannerResultArea">
-                <div class="empty">Configure o plano ao lado e clique em gerar.</div>
-              </div>
-            </div>
-          </div>
+            <div class="empty">Configure o plano ao lado e clique em gerar.</div>
+          </section>
         </div>
       `;
+
+      document.getElementById("generatePlanBtn").addEventListener("click", generatePlan);
     }
 
-    function renderPlanPosts(posts = []) {
+    function renderPosts(posts = []) {
       if (!posts.length) {
-        return `<div class="empty">Nenhum conteúdo gerado.</div>`;
+        return `<div class="empty">Nenhum post gerado.</div>`;
       }
 
       return `
         <div class="post-grid">
-          ${posts.map((p, i) => `
+          ${posts.map((post, index) => `
             <article class="post-card">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
-                <span class="badge">${escapeHtml(p.format || "Post")}</span>
-                <span>#${i + 1}</span>
+              <div class="top-row">
+                <span class="badge">${escapeHtml(post.format || "Post")}</span>
+                <span class="subtle">#${index + 1}</span>
               </div>
 
-              <h3 style="margin:0">${escapeHtml(p.theme || `Post ${i + 1}`)}</h3>
+              <h3 style="margin:0">${escapeHtml(post.theme || `Post ${index + 1}`)}</h3>
 
-              <div class="score ${scoreClass(Number(p.viral_score?.score || 0))}">
+              <div class="score-box ${scoreClass(Number(post.viral_score?.score || 0))}">
                 <div>
-                  <small style="display:block;color:var(--muted)">Nota de viralização</small>
-                  <strong>${Number(p.viral_score?.score || 0).toFixed(1)}</strong>
+                  <div class="subtle">Nota de viralização</div>
+                  <strong>${Number(post.viral_score?.score || 0).toFixed(1)}</strong>
                 </div>
-                <div style="max-width:220px;color:var(--muted);font-size:13px">
-                  ${escapeHtml(p.viral_score?.reason || "Sem justificativa.")}
+                <div class="subtle" style="max-width:220px">
+                  ${escapeHtml(post.viral_score?.reason || "Sem justificativa.")}
                 </div>
               </div>
 
               <div class="section">
                 <h4>Objetivo</h4>
-                <div>${escapeHtml(p.goal || "-")}</div>
+                <div>${escapeHtml(post.goal || "-")}</div>
               </div>
 
               <div class="section">
                 <h4>Hook</h4>
-                <div>${escapeHtml(p.hook || "-")}</div>
+                <div>${escapeHtml(post.hook || "-")}</div>
               </div>
 
               <div class="section">
                 <h4>Roteiro / Slides</h4>
-                <div class="list">
-                  ${(p.script_or_slides || []).length
-                    ? (p.script_or_slides || []).map(s => `<div>${escapeHtml(s)}</div>`).join("")
-                    : `<div class="muted">Sem roteiro.</div>`}
-                </div>
+                ${(post.script_or_slides || []).length
+                  ? `<ul>${post.script_or_slides.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+                  : `<div class="subtle">Sem roteiro.</div>`}
               </div>
 
               <div class="section">
                 <h4>Legenda</h4>
-                <div>${escapeHtml(p.caption || "-")}</div>
+                <div>${escapeHtml(post.caption || "-")}</div>
               </div>
 
               <div class="section">
                 <h4>Direção criativa</h4>
-                <div>${escapeHtml(p.creative_direction || "-")}</div>
+                <div>${escapeHtml(post.creative_direction || "-")}</div>
               </div>
 
-              <button class="btn primary" onclick="copyCaption(${i})">Copiar legenda</button>
+              <button class="btn ghost" onclick="copyCaption(${index})">Copiar legenda</button>
             </article>
           `).join("")}
         </div>
       `;
     }
 
-    function renderPlanoShell() {
-      out.innerHTML = plannerFilters();
+    async function generatePlan() {
+      const plannerArea = document.getElementById("plannerArea");
+      plannerArea.scrollIntoView({ behavior: "smooth", block: "start" });
+      plannerArea.innerHTML = `<div class="loading">Gerando plano estratégico e organizando os cards...</div>`;
 
-      const btn = document.getElementById("generatePlanBtn");
-      btn.addEventListener("click", async () => {
+      try {
         const goal = document.getElementById("goal").value;
         const secondaryGoals = [...document.querySelectorAll(".secondary-goal:checked")].map(el => el.value);
         const qtyReels = Number(document.getElementById("qtyReels").value || 0);
         const qtyCarrossel = Number(document.getElementById("qtyCarrossel").value || 0);
         const qtyFoto = Number(document.getElementById("qtyFoto").value || 0);
         const city = document.getElementById("city").value || "Linhares";
-        const tone = document.getElementById("tone").value || "humano, especialista, direto e sem clichê";
-        const area = document.getElementById("plannerResultArea");
+        const tone = document.getElementById("tone").value || "humano, direto, especialista e sem clichê";
 
-        area.innerHTML = `<div class="loading">Gerando plano estratégico...</div>`;
+        const data = await apiPost("/api/plano", {
+          goal,
+          secondaryGoals,
+          qtyReels,
+          qtyCarrossel,
+          qtyFoto,
+          city,
+          tone
+        });
 
-        try {
-          const data = await apiPost("/api/plano", {
-            goal,
-            secondaryGoals,
-            qtyReels,
-            qtyCarrossel,
-            qtyFoto,
-            city,
-            tone
-          });
+        lastPosts = data.posts || [];
+        plannerArea.innerHTML = `
+          <div class="planner-results-header">
+            <div>
+              <h3 style="margin:0">Plano gerado</h3>
+              <div class="subtle">
+                Objetivo principal: ${escapeHtml(goal)} • Total: ${lastPosts.length} peças
+              </div>
+            </div>
+            <button class="btn primary" id="backToConfigBtn">Voltar ao topo do plano</button>
+          </div>
+          ${renderPosts(lastPosts)}
+        `;
 
-          lastPosts = data.posts || [];
-          area.innerHTML = renderPlanPosts(lastPosts);
-        } catch (e) {
-          area.innerHTML = `<div class="error">${escapeHtml(e.message || "Erro ao gerar plano.")}</div>`;
-        }
-      });
+        document.getElementById("backToConfigBtn").addEventListener("click", () => {
+          document.querySelector(".planner-sidebar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      } catch (e) {
+        plannerArea.innerHTML = `<div class="error">${escapeHtml(e.message || "Erro ao gerar plano.")}</div>`;
+      }
     }
 
     function renderConcorrencia(data) {
       out.innerHTML = `
         <div class="grid">
-          <div class="card span-12">
+          <div class="surface card span-6">
             <h3>Concorrentes</h3>
-            <div class="list">
-              ${(data.concorrentes || []).length
-                ? (data.concorrentes || []).map(c => `<div class="mini">${escapeHtml(c.nome)} — ${escapeHtml(c.perfil)}</div>`).join("")
-                : `<div class="empty">Sem concorrentes no momento.</div>`}
-            </div>
+            ${renderList((data.concorrentes || []).map(c => `${c.nome} — ${c.perfil}`))}
           </div>
-
-          <div class="card span-12">
-            <h3>Plano para ganhar espaço</h3>
-            <div class="list">
-              ${(data.plano_para_ganhar || []).length
-                ? (data.plano_para_ganhar || []).map(i => `<div class="mini">${escapeHtml(i)}</div>`).join("")
-                : `<div class="empty">Sem plano disponível.</div>`}
-            </div>
+          <div class="surface card span-6">
+            <h3>Plano para ganhar</h3>
+            ${renderList(data.plano_para_ganhar || [])}
           </div>
         </div>
       `;
@@ -673,7 +856,7 @@
 
     async function load(tab = currentTab) {
       if (!selected) return renderEmpty("Nenhum cliente selecionado.");
-      setActiveTab(tab);
+      setTab(tab);
 
       try {
         if (tab === "dashboard") {
@@ -683,26 +866,26 @@
         }
 
         if (tab === "diagnostico") {
-          renderLoading("Gerando diagnóstico...");
+          renderLoading("Montando diagnóstico...");
           const data = await apiPost("/api/diagnostico", {
-            objective: "tomada de decisão, clareza estratégica e conteúdo que converte melhor"
+            objective: "tomada de decisão, priorização e criação de conteúdo"
           });
           return renderDiagnostico(data);
         }
 
         if (tab === "plano") {
-          return renderPlanoShell();
+          return renderPlannerShell();
         }
 
         if (tab === "concorrencia") {
           renderLoading("Analisando concorrência...");
           const data = await apiPost("/api/concorrencia", {
-            city: document.getElementById("city")?.value || "Linhares"
+            city: "Linhares"
           });
           return renderConcorrencia(data);
         }
       } catch (e) {
-        renderError(e.message || "Falha ao carregar seção.");
+        renderError(e.message || "Erro ao carregar a seção.");
       }
     }
 
@@ -710,8 +893,8 @@
       renderLoading("Carregando clientes...");
 
       try {
-        const r = await fetch("/api/me");
-        const data = await r.json();
+        const response = await fetch("/api/me");
+        const data = await response.json();
 
         accounts = data.accounts || [];
         acc.innerHTML = "";
@@ -721,11 +904,11 @@
           return renderEmpty("Nenhum cliente cadastrado.");
         }
 
-        accounts.forEach((item) => {
-          const opt = document.createElement("option");
-          opt.value = item.id;
-          opt.textContent = `${item.username} • ${item.niche}`;
-          acc.appendChild(opt);
+        accounts.forEach(item => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = `${item.username} • ${item.niche}`;
+          acc.appendChild(option);
         });
 
         selected = accounts[0];
@@ -753,7 +936,7 @@
         await navigator.clipboard.writeText(caption);
         alert("Legenda copiada.");
       } catch {
-        alert("Não foi possível copiar a legenda.");
+        alert("Não foi possível copiar.");
       }
     }
 
