@@ -21,10 +21,9 @@ app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/app.html")
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
 const METRICS_FILE = path.join(__dirname, "data", "metrics", "metrics.json");
 
-function readJson(file, fallback = []) {
+function readJson(file, fallback = null) {
   try {
-    const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw);
+    return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch {
     return fallback;
   }
@@ -40,21 +39,17 @@ function getAccount(id) {
   return accounts.find((a) => a.id === String(id)) || accounts[0] || null;
 }
 
-function getMetricsStore() {
-  return readJson(METRICS_FILE, {});
-}
-
-function parseDateBRLike(v) {
+function parseDateSafe(v) {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function filterMetricsByPeriod(items = [], startDate, endDate) {
-  const start = startDate ? parseDateBRLike(startDate) : null;
-  const end = endDate ? parseDateBRLike(endDate) : null;
+function filterByDate(rows = [], startDate, endDate) {
+  const start = startDate ? parseDateSafe(startDate) : null;
+  const end = endDate ? parseDateSafe(endDate) : null;
 
-  return items.filter((item) => {
-    const d = parseDateBRLike(item.date);
+  return rows.filter((row) => {
+    const d = parseDateSafe(row.date);
     if (!d) return false;
     if (start && d < start) return false;
     if (end && d > end) return false;
@@ -62,52 +57,24 @@ function filterMetricsByPeriod(items = [], startDate, endDate) {
   });
 }
 
-function sum(items = [], field) {
-  return items.reduce((acc, item) => acc + Number(item[field] || 0), 0);
+function sum(rows = [], key) {
+  return rows.reduce((acc, row) => acc + Number(row[key] || 0), 0);
 }
 
-function average(items = [], field) {
-  if (!items.length) return 0;
-  return sum(items, field) / items.length;
+function avg(rows = [], key) {
+  if (!rows.length) return 0;
+  return Number((sum(rows, key) / rows.length).toFixed(2));
 }
 
-function buildDashboardMetrics({ account, startDate, endDate }) {
-  const store = getMetricsStore();
-  const rows = Array.isArray(store?.[account.username]) ? store[account.username] : [];
-  const filtered = filterMetricsByPeriod(rows, startDate, endDate);
-
-  if (!filtered.length) {
-    return {
-      range: { startDate: startDate || null, endDate: endDate || null, totalDays: 0 },
-      summary: {
-        alcance: 0,
-        impressoes: 0,
-        engajamentos: 0,
-        seguidores_ganhos: 0,
-        posts_publicados: 0,
-        taxa_engajamento_media: 0
-      },
-      top_contents: []
-    };
-  }
-
-  const topContents = [...filtered]
-    .sort((a, b) => Number(b.engajamentos || 0) - Number(a.engajamentos || 0))
-    .slice(0, 5)
-    .map((item) => ({
-      date: item.date,
-      titulo: item.titulo || "Conteúdo sem título",
-      formato: item.formato || "Post",
-      alcance: Number(item.alcance || 0),
-      impressoes: Number(item.impressoes || 0),
-      engajamentos: Number(item.engajamentos || 0),
-      taxa_engajamento: Number(item.taxa_engajamento || 0)
-    }));
+function buildMetrics(username, startDate, endDate) {
+  const store = readJson(METRICS_FILE, {}) || {};
+  const rows = Array.isArray(store[username]) ? store[username] : [];
+  const filtered = filterByDate(rows, startDate, endDate);
 
   return {
     range: {
-      startDate: startDate || filtered[0]?.date || null,
-      endDate: endDate || filtered[filtered.length - 1]?.date || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
       totalDays: filtered.length
     },
     summary: {
@@ -116,9 +83,11 @@ function buildDashboardMetrics({ account, startDate, endDate }) {
       engajamentos: sum(filtered, "engajamentos"),
       seguidores_ganhos: sum(filtered, "seguidores_ganhos"),
       posts_publicados: sum(filtered, "posts_publicados"),
-      taxa_engajamento_media: Number(average(filtered, "taxa_engajamento").toFixed(2))
+      taxa_engajamento_media: avg(filtered, "taxa_engajamento")
     },
-    top_contents: topContents
+    top_contents: [...filtered]
+      .sort((a, b) => Number(b.engajamentos || 0) - Number(a.engajamentos || 0))
+      .slice(0, 5)
   };
 }
 
@@ -133,22 +102,15 @@ app.post("/api/dashboard", async (req, res) => {
     const acc = getAccount(req.body?.igId);
     if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
 
-    const strategic = await dashboard360({
+    const profile = await dashboard360({
       clients: aiClients,
       niche: acc.niche,
       username: acc.username
     });
 
-    const metrics = buildDashboardMetrics({
-      account: acc,
-      startDate: req.body?.startDate,
-      endDate: req.body?.endDate
-    });
+    const metrics = buildMetrics(acc.username, req.body?.startDate, req.body?.endDate);
 
-    res.json({
-      profile: strategic,
-      metrics
-    });
+    res.json({ profile, metrics });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -163,17 +125,11 @@ app.post("/api/diagnostico", async (req, res) => {
       clients: aiClients,
       niche: acc.niche,
       username: acc.username,
-      positioning: req.body?.positioning || "",
-      objective: req.body?.objective || "mais clareza estratégica e conteúdo que gere decisão"
+      objective: req.body?.objective || "tomada de decisão e clareza de conteúdo"
     });
 
-    const isEmpty =
-      !Array.isArray(data?.problemas) || !data.problemas.length;
-
-    if (isEmpty) {
-      return res.status(422).json({
-        error: "Diagnóstico gerado sem conteúdo útil"
-      });
+    if (!data?.problemas?.length) {
+      return res.status(422).json({ error: "Diagnóstico retornou vazio" });
     }
 
     res.json(data);
@@ -187,7 +143,7 @@ app.post("/api/plano", async (req, res) => {
     const acc = getAccount(req.body?.igId);
     if (!acc) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
 
-    const payload = {
+    const data = await planoMensal({
       clients: aiClients,
       niche: acc.niche,
       username: acc.username,
@@ -198,9 +154,8 @@ app.post("/api/plano", async (req, res) => {
       qtyFoto: Number(req.body?.qtyFoto || 2),
       city: req.body?.city || "Linhares",
       tone: req.body?.tone || "humano, direto, especialista e sem clichê"
-    };
+    });
 
-    const data = await planoMensal(payload);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message, posts: [] });
@@ -224,6 +179,4 @@ app.post("/api/concorrencia", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log("🚀 SERVER RODANDO:", PORT);
-});
+app.listen(PORT, () => console.log("🚀 Server rodando na porta", PORT));
