@@ -1,72 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Agency Planner</title>
+<title>Agency</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#02030f;
-  color:#fff;
-}
-
-.layout{ display:flex; }
-
-.sidebar{
-  width:260px;
-  background:#06051a;
-  height:100vh;
-  padding:25px;
-}
-
-.menu div{
-  margin:10px 0;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  color:#aaa;
-}
-
-.menu div.active{
-  background:#1bd1b3;
-  color:#000;
-}
-
-.main{
-  flex:1;
-  padding:30px;
-}
-
-select,input{
-  padding:8px;
-  border-radius:6px;
-  border:none;
-  margin-right:10px;
-}
-
-button{
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#ff6b35;
-  color:#fff;
-  cursor:pointer;
-}
-
-.card{
-  background:#0c0b24;
-  padding:15px;
-  border-radius:12px;
-  margin-bottom:10px;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
-  gap:12px;
-}
+body{margin:0;font-family:Arial;background:#02030f;color:#fff}
+.layout{display:flex}
+.sidebar{width:250px;background:#06051a;padding:20px}
+.menu div{margin:10px 0;padding:10px;cursor:pointer}
+.main{flex:1;padding:30px}
+.card{background:#0c0b24;padding:12px;margin:10px 0;border-radius:10px}
+button{margin:5px;padding:8px;background:#ff6b35;color:#fff;border:0}
 </style>
 </head>
 
@@ -76,186 +21,109 @@ button{
 
 <div class="sidebar">
   <h2>Agency</h2>
-
   <div class="menu">
-    <div onclick="tab('dashboard')" id="t-dashboard">Dashboard</div>
-    <div onclick="tab('diagnostico')" id="t-diagnostico">Diagnóstico</div>
-    <div onclick="tab('plano')" id="t-plano">Plano</div>
-    <div onclick="tab('concorrencia')" id="t-concorrencia">Concorrência</div>
+    <div onclick="load('dashboard')">Dashboard</div>
+    <div onclick="load('diagnostico')">Diagnóstico</div>
+    <div onclick="load('plano')">Plano</div>
+    <div onclick="load('concorrencia')">Concorrência</div>
   </div>
 </div>
 
 <div class="main">
-
-<div>
   <select id="acc"></select>
+  <div id="out"></div>
 </div>
 
-<div id="content"></div>
-
-</div>
 </div>
 
 <script>
 
-let accounts = [];
-let selected = null;
+let accounts=[],selected,posts=[];
 
-// INIT
 async function init(){
-  const r = await fetch("/api/me");
-  const d = await r.json();
+  const r=await fetch("/api/me");const d=await r.json();
+  accounts=d.accounts;selected=accounts[0];
 
-  accounts = d.accounts;
-  selected = accounts[0];
-
-  const sel = document.getElementById("acc");
-
+  const sel=document.getElementById("acc");
   accounts.forEach(a=>{
-    const o = document.createElement("option");
-    o.value = a.id;
-    o.innerText = a.username;
+    const o=document.createElement("option");
+    o.value=a.id;o.innerText=a.username;
     sel.appendChild(o);
   });
+  sel.onchange=()=>selected=accounts.find(a=>a.id==sel.value);
 
-  sel.onchange = ()=> selected = accounts.find(a=>a.id==sel.value);
-
-  tab("dashboard");
+  load("dashboard");
 }
 init();
 
-// NAV
-function tab(t){
-  document.querySelectorAll(".menu div").forEach(e=>e.classList.remove("active"));
-  document.getElementById("t-"+t).classList.add("active");
-
-  if(t=="dashboard") dashboard();
-  if(t=="diagnostico") diagnostico();
-  if(t=="plano") planoUI();
-  if(t=="concorrencia") concorrencia();
-}
-
-// ===== DASHBOARD =====
-async function dashboard(){
-  set("Carregando...");
-
-  const d = await post("/api/dashboard");
-
-  set(`
-    <h2>Bio (3 versões)</h2>
-    ${d.bio.map(card).join("")}
-
-    <h2>Melhorias</h2>
-    ${d.melhorias.map(card).join("")}
-
-    <h2>Posicionamento</h2>
-    ${card(d.posicionamento)}
-  `);
-}
-
-// ===== DIAGNOSTICO =====
-async function diagnostico(){
-  set("Carregando...");
-
-  const d = await post("/api/diagnostico");
-
-  set(`
-    <h2>Problemas</h2>
-    ${d.problemas.map(card).join("")}
-
-    <h2>Oportunidades</h2>
-    ${d.oportunidades.map(card).join("")}
-
-    <h2>Ações estratégicas</h2>
-    ${d.acoes_14_dias.map(card).join("")}
-  `);
-}
-
-// ===== PLANO =====
-function planoUI(){
-  set(`
-    <h2>Configurar Plano</h2>
-
-    <select id="goal">
-      <option>Autoridade</option>
-      <option>Engajamento</option>
-      <option>Seguidores</option>
-      <option>Vendas</option>
-    </select>
-
-    <input id="reels" placeholder="Reels" value="12">
-    <input id="car" placeholder="Carrossel" value="10">
-    <input id="est" placeholder="Estático" value="8">
-
-    <button onclick="gerarPlano()">Gerar</button>
-
-    <div id="plano"></div>
-  `);
-}
-
-async function gerarPlano(){
-  document.getElementById("plano").innerHTML = "Gerando...";
-
-  const data = await post("/api/plano",{
-    goal:document.getElementById("goal").value,
-    mix:{
-      reels:+document.getElementById("reels").value,
-      carrosseis:+document.getElementById("car").value,
-      estaticos:+document.getElementById("est").value
-    }
-  });
-
-  document.getElementById("plano").innerHTML = `
-    <div class="grid">
-      ${data.posts.map(p=>`
-        <div class="card">
-          <b>${p.format}</b>
-          <h4>${p.theme}</h4>
-          <p>${p.caption}</p>
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-// ===== CONCORRENCIA =====
-async function concorrencia(){
-  set("Carregando...");
-
-  const d = await post("/api/concorrencia",{ city:"Linhares" });
-
-  set(`
-    <h2>Concorrentes</h2>
-    ${d.concorrentes.map(c=>card(c.nome+" - "+c.perfil)).join("")}
-
-    <h2>O que fazem bem</h2>
-    ${d.o_que_fazem_bem.map(card).join("")}
-
-    <h2>Onde falham</h2>
-    ${d.onde_falham.map(card).join("")}
-
-    <h2>Como ganhar deles</h2>
-    ${d.plano_para_ganhar.map(card).join("")}
-  `);
-}
-
-// ===== HELPERS =====
-function post(url, extra={}){
+function post(url,extra={}){
   return fetch(url,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ igId:selected.id, ...extra })
+    body:JSON.stringify({ igId:selected.id,...extra })
   }).then(r=>r.json());
 }
 
-function set(html){
-  document.getElementById("content").innerHTML = html;
+async function load(tab){
+
+  if(tab==="dashboard"){
+    const d=await post("/api/dashboard");
+    out(`
+      <h2>Bio</h2>${d.bio.map(c).join("")}
+      <h2>Melhorias</h2>${d.melhorias.map(c).join("")}
+      <h2>Posicionamento</h2>${c(d.posicionamento)}
+    `);
+  }
+
+  if(tab==="diagnostico"){
+    const d=await post("/api/diagnostico");
+    out(`
+      <h2>Problemas</h2>${d.problemas.map(c).join("")}
+      <h2>Oportunidades</h2>${d.oportunidades.map(c).join("")}
+      <h2>Ações</h2>${d.acoes_14_dias.map(c).join("")}
+    `);
+  }
+
+  if(tab==="plano"){
+    const d=await post("/api/plano",{goal:"Autoridade"});
+    posts=d.posts;
+
+    out(`
+      ${posts.map((p,i)=>`
+        <div class="card">
+          <b>${p.format}</b>
+          <h3>${p.theme}</h3>
+
+          <p><b>Hook:</b> ${p.hook}</p>
+
+          <p>${p.script_or_slides.join("<br>")}</p>
+
+          <p>${p.caption}</p>
+
+          <button onclick="copy(${i})">Copiar</button>
+        </div>
+      `).join("")}
+    `);
+  }
+
+  if(tab==="concorrencia"){
+    const d=await post("/api/concorrencia",{city:"Linhares"});
+    out(`
+      <h2>Concorrentes</h2>${d.concorrentes.map(x=>c(x.nome+" - "+x.perfil)).join("")}
+      <h2>Plano</h2>${d.plano_para_ganhar.map(c).join("")}
+    `);
+  }
 }
 
-function card(t){
-  return `<div class="card">${t}</div>`;
+function copy(i){
+  navigator.clipboard.writeText(posts[i].caption);
+  alert("Copiado");
 }
+
+function c(t){ return `<div class="card">${t}</div>` }
+function out(h){ document.getElementById("out").innerHTML=h }
 
 </script>
+
 </body>
 </html>
