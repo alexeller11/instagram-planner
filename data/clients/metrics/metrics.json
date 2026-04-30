@@ -1,0 +1,131 @@
+{
+  "qualitycar_autocenter": [
+    {
+      "date": "2026-04-01",
+      "titulo": "Barulho na suspensão não é normal",
+      "formato": "Reels",
+      "alcance": 2840,
+      "impressoes": 3910,
+      "engajamentos": 186,
+      "seguidores_ganhos": 9,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.76
+    },
+    {
+      "date": "2026-04-03",
+      "titulo": "3 sinais de freio gasto",
+      "formato": "Carrossel",
+      "alcance": 2150,
+      "impressoes": 3015,
+      "engajamentos": 145,
+      "seguidores_ganhos": 5,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.81
+    },
+    {
+      "date": "2026-04-05",
+      "titulo": "Cliente chega dizendo: carro puxando para um lado",
+      "formato": "Reels",
+      "alcance": 3560,
+      "impressoes": 5024,
+      "engajamentos": 244,
+      "seguidores_ganhos": 14,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.86
+    },
+    {
+      "date": "2026-04-08",
+      "titulo": "Checklist antes de pegar estrada",
+      "formato": "Carrossel",
+      "alcance": 1988,
+      "impressoes": 2742,
+      "engajamentos": 121,
+      "seguidores_ganhos": 4,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.41
+    },
+    {
+      "date": "2026-04-12",
+      "titulo": "O que um orçamento honesto precisa mostrar",
+      "formato": "Foto",
+      "alcance": 1220,
+      "impressoes": 1602,
+      "engajamentos": 67,
+      "seguidores_ganhos": 2,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.18
+    }
+  ],
+  "bortotclinicadeolhos": [
+    {
+      "date": "2026-04-01",
+      "titulo": "Quando o olho arde no fim do dia",
+      "formato": "Reels",
+      "alcance": 3180,
+      "impressoes": 4475,
+      "engajamentos": 235,
+      "seguidores_ganhos": 18,
+      "posts_publicados": 1,
+      "taxa_engajamento": 5.25
+    },
+    {
+      "date": "2026-04-04",
+      "titulo": "Quem usa tela o dia inteiro precisa ver isso",
+      "formato": "Carrossel",
+      "alcance": 2742,
+      "impressoes": 3568,
+      "engajamentos": 188,
+      "seguidores_ganhos": 11,
+      "posts_publicados": 1,
+      "taxa_engajamento": 5.27
+    },
+    {
+      "date": "2026-04-07",
+      "titulo": "Dúvidas reais na hora do exame",
+      "formato": "Reels",
+      "alcance": 4025,
+      "impressoes": 5631,
+      "engajamentos": 306,
+      "seguidores_ganhos": 22,
+      "posts_publicados": 1,
+      "taxa_engajamento": 5.43
+    },
+    {
+      "date": "2026-04-11",
+      "titulo": "Como funciona a primeira consulta",
+      "formato": "Foto",
+      "alcance": 1470,
+      "impressoes": 1884,
+      "engajamentos": 83,
+      "seguidores_ganhos": 4,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.4
+    }
+  ],
+  "cliente_teste_01": [
+    {
+      "date": "2026-04-02",
+      "titulo": "O erro mais comum na escovação",
+      "formato": "Reels",
+      "alcance": 1810,
+      "impressoes": 2550,
+      "engajamentos": 122,
+      "seguidores_ganhos": 6,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.78
+    }
+  ],
+  "cliente_teste_02": [
+    {
+      "date": "2026-04-02",
+      "titulo": "O que observar antes de visitar um imóvel",
+      "formato": "Carrossel",
+      "alcance": 2410,
+      "impressoes": 3294,
+      "engajamentos": 154,
+      "seguidores_ganhos": 7,
+      "posts_publicados": 1,
+      "taxa_engajamento": 4.67
+    }
+  ]
+}
