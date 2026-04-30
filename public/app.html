@@ -24,7 +24,7 @@ body{
 
 .menu div{
   margin:10px 0;
-  padding:10px;
+  padding:12px;
   border-radius:10px;
   cursor:pointer;
   color:#aaa;
@@ -96,6 +96,7 @@ button{
 
 <script>
 
+// ===== INIT =====
 let accounts = [];
 let selected = null;
 
@@ -139,83 +140,65 @@ function openTab(tab){
 // ===== DASHBOARD =====
 async function loadDashboard(){
 
-  document.getElementById("content").innerHTML = "Carregando...";
+  setLoading();
 
-  const res = await fetch("/api/dashboard",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ igId:selected.id })
-  });
+  const data = await post("/api/dashboard");
 
-  const data = await res.json();
-
-  document.getElementById("content").innerHTML = `
+  render(`
     <h2>Bio</h2>
-    ${data.bio.map(b=>`<div class="card">${b}</div>`).join("")}
+    ${data.bio.map(b=>card(b)).join("")}
 
     <h2>Melhorias</h2>
-    ${data.melhorias.map(m=>`<div class="card">${m}</div>`).join("")}
+    ${data.melhorias.map(m=>card(m)).join("")}
 
-    <h2>Resumo</h2>
-    <div class="card">${data.resumo}</div>
-  `;
+    <h2>Posicionamento</h2>
+    ${card(data.posicionamento)}
+  `);
 }
 
 // ===== DIAGNOSTICO =====
 async function loadDiagnostico(){
 
-  document.getElementById("content").innerHTML = "Carregando...";
+  setLoading();
 
-  const res = await fetch("/api/diagnostico",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ igId:selected.id })
-  });
+  const data = await post("/api/diagnostico");
 
-  const data = await res.json();
-
-  document.getElementById("content").innerHTML = `
+  render(`
     <h2>Problemas</h2>
-    ${data.problemas.map(p=>`<div class="card">${p}</div>`).join("")}
+    ${data.problemas.map(card).join("")}
 
     <h2>Oportunidades</h2>
-    ${data.oportunidades.map(o=>`<div class="card">${o}</div>`).join("")}
+    ${data.oportunidades.map(card).join("")}
 
-    <h2>Sugestões</h2>
-    ${data.sugestoes.map(s=>`<div class="card">${s}</div>`).join("")}
-  `;
+    <h2>Ações (14 dias)</h2>
+    ${data.acoes_14_dias.map(card).join("")}
+  `);
 }
 
 // ===== PLANO =====
-async function loadPlano(){
+function loadPlano(){
 
-  document.getElementById("content").innerHTML = `
+  render(`
     <button onclick="gerarPlano()">Gerar Plano</button>
     <div id="plano"></div>
-  `;
+  `);
 }
 
 async function gerarPlano(){
 
   document.getElementById("plano").innerHTML = "Gerando...";
 
-  const res = await fetch("/api/plano",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      igId:selected.id,
-      goal:"Crescimento"
-    })
+  const data = await post("/api/plano", {
+    goal:"Autoridade",
+    mix:{ reels:14, carrosseis:10, estaticos:6 }
   });
-
-  const data = await res.json();
 
   document.getElementById("plano").innerHTML = `
     <div class="grid">
       ${data.posts.map(p=>`
         <div class="card">
           <b>${p.format}</b><br>
-          ${p.theme}
+          <strong>${p.theme}</strong>
           <p>${p.caption}</p>
         </div>
       `).join("")}
@@ -226,29 +209,55 @@ async function gerarPlano(){
 // ===== CONCORRENCIA =====
 async function loadConcorrencia(){
 
-  document.getElementById("content").innerHTML = "Carregando...";
+  setLoading();
 
-  const res = await fetch("/api/concorrencia",{
+  const data = await post("/api/concorrencia", {
+    city:"Linhares"
+  });
+
+  render(`
+    <h2>Concorrentes</h2>
+    ${data.concorrentes.map(c=>card(c.nome + " - " + c.perfil)).join("")}
+
+    <h2>O que fazem bem</h2>
+    ${data.o_que_fazem_bem.map(card).join("")}
+
+    <h2>Onde falham</h2>
+    ${data.onde_falham.map(card).join("")}
+
+    <h2>Plano para ganhar</h2>
+    ${data.plano_para_ganhar.map(card).join("")}
+  `);
+}
+
+// ===== HELPERS =====
+function post(url, extra={}){
+
+  return fetch(url,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
       igId:selected.id,
-      cidade:"Linhares"
+      ...extra
     })
+  })
+  .then(r=>r.json())
+  .catch(()=>{
+    alert("Erro na API");
+    return {};
   });
+}
 
-  const data = await res.json();
+function render(html){
+  document.getElementById("content").innerHTML = html;
+}
 
-  document.getElementById("content").innerHTML = `
-    <h2>Concorrentes</h2>
-    ${data.concorrentes.map(c=>`<div class="card">${c}</div>`).join("")}
+function setLoading(){
+  render("Carregando...");
+}
 
-    <h2>Estratégia</h2>
-    <div class="card">${data.estrategia}</div>
-
-    <h2>Oportunidades</h2>
-    ${data.oportunidades.map(o=>`<div class="card">${o}</div>`).join("")}
-  `;
+function card(text){
+  return `<div class="card">${text}</div>`;
 }
 
 </script>
