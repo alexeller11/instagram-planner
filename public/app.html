@@ -1,133 +1,482 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Agency</title>
-
-<style>
-body{margin:0;font-family:Arial;background:#02030f;color:#fff}
-.layout{display:flex}
-.sidebar{width:250px;background:#06051a;padding:20px}
-.menu div{margin:10px 0;padding:10px;cursor:pointer}
-.main{flex:1;padding:30px}
-.card{background:#0c0b24;padding:12px;margin:10px 0;border-radius:10px}
-button{margin:5px;padding:8px;background:#ff6b35;color:#fff;border:0}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121933;
+      --panel-2:#18213f;
+      --line:#293252;
+      --text:#eef2ff;
+      --muted:#a9b4d0;
+      --primary:#6d8cff;
+      --primary-2:#8aa0ff;
+      --success:#22c55e;
+      --danger:#ef4444;
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,sans-serif;
+      background:linear-gradient(180deg,#08101f 0%, #0d1327 100%);
+      color:var(--text);
+    }
+    .app{
+      display:grid;
+      grid-template-columns:280px 1fr;
+      min-height:100vh;
+    }
+    .sidebar{
+      border-right:1px solid var(--line);
+      background:rgba(10,15,30,.75);
+      backdrop-filter:blur(12px);
+      padding:24px;
+      position:sticky;
+      top:0;
+      height:100vh;
+    }
+    .brand{
+      font-size:22px;
+      font-weight:800;
+      margin-bottom:24px;
+    }
+    .brand span{color:var(--primary-2)}
+    .menu{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .menu button{
+      width:100%;
+      text-align:left;
+      border:1px solid transparent;
+      background:transparent;
+      color:var(--muted);
+      padding:14px 16px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .menu button.active,
+    .menu button:hover{
+      background:var(--panel);
+      border-color:var(--line);
+      color:var(--text);
+    }
+    .main{
+      padding:28px;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:24px;
+      flex-wrap:wrap;
+    }
+    .title h1{
+      margin:0;
+      font-size:28px;
+    }
+    .title p{
+      margin:6px 0 0;
+      color:var(--muted);
+    }
+    .control{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    select, .btn{
+      background:var(--panel);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      font:inherit;
+    }
+    .btn{
+      cursor:pointer;
+      background:var(--primary);
+      border-color:transparent;
+      color:white;
+      font-weight:700;
+    }
+    .btn.secondary{
+      background:var(--panel);
+      border-color:var(--line);
+      color:var(--text);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12,1fr);
+      gap:16px;
+    }
+    .card{
+      grid-column:span 12;
+      background:rgba(18,25,51,.88);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.18);
+    }
+    .card h3,.card h4{
+      margin-top:0;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      background:#202a4d;
+      color:#c8d3f5;
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      margin-bottom:12px;
+    }
+    .muted{color:var(--muted)}
+    .list{
+      display:grid;
+      gap:12px;
+    }
+    .mini-card{
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      padding:14px;
+      border-radius:14px;
+    }
+    .post-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+      gap:16px;
+    }
+    .post-card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .post-card h3{
+      margin:0;
+      font-size:20px;
+    }
+    .post-meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .post-section{
+      background:var(--panel-2);
+      border-radius:14px;
+      padding:12px;
+    }
+    .post-section strong{
+      display:block;
+      margin-bottom:8px;
+      color:#dbe4ff;
+    }
+    .copy-btn{
+      margin-top:auto;
+      width:100%;
+      border:0;
+      background:var(--primary);
+      color:#fff;
+      border-radius:12px;
+      padding:12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .empty,.error,.loading{
+      padding:20px;
+      border-radius:16px;
+      border:1px dashed var(--line);
+      color:var(--muted);
+      background:rgba(255,255,255,.02);
+    }
+    .error{color:#ffd3d3;border-color:#5b2a32;background:rgba(239,68,68,.08)}
+    @media (max-width: 900px){
+      .app{grid-template-columns:1fr}
+      .sidebar{
+        position:relative;
+        height:auto;
+        border-right:0;
+        border-bottom:1px solid var(--line);
+      }
+      .main{padding:18px}
+    }
+  </style>
 </head>
-
 <body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">Instagram <span>Planner</span></div>
 
-<div class="layout">
+      <nav class="menu">
+        <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-btn" data-tab="diagnostico">Diagnóstico</button>
+        <button class="nav-btn" data-tab="plano">Plano</button>
+        <button class="nav-btn" data-tab="concorrencia">Concorrência</button>
+      </nav>
+    </aside>
 
-<div class="sidebar">
-  <h2>Agency</h2>
-  <div class="menu">
-    <div onclick="load('dashboard')">Dashboard</div>
-    <div onclick="load('diagnostico')">Diagnóstico</div>
-    <div onclick="load('plano')">Plano</div>
-    <div onclick="load('concorrencia')">Concorrência</div>
-  </div>
-</div>
-
-<div class="main">
-  <select id="acc"></select>
-  <div id="out"></div>
-</div>
-
-</div>
-
-<script>
-
-let accounts=[],selected,posts=[];
-
-async function init(){
-  const r=await fetch("/api/me");
-  const d=await r.json();
-
-  accounts=d.accounts;
-  selected=accounts[0];
-
-  const sel=document.getElementById("acc");
-
-  accounts.forEach(a=>{
-    const o=document.createElement("option");
-    o.value=a.id;
-    o.innerText=a.username;
-    sel.appendChild(o);
-  });
-
-  sel.onchange=()=>selected=accounts.find(a=>a.id==sel.value);
-
-  load("dashboard");
-}
-init();
-
-function post(url,extra={}){
-  return fetch(url,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ igId:selected.id,...extra })
-  }).then(r=>r.json());
-}
-
-async function load(tab){
-
-  if(tab==="dashboard"){
-    const d=await post("/api/dashboard");
-    out(`
-      <h2>Bio</h2>${d.bio.map(c).join("")}
-      <h2>Melhorias</h2>${d.melhorias.map(c).join("")}
-      <h2>Posicionamento</h2>${c(d.posicionamento)}
-    `);
-  }
-
-  if(tab==="diagnostico"){
-    const d=await post("/api/diagnostico");
-    out(`
-      <h2>Problemas</h2>${d.problemas.map(c).join("")}
-      <h2>Oportunidades</h2>${d.oportunidades.map(c).join("")}
-      <h2>Ações</h2>${d.acoes_14_dias.map(c).join("")}
-    `);
-  }
-
-  if(tab==="plano"){
-    const d=await post("/api/plano",{goal:"Autoridade"});
-    posts=d.posts;
-
-    out(`
-      ${posts.map((p,i)=>`
-        <div class="card">
-          <b>${p.format}</b>
-          <h3>${p.theme}</h3>
-          <p><b>Hook:</b> ${p.hook}</p>
-          <p>${p.script_or_slides.join("<br>")}</p>
-          <p>${p.caption}</p>
-          <button onclick="copy(${i})">Copiar</button>
+    <main class="main">
+      <div class="topbar">
+        <div class="title">
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Planejamento estratégico para Instagram</p>
         </div>
-      `).join("")}
-    `);
-  }
 
-  if(tab==="concorrencia"){
-    const d=await post("/api/concorrencia",{city:"Linhares"});
-    out(`
-      <h2>Concorrentes</h2>
-      ${d.concorrentes.map(x=>c(x.nome+" - "+x.perfil)).join("")}
-      <h2>Plano</h2>
-      ${d.plano_para_ganhar.map(c).join("")}
-    `);
-  }
-}
+        <div class="control">
+          <select id="acc"></select>
+          <button class="btn secondary" id="reloadBtn">Atualizar</button>
+        </div>
+      </div>
 
-function copy(i){
-  navigator.clipboard.writeText(posts[i].caption);
-  alert("Copiado");
-}
+      <section id="out" class="grid"></section>
+    </main>
+  </div>
 
-function c(t){ return `<div class="card">${t}</div>` }
-function out(h){ document.getElementById("out").innerHTML=h }
+  <script>
+    let accounts = [];
+    let selected = null;
+    let currentTab = "dashboard";
+    let posts = [];
 
-</script>
+    const out = document.getElementById("out");
+    const accSelect = document.getElementById("acc");
+    const pageTitle = document.getElementById("pageTitle");
+    const pageSubtitle = document.getElementById("pageSubtitle");
+    const reloadBtn = document.getElementById("reloadBtn");
 
+    function setActiveTab(tab){
+      currentTab = tab;
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tab);
+      });
+
+      const labels = {
+        dashboard: ["Dashboard", "Visão geral do perfil e posicionamento"],
+        diagnostico: ["Diagnóstico", "Problemas, oportunidades e ações recomendadas"],
+        plano: ["Plano", "Calendário de conteúdo e ideias de posts"],
+        concorrencia: ["Concorrência", "Referências do mercado e plano para ganhar"]
+      };
+
+      pageTitle.textContent = labels[tab][0];
+      pageSubtitle.textContent = labels[tab][1];
+    }
+
+    function renderLoading(message = "Carregando..."){
+      out.innerHTML = `<div class="card"><div class="loading">${message}</div></div>`;
+    }
+
+    function renderError(message = "Erro ao carregar dados"){
+      out.innerHTML = `<div class="card"><div class="error">${message}</div></div>`;
+    }
+
+    function renderEmpty(message = "Nenhum dado disponível"){
+      out.innerHTML = `<div class="card"><div class="empty">${message}</div></div>`;
+    }
+
+    function escapeHtml(str = ""){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    async function post(url, extra = {}){
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ igId: selected?.id, ...extra })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erro na requisição");
+      return data;
+    }
+
+    function block(title, items = []){
+      return `
+        <div class="card">
+          <h3>${escapeHtml(title)}</h3>
+          <div class="list">
+            ${items.length
+              ? items.map(item => `<div class="mini-card">${escapeHtml(item)}</div>`).join("")
+              : `<div class="empty">Sem dados nesta seção.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDashboard(d){
+      out.innerHTML = `
+        ${block("Bio", d.bio || [])}
+        ${block("Melhorias", d.melhorias || [])}
+        <div class="card">
+          <h3>Posicionamento</h3>
+          <div class="mini-card">${escapeHtml(d.posicionamento || "Sem posicionamento disponível.")}</div>
+        </div>
+      `;
+    }
+
+    function renderDiagnostico(d){
+      out.innerHTML = `
+        ${block("Problemas", d.problemas || [])}
+        ${block("Oportunidades", d.oportunidades || [])}
+        ${block("Ações em 14 dias", d.acoes_14_dias || [])}
+      `;
+    }
+
+    function renderPlano(d){
+      posts = d.posts || [];
+      if (!posts.length) return renderEmpty("Nenhum post foi gerado para este cliente.");
+
+      out.innerHTML = `
+        <div class="card">
+          <h3>Plano de conteúdo</h3>
+          <p class="muted">Posts gerados para <strong>${escapeHtml(selected?.username || "")}</strong>.</p>
+          <div class="post-grid">
+            ${posts.map((p, i) => `
+              <article class="post-card">
+                <div class="post-meta">
+                  <span class="pill">${escapeHtml(p.format || "Post")}</span>
+                  <span class="muted">#${i + 1}</span>
+                </div>
+
+                <h3>${escapeHtml(p.theme || p.title || `Post ${i + 1}`)}</h3>
+
+                <div class="post-section">
+                  <strong>Hook</strong>
+                  <div>${escapeHtml(p.hook || "Sem hook gerado.")}</div>
+                </div>
+
+                <div class="post-section">
+                  <strong>Roteiro / Slides</strong>
+                  <div>${Array.isArray(p.script_or_slides) && p.script_or_slides.length
+                    ? p.script_or_slides.map(s => `<div>• ${escapeHtml(s)}</div>`).join("")
+                    : "Sem roteiro disponível."}</div>
+                </div>
+
+                <div class="post-section">
+                  <strong>Legenda</strong>
+                  <div>${escapeHtml(p.caption || "Sem legenda disponível.")}</div>
+                </div>
+
+                <button class="copy-btn" onclick="copyPost(${i})">Copiar legenda</button>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderConcorrencia(d){
+      out.innerHTML = `
+        ${block("Concorrentes", (d.concorrentes || []).map(x => `${x.nome} - ${x.perfil}`))}
+        ${block("Plano para ganhar", d.plano_para_ganhar || [])}
+      `;
+    }
+
+    async function load(tab = currentTab){
+      if (!selected) return renderEmpty("Nenhum cliente selecionado.");
+      setActiveTab(tab);
+      renderLoading("Buscando dados...");
+
+      try {
+        if (tab === "dashboard") {
+          const d = await post("/api/dashboard");
+          renderDashboard(d);
+        }
+
+        if (tab === "diagnostico") {
+          const d = await post("/api/diagnostico");
+          renderDiagnostico(d);
+        }
+
+        if (tab === "plano") {
+          const d = await post("/api/plano", { goal: "Autoridade" });
+          renderPlano(d);
+        }
+
+        if (tab === "concorrencia") {
+          const d = await post("/api/concorrencia", { city: "Linhares" });
+          renderConcorrencia(d);
+        }
+      } catch (error) {
+        renderError(error.message || "Falha ao carregar a seção.");
+      }
+    }
+
+    async function init(){
+      renderLoading("Carregando clientes...");
+      try {
+        const r = await fetch("/api/me");
+        const d = await r.json();
+
+        accounts = d.accounts || [];
+        accSelect.innerHTML = "";
+
+        if (!accounts.length) {
+          selected = null;
+          return renderEmpty("Nenhum cliente cadastrado. Verifique o arquivo de clientes.");
+        }
+
+        accounts.forEach(a => {
+          const option = document.createElement("option");
+          option.value = a.id;
+          option.textContent = `${a.username} • ${a.niche}`;
+          accSelect.appendChild(option);
+        });
+
+        selected = accounts[0];
+
+        accSelect.addEventListener("change", () => {
+          selected = accounts.find(a => a.id == accSelect.value);
+          load(currentTab);
+        });
+
+        reloadBtn.addEventListener("click", () => load(currentTab));
+        document.querySelectorAll(".nav-btn").forEach(btn => {
+          btn.addEventListener("click", () => load(btn.dataset.tab));
+        });
+
+        load("dashboard");
+      } catch (error) {
+        renderError("Não foi possível carregar os clientes.");
+      }
+    }
+
+    async function copyPost(index){
+      try {
+        const text = posts[index]?.caption || "";
+        await navigator.clipboard.writeText(text);
+        alert("Legenda copiada.");
+      } catch {
+        alert("Não foi possível copiar.");
+      }
+    }
+
+    window.copyPost = copyPost;
+    init();
+  </script>
 </body>
 </html>
