@@ -32,12 +32,16 @@ Sem blocos de código.
 Sem comentários.
 Sem texto antes ou depois do JSON.
 
-Você é um estrategista sênior de conteúdo para Instagram no Brasil, trabalhando em uma agência de publicidade de alto nível.
-Escreve como um profissional experiente, criativo e focado em performance.
-Nada de clichês.
-Nada de frases genéricas de marketing.
-Nada de conteúdo para gestão interna da empresa, a menos que isso tenha valor claro para a audiência do perfil.
-O conteúdo deve ser pensado para quem consome o perfil, gerando desejo, autoridade ou conexão.
+Você é um Copywriter Sênior e Estrategista de Conteúdo para Instagram no Brasil, trabalhando em uma agência de publicidade de elite.
+Sua missão é gerar conteúdo de ALTA CONVERSÃO que fuja do amadorismo.
+
+DIRETRIZES DE ESCRITA:
+1. PROIBIDO clichês como "Você quer saber", "Descubra como", "Você já se perguntou", "Confira essas dicas".
+2. PROIBIDO linguagem institucional chata ("Nossa missão é a excelência").
+3. USE a técnica AIDA (Atenção, Interesse, Desejo, Ação) em todas as legendas.
+4. GANCHOS (Hooks) devem ser agressivos, curiosos ou resolver uma dor imediata nos primeiros 2 segundos.
+5. ROTEIROS DE REELS devem ser dinâmicos, com indicações de cortes e o que deve aparecer na tela.
+6. PERSONA: Especialista autoritário, mas acessível. Escrita magnética e persuasiva.
 `.trim(),
     user: prompt
   });
@@ -63,10 +67,6 @@ function sanitizePost(post, index, fallbackGoal) {
   };
 }
 
-/**
- * Removido o viés de nicho fixo (oficina). 
- * Agora o filtro é focado em qualidade e evitar conteúdo puramente institucional/interno.
- */
 function looksBad(post) {
   const text = [
     post.theme,
@@ -83,7 +83,10 @@ function looksBad(post) {
     "excelência",
     "dicas imperdíveis",
     "história de sucesso",
-    "serviços oferecidos"
+    "serviços oferecidos",
+    "você quer saber",
+    "descubra como",
+    "já se perguntou"
   ];
 
   return bannedTerms.some(term => text.includes(term));
@@ -222,7 +225,7 @@ async function planoMensal({
   qtyReels = 8,
   qtyCarrossel = 6,
   qtyFoto = 2,
-  tone = "humano, direto, especialista e sem clichê"
+  tone = "autoritário, persuasivo, focado em conversão e sem clichês"
 }) {
   const total = qtyReels + qtyCarrossel + qtyFoto;
 
@@ -233,10 +236,11 @@ Objetivo: ${goal}
 Secundários: ${safeArray(secondaryGoals).join(", ")}
 Tom: ${tone}
 
-IMPORTANTE: 
-- Não assuma nicho fixo. Identifique o nicho pela análise acima.
-- Crie conteúdo para a AUDIÊNCIA, não para o dono do negócio.
-- Evite "posts institucionais" chatos. Foque em entretenimento, educação e venda.
+ESTRATÉGIA DE CONTEÚDO:
+1. REELS: Forneça um roteiro detalhado passo a passo (Cena 1, Cena 2, etc.) no campo "script_or_slides".
+2. CARROSSEL: Liste o que deve conter em cada slide no campo "script_or_slides".
+3. LEGENDA: Use a técnica AIDA. Comece com um gancho impossível de ignorar.
+4. NADA DE CLICHÊS: Proibido começar com perguntas óbvias.
 
 Quantidades: Reels (${qtyReels}), Carrossel (${qtyCarrossel}), Foto (${qtyFoto}). Total: ${total}.
 
@@ -246,10 +250,10 @@ JSON:
     {
       "theme": "string",
       "format": "Reels|Carrossel|Foto",
-      "hook": "string",
-      "script_or_slides": ["string"],
-      "caption": "string",
-      "creative_direction": "string",
+      "hook": "Gancho de impacto (Atração)",
+      "script_or_slides": ["Cena 1 / Slide 1: ...", "Cena 2 / Slide 2: ..."],
+      "caption": "Legenda completa seguindo AIDA",
+      "creative_direction": "Orientação visual para a agência",
       "goal": "string",
       "viral_score": { "score": 0, "reason": "string" }
     }

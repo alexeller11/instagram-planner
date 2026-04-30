@@ -512,9 +512,18 @@ async function generatePlan() {
             <div class="post-body">
               <span class="post-tag tag-${p.format.toLowerCase()}">${p.format}</span>
               <div class="post-title">${p.theme}</div>
-              <div class="post-desc"><strong>Hook:</strong> ${p.hook}</div>
-              <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; font-size:0.75rem; color:var(--muted); font-style:italic;">
-                ${p.caption.substring(0, 120)}...
+              <div class="post-desc" style="margin-bottom:12px"><strong>Gancho:</strong> ${p.hook}</div>
+              
+              <div style="margin-bottom:12px">
+                <div style="font-size:0.7rem; text-transform:uppercase; color:var(--brand); font-weight:800; margin-bottom:6px">Roteiro / Estrutura</div>
+                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; font-size:0.8rem; border:1px solid var(--border)">
+                  ${p.script_or_slides.map(line => `<div style="margin-bottom:4px">• ${line}</div>`).join('')}
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:0.7rem; text-transform:uppercase; color:var(--brand); font-weight:800; margin-bottom:6px">Legenda (AIDA)</div>
+                <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; font-size:0.85rem; color:var(--text); line-height:1.6; white-space: pre-wrap;">${p.caption}</div>
               </div>
             </div>
           </div>
