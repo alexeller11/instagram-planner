@@ -1,0 +1,6 @@
+[
+  { "id": "1", "username": "qualitycar_autocenter", "niche": "oficina mecânica" },
+  { "id": "2", "username": "bortotclinicadeolhos", "niche": "clínica oftalmológica" },
+  { "id": "3", "username": "cliente_teste_01", "niche": "odontologia" },
+  { "id": "4", "username": "cliente_teste_02", "niche": "imobiliária" }
+]
