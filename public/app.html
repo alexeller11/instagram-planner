@@ -6,80 +6,74 @@
 <title>Instagram Planner</title>
 
 <style>
-:root{
-  --bg:#050414;
-  --card:#0f0c2a;
-  --accent:#2bd1b4;
-  --text:#fff;
-  --muted:#7c7a9a;
-}
-
 body{
   margin:0;
   font-family:Arial;
-  background:var(--bg);
-  color:var(--text);
+  background:#02030f;
+  color:#fff;
 }
 
-/* LAYOUT */
-.layout{
+/* ===== LAYOUT ===== */
+.container{
   display:flex;
 }
 
-/* SIDEBAR */
+/* ===== SIDEBAR ===== */
 .sidebar{
   width:260px;
-  background:#07061c;
+  background:#06051a;
   height:100vh;
   padding:25px;
   border-right:1px solid rgba(255,255,255,.05);
 }
 
-.sidebar h1{
-  font-size:18px;
-  margin-bottom:30px;
+.sidebar h2{
+  font-size:16px;
+  margin-bottom:20px;
 }
 
-.menu div{
-  padding:12px;
-  margin-bottom:8px;
-  border-radius:10px;
-  color:var(--muted);
+.menu span{
+  display:block;
+  margin:10px 0;
+  color:#888;
   cursor:pointer;
 }
 
-.menu div:hover{
-  background:var(--card);
-  color:#fff;
+.menu span.active{
+  background:#1bd1b3;
+  color:#000;
+  padding:10px;
+  border-radius:10px;
 }
 
-/* MAIN */
+/* ===== MAIN ===== */
 .main{
   flex:1;
   padding:30px;
 }
 
-/* TOPBAR */
-.topbar{
+/* ===== TOPO CONTAS ===== */
+.accounts{
   display:flex;
   gap:10px;
-  margin-bottom:25px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
 }
 
-select,button{
-  padding:10px;
-  border-radius:10px;
-  border:none;
-}
-
-button{
-  background:var(--accent);
-  color:#000;
-  font-weight:bold;
+.account{
+  padding:8px 14px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);
   cursor:pointer;
+  font-size:13px;
 }
 
-/* CARDS */
+.account.active{
+  border-color:#1bd1b3;
+  color:#1bd1b3;
+}
+
+/* ===== CARDS ===== */
 .cards{
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -88,101 +82,103 @@ button{
 }
 
 .card{
-  background:var(--card);
+  background:#0c0b24;
   padding:20px;
   border-radius:14px;
 }
 
+.card small{
+  color:#888;
+}
+
 .card h3{
-  font-size:13px;
-  color:var(--muted);
+  margin:10px 0 0;
 }
 
-.card p{
-  font-size:24px;
-  margin:5px 0 0;
+/* ===== TITULOS ===== */
+.section-title{
+  margin:20px 0 10px;
+  font-size:18px;
 }
 
-/* POSTS GRID */
+/* ===== GRID POSTS ===== */
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
   gap:15px;
 }
 
 .post{
-  background:var(--card);
+  background:#0c0b24;
   padding:15px;
   border-radius:14px;
 }
 
 .tag{
   font-size:11px;
-  color:var(--accent);
+  color:#1bd1b3;
 }
 
-.title{
+.post-title{
+  margin:5px 0;
   font-weight:bold;
-  margin-top:6px;
 }
 
 .small{
   font-size:13px;
-  color:var(--muted);
+  color:#888;
 }
 
-/* CALENDAR */
-.calendar{
-  margin-top:30px;
+/* ===== BOTÃO ===== */
+button{
+  padding:10px 15px;
+  border:none;
+  border-radius:10px;
+  background:#ff6b35;
+  color:#fff;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="layout">
+<div class="container">
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <h1>Planner</h1>
+  <h2>Dashboard 360</h2>
 
   <div class="menu">
-    <div>Dashboard</div>
-    <div>Plano</div>
-    <div>Calendário</div>
+    <span class="active">Dashboard 360</span>
+    <span>Diagnóstico</span>
+    <span>Plano</span>
+    <span>Calendário</span>
   </div>
 </div>
 
 <!-- MAIN -->
 <div class="main">
 
-<h2>Saúde da Conta</h2>
+<!-- CONTAS -->
+<div class="accounts" id="accounts"></div>
 
+<!-- DASHBOARD -->
 <div class="cards">
-  <div class="card"><h3>Seguidores</h3><p>--</p></div>
-  <div class="card"><h3>Alcance</h3><p>--</p></div>
-  <div class="card"><h3>Impressões</h3><p>--</p></div>
-  <div class="card"><h3>Engajamento</h3><p>--</p></div>
+  <div class="card"><small>Seguidores</small><h3>--</h3></div>
+  <div class="card"><small>Alcance</small><h3>--</h3></div>
+  <div class="card"><small>Impressões</small><h3>--</h3></div>
+  <div class="card"><small>Engajamento</small><h3>--</h3></div>
 </div>
 
-<div class="topbar">
-  <select id="account"></select>
-  <select id="goal">
-    <option>Crescimento</option>
-    <option>Vendas</option>
-  </select>
-  <select id="tone">
-    <option>Profissional</option>
-    <option>Autoridade</option>
-  </select>
+<button onclick="genPlan()">Gerar Plano</button>
 
-  <button onclick="genPlan()">Gerar Plano</button>
-</div>
-
-<h2>Posts</h2>
+<!-- POSTS -->
+<div class="section-title">Posts</div>
 <div id="posts" class="grid"></div>
 
-<h2 class="calendar">Calendário</h2>
+<!-- CALENDÁRIO -->
+<div class="section-title">Calendário</div>
 <div id="calendar" class="grid"></div>
 
 </div>
@@ -191,38 +187,54 @@ button{
 <script>
 
 let accounts = [];
+let selectedAccount = null;
 let lastPlan = [];
 
+/* ===== INIT ===== */
 async function init(){
   const res = await fetch("/api/me");
   const data = await res.json();
 
   accounts = data.accounts || [];
+  selectedAccount = accounts[0];
 
-  const sel = document.getElementById("account");
-
-  accounts.forEach(a=>{
-    const opt = document.createElement("option");
-    opt.value = a.id;
-    opt.innerText = a.username;
-    sel.appendChild(opt);
-  });
+  renderAccounts();
 }
 
 init();
 
-async function genPlan(){
+/* ===== CONTAS ===== */
+function renderAccounts(){
+  const el = document.getElementById("accounts");
+  el.innerHTML = "";
 
-  const igId = document.getElementById("account").value;
-  const goal = document.getElementById("goal").value;
-  const tone = document.getElementById("tone").value;
+  accounts.forEach(a=>{
+    const div = document.createElement("div");
+    div.className = "account" + (a.id === selectedAccount.id ? " active" : "");
+    div.innerText = "@" + a.username;
+
+    div.onclick = ()=>{
+      selectedAccount = a;
+      renderAccounts();
+    };
+
+    el.appendChild(div);
+  });
+}
+
+/* ===== GERAR ===== */
+async function genPlan(){
 
   document.getElementById("posts").innerHTML = "Gerando...";
 
   const res = await fetch("/api/generate",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ igId, goal, tone })
+    body: JSON.stringify({
+      igId: selectedAccount.id,
+      goal: "Crescimento",
+      tone: "Profissional"
+    })
   });
 
   const data = await res.json();
@@ -233,7 +245,9 @@ async function genPlan(){
   renderCalendar(lastPlan);
 }
 
+/* ===== POSTS ===== */
 function renderPosts(posts){
+
   const el = document.getElementById("posts");
   el.innerHTML = "";
 
@@ -241,14 +255,16 @@ function renderPosts(posts){
     el.innerHTML += `
       <div class="post">
         <div class="tag">${p.format}</div>
-        <div class="title">${p.theme}</div>
-        <p class="small">${(p.caption||"").substring(0,100)}...</p>
+        <div class="post-title">${p.theme}</div>
+        <div class="small">${(p.caption||"").substring(0,100)}...</div>
       </div>
     `;
   });
 }
 
+/* ===== CALENDÁRIO ===== */
 function renderCalendar(posts){
+
   const el = document.getElementById("calendar");
   el.innerHTML = "";
 
