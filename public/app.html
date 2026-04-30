@@ -2,8 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planner Agency</title>
+<title>Agency Planner</title>
 
 <style>
 body{
@@ -40,8 +39,11 @@ body{
   padding:30px;
 }
 
-.top{
-  margin-bottom:20px;
+select,input{
+  padding:8px;
+  border-radius:6px;
+  border:none;
+  margin-right:10px;
 }
 
 button{
@@ -62,8 +64,8 @@ button{
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-  gap:10px;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:12px;
 }
 </style>
 </head>
@@ -73,20 +75,20 @@ button{
 <div class="layout">
 
 <div class="sidebar">
-  <h2>Planner</h2>
+  <h2>Agency</h2>
 
   <div class="menu">
-    <div onclick="openTab('dashboard')" id="tab-dashboard">Dashboard</div>
-    <div onclick="openTab('diagnostico')" id="tab-diagnostico">Diagnóstico</div>
-    <div onclick="openTab('plano')" id="tab-plano">Plano</div>
-    <div onclick="openTab('concorrencia')" id="tab-concorrencia">Concorrência</div>
+    <div onclick="tab('dashboard')" id="t-dashboard">Dashboard</div>
+    <div onclick="tab('diagnostico')" id="t-diagnostico">Diagnóstico</div>
+    <div onclick="tab('plano')" id="t-plano">Plano</div>
+    <div onclick="tab('concorrencia')" id="t-concorrencia">Concorrência</div>
   </div>
 </div>
 
 <div class="main">
 
-<div class="top">
-  <select id="account"></select>
+<div>
+  <select id="acc"></select>
 </div>
 
 <div id="content"></div>
@@ -96,109 +98,119 @@ button{
 
 <script>
 
-// ===== INIT =====
 let accounts = [];
 let selected = null;
 
+// INIT
 async function init(){
-  const res = await fetch("/api/me");
-  const data = await res.json();
+  const r = await fetch("/api/me");
+  const d = await r.json();
 
-  accounts = data.accounts;
+  accounts = d.accounts;
   selected = accounts[0];
 
-  const sel = document.getElementById("account");
+  const sel = document.getElementById("acc");
 
   accounts.forEach(a=>{
-    const opt = document.createElement("option");
-    opt.value = a.id;
-    opt.innerText = a.username;
-    sel.appendChild(opt);
+    const o = document.createElement("option");
+    o.value = a.id;
+    o.innerText = a.username;
+    sel.appendChild(o);
   });
 
-  sel.onchange = ()=>{
-    selected = accounts.find(a=>a.id===sel.value);
-  }
+  sel.onchange = ()=> selected = accounts.find(a=>a.id==sel.value);
 
-  openTab("dashboard");
+  tab("dashboard");
 }
-
 init();
 
-// ===== NAV =====
-function openTab(tab){
+// NAV
+function tab(t){
+  document.querySelectorAll(".menu div").forEach(e=>e.classList.remove("active"));
+  document.getElementById("t-"+t).classList.add("active");
 
-  document.querySelectorAll(".menu div").forEach(el=>el.classList.remove("active"));
-  document.getElementById("tab-"+tab).classList.add("active");
-
-  if(tab==="dashboard") loadDashboard();
-  if(tab==="diagnostico") loadDiagnostico();
-  if(tab==="plano") loadPlano();
-  if(tab==="concorrencia") loadConcorrencia();
+  if(t=="dashboard") dashboard();
+  if(t=="diagnostico") diagnostico();
+  if(t=="plano") planoUI();
+  if(t=="concorrencia") concorrencia();
 }
 
 // ===== DASHBOARD =====
-async function loadDashboard(){
+async function dashboard(){
+  set("Carregando...");
 
-  setLoading();
+  const d = await post("/api/dashboard");
 
-  const data = await post("/api/dashboard");
-
-  render(`
-    <h2>Bio</h2>
-    ${data.bio.map(b=>card(b)).join("")}
+  set(`
+    <h2>Bio (3 versões)</h2>
+    ${d.bio.map(card).join("")}
 
     <h2>Melhorias</h2>
-    ${data.melhorias.map(m=>card(m)).join("")}
+    ${d.melhorias.map(card).join("")}
 
     <h2>Posicionamento</h2>
-    ${card(data.posicionamento)}
+    ${card(d.posicionamento)}
   `);
 }
 
 // ===== DIAGNOSTICO =====
-async function loadDiagnostico(){
+async function diagnostico(){
+  set("Carregando...");
 
-  setLoading();
+  const d = await post("/api/diagnostico");
 
-  const data = await post("/api/diagnostico");
-
-  render(`
+  set(`
     <h2>Problemas</h2>
-    ${data.problemas.map(card).join("")}
+    ${d.problemas.map(card).join("")}
 
     <h2>Oportunidades</h2>
-    ${data.oportunidades.map(card).join("")}
+    ${d.oportunidades.map(card).join("")}
 
-    <h2>Ações (14 dias)</h2>
-    ${data.acoes_14_dias.map(card).join("")}
+    <h2>Ações estratégicas</h2>
+    ${d.acoes_14_dias.map(card).join("")}
   `);
 }
 
 // ===== PLANO =====
-function loadPlano(){
+function planoUI(){
+  set(`
+    <h2>Configurar Plano</h2>
 
-  render(`
-    <button onclick="gerarPlano()">Gerar Plano</button>
+    <select id="goal">
+      <option>Autoridade</option>
+      <option>Engajamento</option>
+      <option>Seguidores</option>
+      <option>Vendas</option>
+    </select>
+
+    <input id="reels" placeholder="Reels" value="12">
+    <input id="car" placeholder="Carrossel" value="10">
+    <input id="est" placeholder="Estático" value="8">
+
+    <button onclick="gerarPlano()">Gerar</button>
+
     <div id="plano"></div>
   `);
 }
 
 async function gerarPlano(){
-
   document.getElementById("plano").innerHTML = "Gerando...";
 
-  const data = await post("/api/plano", {
-    goal:"Autoridade",
-    mix:{ reels:14, carrosseis:10, estaticos:6 }
+  const data = await post("/api/plano",{
+    goal:document.getElementById("goal").value,
+    mix:{
+      reels:+document.getElementById("reels").value,
+      carrosseis:+document.getElementById("car").value,
+      estaticos:+document.getElementById("est").value
+    }
   });
 
   document.getElementById("plano").innerHTML = `
     <div class="grid">
       ${data.posts.map(p=>`
         <div class="card">
-          <b>${p.format}</b><br>
-          <strong>${p.theme}</strong>
+          <b>${p.format}</b>
+          <h4>${p.theme}</h4>
           <p>${p.caption}</p>
         </div>
       `).join("")}
@@ -207,60 +219,43 @@ async function gerarPlano(){
 }
 
 // ===== CONCORRENCIA =====
-async function loadConcorrencia(){
+async function concorrencia(){
+  set("Carregando...");
 
-  setLoading();
+  const d = await post("/api/concorrencia",{ city:"Linhares" });
 
-  const data = await post("/api/concorrencia", {
-    city:"Linhares"
-  });
-
-  render(`
+  set(`
     <h2>Concorrentes</h2>
-    ${data.concorrentes.map(c=>card(c.nome + " - " + c.perfil)).join("")}
+    ${d.concorrentes.map(c=>card(c.nome+" - "+c.perfil)).join("")}
 
     <h2>O que fazem bem</h2>
-    ${data.o_que_fazem_bem.map(card).join("")}
+    ${d.o_que_fazem_bem.map(card).join("")}
 
     <h2>Onde falham</h2>
-    ${data.onde_falham.map(card).join("")}
+    ${d.onde_falham.map(card).join("")}
 
-    <h2>Plano para ganhar</h2>
-    ${data.plano_para_ganhar.map(card).join("")}
+    <h2>Como ganhar deles</h2>
+    ${d.plano_para_ganhar.map(card).join("")}
   `);
 }
 
 // ===== HELPERS =====
 function post(url, extra={}){
-
   return fetch(url,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      igId:selected.id,
-      ...extra
-    })
-  })
-  .then(r=>r.json())
-  .catch(()=>{
-    alert("Erro na API");
-    return {};
-  });
+    body: JSON.stringify({ igId:selected.id, ...extra })
+  }).then(r=>r.json());
 }
 
-function render(html){
+function set(html){
   document.getElementById("content").innerHTML = html;
 }
 
-function setLoading(){
-  render("Carregando...");
-}
-
-function card(text){
-  return `<div class="card">${text}</div>`;
+function card(t){
+  return `<div class="card">${t}</div>`;
 }
 
 </script>
-
 </body>
 </html>
