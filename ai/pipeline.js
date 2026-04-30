@@ -1,35 +1,153 @@
-const prompt = `
-Você é um estrategista de conteúdo nível agência premium.
+const { runLLM } = require("./engine");
+
+function safeArray(x){ return Array.isArray(x)?x:[]; }
+
+async function ask(clients, prompt){
+  return await runLLM({
+    clients,
+    system: "Responda apenas JSON válido.",
+    user: prompt
+  });
+}
+
+// ================= DASHBOARD =================
+async function dashboard360({ clients, niche, username }){
+
+  const prompt = `
+Cliente: ${username}
+Nicho: ${niche}
+
+Crie:
+- 3 bios premium
+- 6 melhorias reais
+- 1 posicionamento forte
+
+Sem conteúdo genérico.
+
+JSON:
+{
+ "bio":[],
+ "melhorias":[],
+ "posicionamento":""
+}
+`;
+
+  const d = await ask(clients, prompt);
+
+  return {
+    bio: safeArray(d?.bio),
+    melhorias: safeArray(d?.melhorias),
+    posicionamento: d?.posicionamento || ""
+  };
+}
+
+// ================= DIAGNOSTICO =================
+async function diagnostico({ clients, niche }){
+
+  const prompt = `
+Analise um Instagram de ${niche}
+
+Crie:
+- problemas
+- oportunidades
+- ações práticas
+
+JSON:
+{
+ "problemas":[],
+ "oportunidades":[],
+ "acoes_14_dias":[]
+}
+`;
+
+  const d = await ask(clients, prompt);
+
+  return {
+    problemas: safeArray(d?.problemas),
+    oportunidades: safeArray(d?.oportunidades),
+    acoes_14_dias: safeArray(d?.acoes_14_dias)
+  };
+}
+
+// ================= PLANO =================
+async function planoMensal({ clients, niche, username, goal, mix }){
+
+  const prompt = `
+Você é estrategista premium.
 
 Cliente: ${username}
 Nicho: ${niche}
 Objetivo: ${goal}
 
-REGRAS:
-- ZERO conteúdo genérico
-- NÃO usar: "você sabia", "descubra", "dica"
-- NÃO inventar dados
-- Linguagem humana, direta e forte
+Crie 30 posts.
 
-Cada post deve conter:
+Regras:
+- NÃO usar "você sabia"
+- NÃO ser genérico
 
-1. Gancho forte (primeira frase)
-2. Conteúdo estruturado
-3. CTA natural
-
-FORMATO:
-
+JSON:
 {
  "posts":[
   {
-   "theme":"tema específico e estratégico",
-   "format":"Reels|Carrossel|Estático",
-   "hook":"gancho forte",
-   "script_or_slides":["roteiro ou slides"],
-   "caption":"copy completa pronta",
-   "creative_direction":"como gravar/produzir",
-   "goal":"objetivo do post"
+   "theme":"",
+   "format":"",
+   "hook":"",
+   "script_or_slides":[],
+   "caption":"",
+   "creative_direction":"",
+   "goal":""
   }
  ]
 }
 `;
+
+  const d = await ask(clients, prompt);
+
+  let posts = safeArray(d?.posts);
+
+  if(posts.length === 0){
+    posts = Array.from({length:12}).map((_,i)=>({
+      theme:`Post ${i+1}`,
+      format:"Reels",
+      hook:"Gancho direto",
+      script_or_slides:["Abertura","Conteúdo","CTA"],
+      caption:"Conteúdo de fallback",
+      creative_direction:"Vídeo simples",
+      goal:goal
+    }));
+  }
+
+  return { posts };
+}
+
+// ================= CONCORRENCIA =================
+async function concorrencia({ clients, niche, city }){
+
+  const prompt = `
+Analise concorrência de ${niche} em ${city}
+
+JSON:
+{
+ "concorrentes":[{"nome":"","perfil":""}],
+ "o_que_fazem_bem":[],
+ "onde_falham":[],
+ "plano_para_ganhar":[]
+}
+`;
+
+  const d = await ask(clients, prompt);
+
+  return {
+    concorrentes: safeArray(d?.concorrentes),
+    o_que_fazem_bem: safeArray(d?.o_que_fazem_bem),
+    onde_falham: safeArray(d?.onde_falham),
+    plano_para_ganhar: safeArray(d?.plano_para_ganhar)
+  };
+}
+
+module.exports = {
+  dashboard360,
+  diagnostico,
+  planoMensal,
+  concorrencia
+};
