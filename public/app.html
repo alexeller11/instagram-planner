@@ -10,22 +10,19 @@
   <style>
     :root{
       --bg:#07111f;
-      --bg-2:#0a1628;
-      --panel:#0f1b31;
-      --panel-2:#14213c;
-      --panel-3:#1a2a4b;
-      --line:#25365d;
-      --text:#edf4ff;
-      --muted:#9caac9;
-      --primary:#5b8cff;
-      --primary-2:#7ca4ff;
-      --success:#22c55e;
-      --warn:#f59e0b;
-      --danger:#ef4444;
-      --radius-sm:12px;
-      --radius-md:18px;
-      --radius-lg:24px;
-      --shadow:0 24px 60px rgba(0,0,0,.28);
+      --bg-2:#0b1526;
+      --panel:#101b31;
+      --panel-2:#162440;
+      --line:#273760;
+      --text:#eef4ff;
+      --muted:#9cabc8;
+      --primary:#5f8cff;
+      --primary-2:#88a8ff;
+      --green:#22c55e;
+      --yellow:#f59e0b;
+      --red:#ef4444;
+      --shadow:0 22px 56px rgba(0,0,0,.26);
+      --radius:22px;
     }
 
     *{box-sizing:border-box}
@@ -33,11 +30,11 @@
     body{
       margin:0;
       font-family:Inter,sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(91,140,255,.16), transparent 24%),
-        radial-gradient(circle at bottom right, rgba(124,164,255,.12), transparent 26%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(95,140,255,.14), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(136,168,255,.12), transparent 26%),
+        linear-gradient(180deg,var(--bg) 0%,var(--bg-2) 100%);
     }
 
     .app{
@@ -52,35 +49,27 @@
       height:100vh;
       padding:24px 20px;
       border-right:1px solid var(--line);
-      background:rgba(7,17,31,.82);
+      background:rgba(7,17,31,.84);
       backdrop-filter:blur(16px);
     }
 
-    .logo{
+    .brand{
       display:flex;
-      align-items:center;
       gap:14px;
+      align-items:center;
       margin-bottom:28px;
     }
 
-    .logo-mark{
+    .mark{
       width:42px;
       height:42px;
       border-radius:14px;
       background:linear-gradient(135deg,var(--primary),var(--primary-2));
-      box-shadow:0 10px 24px rgba(91,140,255,.35);
+      box-shadow:0 12px 28px rgba(95,140,255,.35);
     }
 
-    .logo-text strong{
-      display:block;
-      font-size:18px;
-      line-height:1.1;
-    }
-
-    .logo-text span{
-      color:var(--muted);
-      font-size:13px;
-    }
+    .brand strong{display:block;font-size:18px}
+    .brand span{font-size:13px;color:var(--muted)}
 
     .menu{
       display:flex;
@@ -89,21 +78,21 @@
     }
 
     .menu button{
+      font:inherit;
+      font-weight:700;
+      text-align:left;
+      padding:14px 16px;
+      border-radius:14px;
       border:1px solid transparent;
       background:transparent;
       color:var(--muted);
-      padding:14px 16px;
-      border-radius:14px;
-      font:inherit;
-      font-weight:700;
       cursor:pointer;
-      text-align:left;
     }
 
     .menu button.active,
     .menu button:hover{
       color:var(--text);
-      background:rgba(20,33,60,.92);
+      background:rgba(22,36,64,.92);
       border-color:var(--line);
     }
 
@@ -116,58 +105,52 @@
       justify-content:space-between;
       gap:16px;
       flex-wrap:wrap;
-      align-items:flex-start;
       margin-bottom:18px;
     }
 
     .hero h1{
       margin:0;
       font-size:30px;
-      line-height:1.08;
     }
 
     .hero p{
       margin:8px 0 0;
+      max-width:760px;
       color:var(--muted);
-      max-width:720px;
     }
 
     .controls{
       display:flex;
-      flex-wrap:wrap;
       gap:10px;
+      flex-wrap:wrap;
       align-items:center;
     }
 
-    .field, .btn{
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:rgba(15,27,49,.96);
-      color:var(--text);
-      padding:12px 14px;
+    .field,.btn{
       font:inherit;
+      border-radius:12px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      background:rgba(16,27,49,.96);
+      color:var(--text);
     }
 
     .btn{
-      font-weight:700;
       cursor:pointer;
+      font-weight:700;
     }
 
     .btn.primary{
       background:linear-gradient(135deg,var(--primary),var(--primary-2));
       border-color:transparent;
-      color:white;
-      box-shadow:0 12px 28px rgba(91,140,255,.28);
-    }
-
-    .btn.ghost{
-      background:rgba(15,27,49,.7);
+      color:#fff;
+      box-shadow:0 12px 28px rgba(95,140,255,.28);
     }
 
     .surface{
-      background:rgba(15,27,49,.9);
+      background:rgba(16,27,49,.92);
       border:1px solid var(--line);
-      border-radius:var(--radius-lg);
+      border-radius:var(--radius);
       box-shadow:var(--shadow);
     }
 
@@ -178,7 +161,6 @@
     }
 
     .span-12{grid-column:span 12}
-    .span-8{grid-column:span 8}
     .span-6{grid-column:span 6}
     .span-4{grid-column:span 4}
     .span-3{grid-column:span 3}
@@ -188,14 +170,13 @@
     }
 
     .card h3{
-      margin:0 0 14px;
-      font-size:18px;
+      margin:0 0 12px;
     }
 
     .metric{
       padding:18px;
       border-radius:18px;
-      background:linear-gradient(180deg,rgba(26,42,75,.92),rgba(15,27,49,.96));
+      background:linear-gradient(180deg,rgba(22,36,64,.95),rgba(16,27,49,.98));
       border:1px solid var(--line);
     }
 
@@ -206,6 +187,7 @@
     }
 
     .metric strong{
+      display:block;
       font-size:28px;
       line-height:1;
     }
@@ -217,17 +199,42 @@
       font-size:13px;
     }
 
-    .list{
+    .item-list{
       display:grid;
       gap:12px;
     }
 
     .item{
-      background:rgba(20,33,60,.95);
+      background:rgba(22,36,64,.95);
       border:1px solid var(--line);
       border-radius:16px;
       padding:14px;
-      color:var(--text);
+    }
+
+    .analysis-box{
+      margin-bottom:16px;
+      padding:16px;
+      border-radius:18px;
+      background:rgba(9,19,36,.68);
+      border:1px solid var(--line);
+    }
+
+    .analysis-box h3{
+      margin:0 0 12px;
+      font-size:16px;
+    }
+
+    .analysis-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .mini{
+      background:rgba(22,36,64,.92);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
     }
 
     .planner-layout{
@@ -237,7 +244,7 @@
       align-items:start;
     }
 
-    .planner-sidebar{
+    .planner-config{
       position:sticky;
       top:20px;
       padding:18px;
@@ -246,15 +253,6 @@
     .planner-results{
       padding:18px;
       min-height:400px;
-    }
-
-    .planner-results-header{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-bottom:16px;
     }
 
     .form-grid{
@@ -271,14 +269,12 @@
     .checks{
       display:grid;
       gap:8px;
-      margin-top:8px;
     }
 
     .checks label{
       display:flex;
-      align-items:center;
       gap:10px;
-      color:var(--text);
+      align-items:center;
       font-size:14px;
     }
 
@@ -295,13 +291,13 @@
     }
 
     .post-card{
-      background:rgba(20,33,60,.96);
-      border:1px solid var(--line);
-      border-radius:20px;
-      padding:16px;
       display:flex;
       flex-direction:column;
       gap:12px;
+      background:rgba(22,36,64,.96);
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:16px;
     }
 
     .top-row{
@@ -316,38 +312,34 @@
       display:inline-flex;
       align-items:center;
       gap:8px;
-      border-radius:999px;
       padding:8px 10px;
+      border-radius:999px;
       font-size:12px;
       font-weight:800;
-      letter-spacing:.03em;
       text-transform:uppercase;
-      background:rgba(91,140,255,.16);
+      letter-spacing:.03em;
+      background:rgba(95,140,255,.16);
+      border:1px solid rgba(136,168,255,.24);
       color:#dce7ff;
-      border:1px solid rgba(124,164,255,.24);
     }
 
-    .score-box{
+    .score{
       display:flex;
       justify-content:space-between;
       gap:12px;
-      background:rgba(10,22,40,.72);
-      border:1px solid var(--line);
       border-radius:16px;
+      background:rgba(8,18,33,.7);
+      border:1px solid var(--line);
       padding:12px;
     }
 
-    .score-box strong{
-      font-size:24px;
-      line-height:1;
-    }
-
-    .score-box.good strong{color:var(--success)}
-    .score-box.mid strong{color:var(--warn)}
-    .score-box.low strong{color:var(--danger)}
+    .score strong{font-size:24px}
+    .score.good strong{color:var(--green)}
+    .score.mid strong{color:var(--yellow)}
+    .score.low strong{color:var(--red)}
 
     .section{
-      background:rgba(10,22,40,.7);
+      background:rgba(8,18,33,.68);
       border:1px solid var(--line);
       border-radius:16px;
       padding:12px;
@@ -356,7 +348,6 @@
     .section h4{
       margin:0 0 8px;
       font-size:14px;
-      color:#dce7ff;
     }
 
     .section ul{
@@ -367,15 +358,20 @@
     .empty,.error,.loading{
       padding:18px;
       border-radius:16px;
-      background:rgba(10,22,40,.6);
       border:1px dashed var(--line);
+      background:rgba(8,18,33,.58);
       color:var(--muted);
     }
 
     .error{
-      color:#ffd6d6;
-      border-color:#70404d;
+      color:#ffd7d7;
+      border-color:#6b434d;
       background:rgba(239,68,68,.10);
+    }
+
+    .subtle{
+      color:var(--muted);
+      font-size:13px;
     }
 
     table{
@@ -384,52 +380,37 @@
       font-size:14px;
     }
 
-    th, td{
+    th,td{
       text-align:left;
       padding:12px 10px;
       border-bottom:1px solid var(--line);
       vertical-align:top;
     }
 
-    .subtle{
-      color:var(--muted);
-      font-size:13px;
-    }
-
     @media (max-width: 1180px){
-      .planner-layout{
-        grid-template-columns:1fr;
-      }
-      .planner-sidebar{
-        position:static;
-      }
+      .planner-layout{grid-template-columns:1fr}
+      .planner-config{position:static}
     }
 
     @media (max-width: 980px){
-      .app{
-        grid-template-columns:1fr;
-      }
+      .app{grid-template-columns:1fr}
       .sidebar{
         position:relative;
         height:auto;
         border-right:0;
         border-bottom:1px solid var(--line);
       }
-      .span-8,.span-6,.span-4,.span-3{
-        grid-column:span 12;
-      }
-      .two{
-        grid-template-columns:1fr;
-      }
+      .span-6,.span-4,.span-3{grid-column:span 12}
+      .analysis-grid,.two{grid-template-columns:1fr}
     }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="logo">
-        <div class="logo-mark"></div>
-        <div class="logo-text">
+      <div class="brand">
+        <div class="mark"></div>
+        <div>
           <strong>Instagram Planner</strong>
           <span>Agência • Conteúdo • Performance</span>
         </div>
@@ -454,7 +435,7 @@
           <select id="acc" class="field"></select>
           <input id="startDate" class="field" type="date">
           <input id="endDate" class="field" type="date">
-          <button id="reloadBtn" class="btn ghost">Atualizar</button>
+          <button id="reloadBtn" class="btn">Atualizar</button>
         </div>
       </section>
 
@@ -470,9 +451,9 @@
 
     const out = document.getElementById("out");
     const acc = document.getElementById("acc");
+    const reloadBtn = document.getElementById("reloadBtn");
     const startDate = document.getElementById("startDate");
     const endDate = document.getElementById("endDate");
-    const reloadBtn = document.getElementById("reloadBtn");
     const pageTitle = document.getElementById("pageTitle");
     const pageSubtitle = document.getElementById("pageSubtitle");
 
@@ -494,8 +475,8 @@
       const labels = {
         dashboard: ["Dashboard", "Leitura estratégica do perfil, métricas e decisões de conteúdo."],
         diagnostico: ["Diagnóstico", "Problemas, oportunidades e prioridades para a agência agir."],
-        plano: ["Plano", "Planejamento editorial orientado por objetivo, formato e audiência do perfil."],
-        concorrencia: ["Concorrência", "Leitura do mercado e plano para disputar atenção no Instagram."]
+        plano: ["Plano", "Analisar perfil, entender audiência e só depois gerar conteúdo."],
+        concorrencia: ["Concorrência", "Leitura do mercado com base no cliente atual."]
       };
 
       pageTitle.textContent = labels[tab][0];
@@ -510,7 +491,7 @@
       out.innerHTML = `<div class="surface card"><div class="error">${escapeHtml(msg)}</div></div>`;
     }
 
-    function renderEmpty(msg = "Sem dados disponíveis") {
+    function renderEmpty(msg = "Sem dados") {
       out.innerHTML = `<div class="surface card"><div class="empty">${escapeHtml(msg)}</div></div>`;
     }
 
@@ -531,66 +512,91 @@
       return data;
     }
 
-    function renderList(items = []) {
+    function renderItems(items = []) {
       if (!items.length) return `<div class="empty">Sem dados nesta seção.</div>`;
-      return `<div class="list">${items.map(i => `<div class="item">${escapeHtml(i)}</div>`).join("")}</div>`;
+      return `<div class="item-list">${items.map(item => `<div class="item">${escapeHtml(item)}</div>`).join("")}</div>`;
+    }
+
+    function renderAnalysisBox(analysis = {}) {
+      return `
+        <div class="analysis-box">
+          <h3>Análise do perfil</h3>
+          <div class="analysis-grid">
+            <div class="mini">
+              <strong>Nicho analisado</strong>
+              <div class="subtle" style="margin-top:8px">${escapeHtml(analysis.niche_analysis || "-")}</div>
+            </div>
+            <div class="mini">
+              <strong>Audiência</strong>
+              <div class="subtle" style="margin-top:8px">${escapeHtml(analysis.audience_summary || "-")}</div>
+            </div>
+            <div class="mini">
+              <strong>Dores</strong>
+              <div class="subtle" style="margin-top:8px">${escapeHtml((analysis.pain_points || []).join(" • ") || "-")}</div>
+            </div>
+            <div class="mini">
+              <strong>Ângulos editoriais</strong>
+              <div class="subtle" style="margin-top:8px">${escapeHtml((analysis.content_angles || []).join(" • ") || "-")}</div>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function renderDashboard(data) {
+      const analysis = data.analysis || {};
       const profile = data.profile || {};
       const metrics = data.metrics || {};
       const summary = metrics.summary || {};
-      const top = metrics.top_contents || [];
 
       out.innerHTML = `
+        ${renderAnalysisBox(analysis)}
+
         <div class="grid">
           <div class="surface metric span-3">
             <small>Alcance</small>
             <strong>${Number(summary.alcance || 0).toLocaleString("pt-BR")}</strong>
             <span>Pessoas alcançadas no período.</span>
           </div>
-
           <div class="surface metric span-3">
             <small>Impressões</small>
             <strong>${Number(summary.impressoes || 0).toLocaleString("pt-BR")}</strong>
-            <span>Volume total de exibições.</span>
+            <span>Total de exibições.</span>
           </div>
-
           <div class="surface metric span-3">
             <small>Engajamentos</small>
             <strong>${Number(summary.engajamentos || 0).toLocaleString("pt-BR")}</strong>
             <span>Interações consolidadas.</span>
           </div>
-
           <div class="surface metric span-3">
-            <small>Taxa média</small>
+            <small>ER média</small>
             <strong>${Number(summary.taxa_engajamento_media || 0).toLocaleString("pt-BR")}%</strong>
-            <span>ER média dos conteúdos.</span>
+            <span>Taxa média do período.</span>
           </div>
 
           <div class="surface card span-6">
             <h3>Bio</h3>
-            ${renderList(profile.bio || [])}
+            ${renderItems(profile.bio || [])}
           </div>
 
           <div class="surface card span-6">
             <h3>Melhorias</h3>
-            ${renderList(profile.melhorias || [])}
+            ${renderItems(profile.melhorias || [])}
           </div>
 
           <div class="surface card span-6">
             <h3>Posicionamento</h3>
-            <div class="item">${escapeHtml(profile.posicionamento || "Sem posicionamento.")}</div>
+            <div class="item">${escapeHtml(profile.posicionamento || "-")}</div>
           </div>
 
           <div class="surface card span-6">
             <h3>Insights para a agência</h3>
-            ${renderList(profile.insights || [])}
+            ${renderItems(profile.insights || [])}
           </div>
 
           <div class="surface card span-12">
             <h3>Top conteúdos</h3>
-            ${top.length ? `
+            ${(metrics.top_contents || []).length ? `
               <table>
                 <thead>
                   <tr>
@@ -604,7 +610,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${top.map(item => `
+                  ${(metrics.top_contents || []).map(item => `
                     <tr>
                       <td>${escapeHtml(item.date || "-")}</td>
                       <td>${escapeHtml(item.titulo || "-")}</td>
@@ -617,7 +623,7 @@
                   `).join("")}
                 </tbody>
               </table>
-            ` : `<div class="empty">Sem métricas no período selecionado.</div>`}
+            ` : `<div class="empty">Sem métricas para o período.</div>`}
           </div>
         </div>
       `;
@@ -625,22 +631,24 @@
 
     function renderDiagnostico(data) {
       out.innerHTML = `
+        ${renderAnalysisBox(data.analysis || {})}
+
         <div class="grid">
           <div class="surface card span-6">
             <h3>Problemas</h3>
-            ${renderList(data.problemas || [])}
+            ${renderItems(data.problemas || [])}
           </div>
           <div class="surface card span-6">
             <h3>Oportunidades</h3>
-            ${renderList(data.oportunidades || [])}
+            ${renderItems(data.oportunidades || [])}
           </div>
           <div class="surface card span-6">
             <h3>Ações em 14 dias</h3>
-            ${renderList(data.acoes_14_dias || [])}
+            ${renderItems(data.acoes_14_dias || [])}
           </div>
           <div class="surface card span-6">
             <h3>Prioridades da agência</h3>
-            ${renderList(data.prioridade_agencia || [])}
+            ${renderItems(data.prioridade_agencia || [])}
           </div>
         </div>
       `;
@@ -652,10 +660,14 @@
       return "low";
     }
 
-    function renderPlannerShell() {
+    function renderPlanShell() {
+      const label = selected?.brandName || selected?.username || "";
+      const niche = selected?.niche || "";
+      const city = selected?.city || "";
+
       out.innerHTML = `
         <div class="planner-layout">
-          <aside class="surface planner-sidebar">
+          <aside class="surface planner-config">
             <h3 style="margin-top:0">Configuração do plano</h3>
 
             <div class="form-grid">
@@ -700,32 +712,22 @@
               </div>
 
               <div>
-                <label>Cidade/base</label>
-                <input id="city" class="field" style="width:100%;margin-top:8px" value="Linhares">
-              </div>
-
-              <div>
                 <label>Tom da marca</label>
                 <input id="tone" class="field" style="width:100%;margin-top:8px" value="humano, direto, especialista e sem clichê">
               </div>
 
               <p class="hint">
-                O plano será criado para a audiência do perfil, não para gestão interna do negócio.
+                Antes de gerar o plano, a IA reanalisa o perfil para entender nicho, audiência, dores e ângulos de conteúdo.
               </p>
 
-              <button id="generatePlanBtn" class="btn primary">Gerar plano</button>
+              <button id="generatePlanBtn" class="btn primary">Analisar perfil e gerar plano</button>
             </div>
           </aside>
 
           <section class="surface planner-results" id="plannerArea">
-            <div class="planner-results-header">
-              <div>
-                <h3 style="margin:0">Plano de conteúdo</h3>
-                <div class="subtle">Conteúdo pensado para decisão, criatividade e execução.</div>
-              </div>
-            </div>
-
-            <div class="empty">Configure o plano ao lado e clique em gerar.</div>
+            <h3 style="margin-top:0">Plano de conteúdo</h3>
+            <div class="subtle" style="margin-bottom:14px">${escapeHtml(label)} • ${escapeHtml(niche)} • ${escapeHtml(city)}</div>
+            <div class="empty">Clique em “Analisar perfil e gerar plano”.</div>
           </section>
         </div>
       `;
@@ -734,9 +736,7 @@
     }
 
     function renderPosts(posts = []) {
-      if (!posts.length) {
-        return `<div class="empty">Nenhum post gerado.</div>`;
-      }
+      if (!posts.length) return `<div class="empty">Nenhum post gerado.</div>`;
 
       return `
         <div class="post-grid">
@@ -749,7 +749,7 @@
 
               <h3 style="margin:0">${escapeHtml(post.theme || `Post ${index + 1}`)}</h3>
 
-              <div class="score-box ${scoreClass(Number(post.viral_score?.score || 0))}">
+              <div class="score ${scoreClass(Number(post.viral_score?.score || 0))}">
                 <div>
                   <div class="subtle">Nota de viralização</div>
                   <strong>${Number(post.viral_score?.score || 0).toFixed(1)}</strong>
@@ -786,7 +786,7 @@
                 <div>${escapeHtml(post.creative_direction || "-")}</div>
               </div>
 
-              <button class="btn ghost" onclick="copyCaption(${index})">Copiar legenda</button>
+              <button class="btn" onclick="copyCaption(${index})">Copiar legenda</button>
             </article>
           `).join("")}
         </div>
@@ -794,17 +794,16 @@
     }
 
     async function generatePlan() {
-      const plannerArea = document.getElementById("plannerArea");
-      plannerArea.scrollIntoView({ behavior: "smooth", block: "start" });
-      plannerArea.innerHTML = `<div class="loading">Gerando plano estratégico e organizando os cards...</div>`;
+      const area = document.getElementById("plannerArea");
+      area.scrollIntoView({ behavior: "smooth", block: "start" });
+      area.innerHTML = `<div class="loading">Analisando o perfil e criando o plano...</div>`;
 
       try {
         const goal = document.getElementById("goal").value;
-        const secondaryGoals = [...document.querySelectorAll(".secondary-goal:checked")].map(el => el.value);
+        const secondaryGoals = [...document.querySelectorAll(".secondary-goal:checked')].map(el => el.value);
         const qtyReels = Number(document.getElementById("qtyReels").value || 0);
         const qtyCarrossel = Number(document.getElementById("qtyCarrossel").value || 0);
         const qtyFoto = Number(document.getElementById("qtyFoto").value || 0);
-        const city = document.getElementById("city").value || "Linhares";
         const tone = document.getElementById("tone").value || "humano, direto, especialista e sem clichê";
 
         const data = await apiPost("/api/plano", {
@@ -813,42 +812,44 @@
           qtyReels,
           qtyCarrossel,
           qtyFoto,
-          city,
           tone
         });
 
         lastPosts = data.posts || [];
-        plannerArea.innerHTML = `
-          <div class="planner-results-header">
+
+        area.innerHTML = `
+          ${renderAnalysisBox(data.analysis || {})}
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
             <div>
               <h3 style="margin:0">Plano gerado</h3>
-              <div class="subtle">
-                Objetivo principal: ${escapeHtml(goal)} • Total: ${lastPosts.length} peças
-              </div>
+              <div class="subtle">Total de peças: ${lastPosts.length}</div>
             </div>
-            <button class="btn primary" id="backToConfigBtn">Voltar ao topo do plano</button>
+            <button class="btn primary" id="backToConfigBtn">Voltar à configuração</button>
           </div>
           ${renderPosts(lastPosts)}
         `;
 
         document.getElementById("backToConfigBtn").addEventListener("click", () => {
-          document.querySelector(".planner-sidebar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.querySelector(".planner-config")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       } catch (e) {
-        plannerArea.innerHTML = `<div class="error">${escapeHtml(e.message || "Erro ao gerar plano.")}</div>`;
+        area.innerHTML = `<div class="error">${escapeHtml(e.message || "Erro ao gerar plano.")}</div>`;
       }
     }
 
     function renderConcorrencia(data) {
+      const competitors = (data.concorrentes || []).map(c => `${c.nome} — ${c.perfil}`);
+
       out.innerHTML = `
+        ${renderAnalysisBox(data.analysis || {})}
         <div class="grid">
           <div class="surface card span-6">
             <h3>Concorrentes</h3>
-            ${renderList((data.concorrentes || []).map(c => `${c.nome} — ${c.perfil}`))}
+            ${renderItems(competitors)}
           </div>
           <div class="surface card span-6">
             <h3>Plano para ganhar</h3>
-            ${renderList(data.plano_para_ganhar || [])}
+            ${renderItems(data.plano_para_ganhar || [])}
           </div>
         </div>
       `;
@@ -874,14 +875,12 @@
         }
 
         if (tab === "plano") {
-          return renderPlannerShell();
+          return renderPlanShell();
         }
 
         if (tab === "concorrencia") {
           renderLoading("Analisando concorrência...");
-          const data = await apiPost("/api/concorrencia", {
-            city: "Linhares"
-          });
+          const data = await apiPost("/api/concorrencia");
           return renderConcorrencia(data);
         }
       } catch (e) {
@@ -907,7 +906,9 @@
         accounts.forEach(item => {
           const option = document.createElement("option");
           option.value = item.id;
-          option.textContent = `${item.username} • ${item.niche}`;
+          option.textContent = item.brandName
+            ? `${item.brandName} • ${item.niche}`
+            : `${item.username} • ${item.niche}`;
           acc.appendChild(option);
         });
 
@@ -932,8 +933,7 @@
 
     async function copyCaption(index) {
       try {
-        const caption = lastPosts[index]?.caption || "";
-        await navigator.clipboard.writeText(caption);
+        await navigator.clipboard.writeText(lastPosts[index]?.caption || "");
         alert("Legenda copiada.");
       } catch {
         alert("Não foi possível copiar.");
