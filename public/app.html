@@ -6,11 +6,19 @@
 <title>Instagram Planner</title>
 
 <style>
+:root{
+  --bg:#050414;
+  --card:#0f0c2a;
+  --accent:#2bd1b4;
+  --text:#fff;
+  --muted:#7c7a9a;
+}
+
 body{
   margin:0;
   font-family:Arial;
-  background:#06051a;
-  color:#fff;
+  background:var(--bg);
+  color:var(--text);
 }
 
 /* LAYOUT */
@@ -20,30 +28,28 @@ body{
 
 /* SIDEBAR */
 .sidebar{
-  width:240px;
-  background:#0c0a1a;
+  width:260px;
+  background:#07061c;
   height:100vh;
-  padding:20px;
+  padding:25px;
   border-right:1px solid rgba(255,255,255,.05);
 }
 
-.sidebar h2{
+.sidebar h1{
   font-size:18px;
-}
-
-.menu{
-  margin-top:20px;
+  margin-bottom:30px;
 }
 
 .menu div{
   padding:12px;
+  margin-bottom:8px;
   border-radius:10px;
+  color:var(--muted);
   cursor:pointer;
-  color:#aaa;
 }
 
 .menu div:hover{
-  background:#17142d;
+  background:var(--card);
   color:#fff;
 }
 
@@ -53,11 +59,11 @@ body{
   padding:30px;
 }
 
-/* TOP */
-.top{
+/* TOPBAR */
+.topbar{
   display:flex;
   gap:10px;
-  margin-bottom:20px;
+  margin-bottom:25px;
 }
 
 select,button{
@@ -67,46 +73,68 @@ select,button{
 }
 
 button{
-  background:#ff6b35;
-  color:#fff;
+  background:var(--accent);
+  color:#000;
+  font-weight:bold;
   cursor:pointer;
 }
 
-/* GRID */
+/* CARDS */
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:15px;
+  margin-bottom:30px;
+}
+
+.card{
+  background:var(--card);
+  padding:20px;
+  border-radius:14px;
+}
+
+.card h3{
+  font-size:13px;
+  color:var(--muted);
+}
+
+.card p{
+  font-size:24px;
+  margin:5px 0 0;
+}
+
+/* POSTS GRID */
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
   gap:15px;
 }
 
-/* CARD */
-.card{
-  background:#17142d;
-  padding:16px;
+.post{
+  background:var(--card);
+  padding:15px;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.05);
 }
 
 .tag{
   font-size:11px;
-  color:#ff6b35;
+  color:var(--accent);
 }
 
 .title{
   font-weight:bold;
-  margin-top:5px;
+  margin-top:6px;
 }
 
 .small{
   font-size:13px;
-  color:#aaa;
+  color:var(--muted);
 }
 
-/* CALENDARIO */
+/* CALENDAR */
 .calendar{
-  margin-top:20px;
+  margin-top:30px;
 }
-
 </style>
 </head>
 
@@ -116,11 +144,11 @@ button{
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <h2>Planner</h2>
+  <h1>Planner</h1>
 
   <div class="menu">
     <div>Dashboard</div>
-    <div>Plano Mensal</div>
+    <div>Plano</div>
     <div>Calendário</div>
   </div>
 </div>
@@ -128,20 +156,23 @@ button{
 <!-- MAIN -->
 <div class="main">
 
-<h1>Planejamento de Conteúdo</h1>
+<h2>Saúde da Conta</h2>
 
-<div class="top">
+<div class="cards">
+  <div class="card"><h3>Seguidores</h3><p>--</p></div>
+  <div class="card"><h3>Alcance</h3><p>--</p></div>
+  <div class="card"><h3>Impressões</h3><p>--</p></div>
+  <div class="card"><h3>Engajamento</h3><p>--</p></div>
+</div>
+
+<div class="topbar">
   <select id="account"></select>
-
   <select id="goal">
     <option>Crescimento</option>
     <option>Vendas</option>
-    <option>Engajamento</option>
   </select>
-
   <select id="tone">
     <option>Profissional</option>
-    <option>Descontraído</option>
     <option>Autoridade</option>
   </select>
 
@@ -162,7 +193,6 @@ button{
 let accounts = [];
 let lastPlan = [];
 
-// INIT
 async function init(){
   const res = await fetch("/api/me");
   const data = await res.json();
@@ -181,7 +211,6 @@ async function init(){
 
 init();
 
-// GERAR
 async function genPlan(){
 
   const igId = document.getElementById("account").value;
@@ -204,67 +233,33 @@ async function genPlan(){
   renderCalendar(lastPlan);
 }
 
-// POSTS
 function renderPosts(posts){
-
   const el = document.getElementById("posts");
   el.innerHTML = "";
 
   posts.forEach(p=>{
-
-    const pJson = encodeURIComponent(JSON.stringify(p));
-
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <div class="tag">${p.format}</div>
-      <div class="title">${p.theme}</div>
-
-      <p class="small">${(p.caption || "").substring(0,100)}...</p>
-
-      <button onclick='copyPost(JSON.parse(decodeURIComponent("${pJson}")))'>
-        Copiar
-      </button>
+    el.innerHTML += `
+      <div class="post">
+        <div class="tag">${p.format}</div>
+        <div class="title">${p.theme}</div>
+        <p class="small">${(p.caption||"").substring(0,100)}...</p>
+      </div>
     `;
-
-    el.appendChild(div);
   });
 }
 
-// CALENDARIO
 function renderCalendar(posts){
-
   const el = document.getElementById("calendar");
   el.innerHTML = "";
 
   posts.forEach(p=>{
-
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <div class="tag">${p.format}</div>
-      <div>${p.theme}</div>
+    el.innerHTML += `
+      <div class="post">
+        <div class="tag">${p.format}</div>
+        <div>${p.theme}</div>
+      </div>
     `;
-
-    el.appendChild(div);
   });
-}
-
-// COPY
-function copyPost(p){
-
-  const text = `
-${p.theme}
-
-${p.caption}
-
-${(p.script_or_slides || []).join("\n")}
-`;
-
-  navigator.clipboard.writeText(text);
-  alert("Copiado!");
 }
 
 </script>
