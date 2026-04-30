@@ -3,27 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planner</title>
+<title>Instagram Planner</title>
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:#0c0a1a;
+  background:#06051a;
   color:#fff;
 }
 
-.container{
-  max-width:1200px;
-  margin:auto;
+/* LAYOUT */
+.layout{
+  display:flex;
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:240px;
+  background:#0c0a1a;
+  height:100vh;
   padding:20px;
+  border-right:1px solid rgba(255,255,255,.05);
+}
+
+.sidebar h2{
+  font-size:18px;
+}
+
+.menu{
+  margin-top:20px;
+}
+
+.menu div{
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  color:#aaa;
+}
+
+.menu div:hover{
+  background:#17142d;
+  color:#fff;
+}
+
+/* MAIN */
+.main{
+  flex:1;
+  padding:30px;
+}
+
+/* TOP */
+.top{
+  display:flex;
+  gap:10px;
+  margin-bottom:20px;
 }
 
 select,button{
   padding:10px;
-  border-radius:8px;
+  border-radius:10px;
   border:none;
-  margin-right:10px;
 }
 
 button{
@@ -32,54 +72,89 @@ button{
   cursor:pointer;
 }
 
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:15px;
+}
+
+/* CARD */
 .card{
   background:#17142d;
   padding:16px;
-  border-radius:12px;
-  margin-top:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.05);
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
-  gap:12px;
+.tag{
+  font-size:11px;
+  color:#ff6b35;
+}
+
+.title{
+  font-weight:bold;
+  margin-top:5px;
 }
 
 .small{
   font-size:13px;
   color:#aaa;
 }
+
+/* CALENDARIO */
+.calendar{
+  margin-top:20px;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="layout">
 
-<h2>Planejador</h2>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h2>Planner</h2>
 
-<select id="account"></select>
+  <div class="menu">
+    <div>Dashboard</div>
+    <div>Plano Mensal</div>
+    <div>Calendário</div>
+  </div>
+</div>
 
-<select id="goal">
-<option>Crescimento</option>
-<option>Vendas</option>
-<option>Engajamento</option>
-</select>
+<!-- MAIN -->
+<div class="main">
 
-<select id="tone">
-<option>Profissional</option>
-<option>Descontraído</option>
-<option>Autoridade</option>
-</select>
+<h1>Planejamento de Conteúdo</h1>
 
-<button onclick="genPlan()">Gerar Plano</button>
+<div class="top">
+  <select id="account"></select>
 
-<h3>Posts</h3>
+  <select id="goal">
+    <option>Crescimento</option>
+    <option>Vendas</option>
+    <option>Engajamento</option>
+  </select>
+
+  <select id="tone">
+    <option>Profissional</option>
+    <option>Descontraído</option>
+    <option>Autoridade</option>
+  </select>
+
+  <button onclick="genPlan()">Gerar Plano</button>
+</div>
+
+<h2>Posts</h2>
 <div id="posts" class="grid"></div>
 
-<h3>Calendário</h3>
+<h2 class="calendar">Calendário</h2>
 <div id="calendar" class="grid"></div>
 
+</div>
 </div>
 
 <script>
@@ -87,7 +162,7 @@ button{
 let accounts = [];
 let lastPlan = [];
 
-// ================= INIT =================
+// INIT
 async function init(){
   const res = await fetch("/api/me");
   const data = await res.json();
@@ -106,7 +181,7 @@ async function init(){
 
 init();
 
-// ================= GERAR PLANO =================
+// GERAR
 async function genPlan(){
 
   const igId = document.getElementById("account").value;
@@ -114,7 +189,6 @@ async function genPlan(){
   const tone = document.getElementById("tone").value;
 
   document.getElementById("posts").innerHTML = "Gerando...";
-  document.getElementById("calendar").innerHTML = "";
 
   const res = await fetch("/api/generate",{
     method:"POST",
@@ -130,7 +204,7 @@ async function genPlan(){
   renderCalendar(lastPlan);
 }
 
-// ================= RENDER POSTS =================
+// POSTS
 function renderPosts(posts){
 
   const el = document.getElementById("posts");
@@ -138,25 +212,19 @@ function renderPosts(posts){
 
   posts.forEach(p=>{
 
-    const pJson = encodeURIComponent(
-      JSON.stringify(p).replace(/'/g, '&apos;').replace(/"/g, '&quot;')
-    );
+    const pJson = encodeURIComponent(JSON.stringify(p));
 
     const div = document.createElement("div");
     div.className = "card";
 
     div.innerHTML = `
-      <b>${p.format}</b><br>
-      <strong>${p.theme}</strong>
+      <div class="tag">${p.format}</div>
+      <div class="title">${p.theme}</div>
 
-      <p class="small">${(p.caption || "").substring(0,120)}...</p>
+      <p class="small">${(p.caption || "").substring(0,100)}...</p>
 
-      <button onclick='copyPostContent(JSON.parse(decodeURIComponent("${pJson}")))'>
+      <button onclick='copyPost(JSON.parse(decodeURIComponent("${pJson}")))'>
         Copiar
-      </button>
-
-      <button onclick='evaluatePost(JSON.parse(decodeURIComponent("${pJson}")))'>
-        Avaliar
       </button>
     `;
 
@@ -164,7 +232,7 @@ function renderPosts(posts){
   });
 }
 
-// ================= CALENDÁRIO =================
+// CALENDARIO
 function renderCalendar(posts){
 
   const el = document.getElementById("calendar");
@@ -176,16 +244,16 @@ function renderCalendar(posts){
     div.className = "card";
 
     div.innerHTML = `
-      <strong>${p.format}</strong><br>
-      ${p.theme}
+      <div class="tag">${p.format}</div>
+      <div>${p.theme}</div>
     `;
 
     el.appendChild(div);
   });
 }
 
-// ================= COPY =================
-function copyPostContent(p){
+// COPY
+function copyPost(p){
 
   const text = `
 ${p.theme}
@@ -196,20 +264,7 @@ ${(p.script_or_slides || []).join("\n")}
 `;
 
   navigator.clipboard.writeText(text);
-
   alert("Copiado!");
-}
-
-// ================= AVALIAR =================
-function evaluatePost(p){
-
-  let score = 0;
-
-  if(p.caption.length > 100) score += 2;
-  if(p.script_or_slides?.length >= 3) score += 2;
-  if(!p.caption.toLowerCase().includes("você sabia")) score += 2;
-
-  alert("Score do post: " + score + "/6");
 }
 
 </script>
