@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Social Planner Pro v4.1.2 - AI POWERED</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
@@ -10,227 +11,938 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--brand:#ff6b35;--brand2:#ffd166;--bg:#0c0a1a;--surface:#13112a;--card:#1c1a35;--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.55);--subtle:rgba(255,255,255,.25)}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-header{background:var(--surface);border-bottom:.5px solid var(--border);padding:.8rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:100}
-.logo{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;background:linear-gradient(90deg,#ff6b35,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.v-badge{background:rgba(255,107,53,.2);border:.5px solid rgba(255,107,53,.4);border-radius:20px;padding:2px 10px;font-size:10px;color:#ffb38a}
-.acc-chip{background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .2s;white-space:nowrap}
-.acc-chip.on{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.5)}
-.btn-out{font-size:11px;color:var(--muted);background:none;border:.5px solid var(--border);padding:4px 10px;border-radius:8px;cursor:pointer}
-.nav-tabs{background:var(--surface);border-bottom:.5px solid var(--border);display:flex;overflow-x:auto;padding:0 1rem;position:sticky;top:53px;z-index:99}
-.nav-tab{padding:11px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
-.nav-tab.on{color:var(--brand);border-bottom-color:var(--brand)}
-.page{display:none;padding:1.25rem;max-width:960px;margin:0 auto}.page.on{display:block}
-.card{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1rem}
-.card-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
-.cicon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1rem}
-.metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
-.metric-card .mv{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700}
-.metric-card .ml{font-size:11px;color:var(--muted);margin-top:3px}
-.chart-wrap{position:relative;height:180px;margin:1rem 0}
-.flabel{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;display:block}
+:root{
+  --brand:#ff6b35;
+  --brand2:#ffd166;
+  --bg:#0c0a1a;
+  --surface:#13112a;
+  --card:#1c1a35;
+  --border:rgba(255,255,255,.08);
+  --text:#fff;
+  --muted:rgba(255,255,255,.55);
+  --subtle:rgba(255,255,255,.25)
+}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden
+}
+
+/* SHELL NOVO */
+.app-shell{
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr);
+  min-height:100vh;
+}
+.sidebar{
+  background:#0b0915;
+  border-right:.5px solid var(--border);
+  padding:1rem 1rem .75rem;
+  display:flex;
+  flex-direction:column;
+  gap:1.5rem;
+}
+.sidebar-logo{
+  font-family:'Syne',sans-serif;
+  font-weight:800;
+  font-size:.95rem;
+  color:#fff;
+}
+.sidebar-version{
+  display:inline-block;
+  margin-left:6px;
+  font-size:10px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:rgba(255,107,53,.12);
+  color:#ffb38a;
+}
+.sidebar-nav{
+  display:flex;
+  flex-direction:column;
+  gap:.4rem;
+}
+.nav-item{
+  text-align:left;
+  padding:.55rem .7rem;
+  border-radius:8px;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font-size:.8rem;
+  cursor:pointer;
+  transition:background .2s,color .2s;
+}
+.nav-item.on{
+  background:rgba(255,107,53,.15);
+  color:var(--brand);
+}
+.sidebar-footer{
+  margin-top:auto;
+}
+.main{
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+}
+.topbar{
+  padding:.9rem 1.4rem;
+  border-bottom:.5px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+}
+.topbar-title{
+  font-family:'Syne',sans-serif;
+  font-size:1rem;
+  font-weight:700;
+}
+.topbar-sub{
+  font-size:.75rem;
+  color:var(--muted);
+}
+.topbar-accounts{
+  display:flex;
+  gap:.5rem;
+  max-width:320px;
+  overflow-x:auto;
+}
+
+/* PÁGINAS E CARDS */
+.main-content{
+  padding:1.25rem 1.4rem 2rem;
+  max-width:1040px;
+}
+.page{display:none;max-width:960px;margin:0 auto}
+.page.on{display:block}
+.card{
+  background:var(--card);
+  border:.5px solid var(--border);
+  border-radius:14px;
+  padding:1.25rem;
+  margin-bottom:1rem
+}
+.card-title{
+  font-family:'Syne',sans-serif;
+  font-size:.9rem;
+  font-weight:700;
+  margin-bottom:1rem;
+  display:flex;
+  align-items:center;
+  gap:8px
+}
+.cicon{
+  width:26px;height:26px;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  flex-shrink:0
+}
+
+.metrics-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:.75rem;
+  margin-bottom:1rem
+}
+.metric-card{
+  background:var(--surface);
+  border:.5px solid var(--border);
+  border-radius:12px;
+  padding:.9rem;
+  text-align:center
+}
+.metric-card .mv{
+  font-family:'Syne',sans-serif;
+  font-size:1.4rem;
+  font-weight:700
+}
+.metric-card .ml{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:3px
+}
+.chart-wrap{
+  position:relative;
+  height:180px;
+  margin:1rem 0
+}
+
+.flabel{
+  font-size:11px;
+  font-weight:500;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:4px;
+  display:block
+}
 .fgroup{margin-bottom:.85rem;position:relative}
-input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .2s}
-input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
-.mix-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin:.75rem 0}
-.mix-item{background:var(--surface);border-radius:12px;padding:.75rem;text-align:center}
-.mix-label{font-size:11px;color:var(--muted);margin-bottom:.4rem}
-.mix-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700}
-.mix-btns{display:flex;justify-content:center;gap:.5rem;margin-top:.5rem}
-.mix-btn{width:26px;height:26px;border-radius:50%;border:.5px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
-.mix-btn:hover{border-color:var(--brand);color:var(--brand)}
-.gen-btn{width:100%;padding:14px;background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s;margin-top:.5rem}
-.gen-btn:hover{opacity:.9}.gen-btn:active{transform:scale(.99)}.gen-btn:disabled{opacity:.4;cursor:not-allowed}
-#cal-container{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:1rem}
-.cal-day{background:rgba(255,255,255,.03);border:.5px solid var(--border);aspect-ratio:1;border-radius:6px;padding:4px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.cal-day .dn{font-size:9px;font-weight:700;color:var(--subtle);position:absolute;top:3px;left:4px}
-.cal-day .dot-row{display:flex;gap:2px;margin-top:8px}
-.cal-day .dot{width:4px;height:4px;border-radius:50%}
-.fmt{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;white-space:nowrap}
+input,select,textarea{
+  width:100%;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  background:rgba(255,255,255,.05);
+  border:.5px solid var(--border);
+  border-radius:10px;
+  padding:9px 12px;
+  color:var(--text);
+  outline:none;
+  transition:border-color .2s
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(255,107,53,.1)
+}
+
+/* MIX */
+.mix-row{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:.75rem;
+  margin:.75rem 0
+}
+.mix-item{
+  background:var(--surface);
+  border-radius:12px;
+  padding:.75rem;
+  text-align:center
+}
+.mix-label{
+  font-size:11px;
+  color:var(--muted);
+  margin-bottom:.4rem
+}
+.mix-val{
+  font-family:'Syne',sans-serif;
+  font-size:1.3rem;
+  font-weight:700
+}
+.mix-btns{
+  display:flex;
+  justify-content:center;
+  gap:.5rem;
+  margin-top:.5rem
+}
+.mix-btn{
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:.5px solid var(--border);
+  background:rgba(255,255,255,.05);
+  color:var(--text);
+  cursor:pointer;
+  font-size:1rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .2s
+}
+.mix-btn:hover{
+  border-color:var(--brand);
+  color:var(--brand)
+}
+
+/* BOTÕES */
+.acc-chip{
+  background:rgba(255,255,255,.05);
+  border:.5px solid var(--border);
+  border-radius:20px;
+  padding:5px 12px;
+  font-size:12px;
+  cursor:pointer;
+  transition:all .2s;
+  white-space:nowrap
+}
+.acc-chip.on{
+  background:rgba(255,107,53,.15);
+  border-color:rgba(255,107,53,.5)
+}
+.btn-out{
+  font-size:11px;
+  color:var(--muted);
+  background:none;
+  border:.5px solid var(--border);
+  padding:4px 10px;
+  border-radius:8px;
+  cursor:pointer
+}
+.gen-btn{
+  width:100%;
+  padding:14px;
+  background:linear-gradient(135deg,#ff6b35,#f7931e);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-family:'Syne',sans-serif;
+  font-size:.95rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:opacity .2s,transform .1s;
+  margin-top:.5rem
+}
+.gen-btn:hover{opacity:.9}
+.gen-btn:active{transform:scale(.99)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* CALENDÁRIO + FEED */
+#cal-container{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+  margin-top:1rem
+}
+.cal-day{
+  background:rgba(255,255,255,.03);
+  border:.5px solid var(--border);
+  aspect-ratio:1;
+  border-radius:6px;
+  padding:4px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center
+}
+.cal-day .dn{
+  font-size:9px;
+  font-weight:700;
+  color:var(--subtle);
+  position:absolute;
+  top:3px;
+  left:4px
+}
+.cal-day .dot-row{
+  display:flex;
+  gap:2px;
+  margin-top:8px
+}
+.cal-day .dot{
+  width:4px;
+  height:4px;
+  border-radius:50%
+}
+.fmt{
+  display:inline-block;
+  border-radius:20px;
+  padding:2px 8px;
+  font-size:10px;
+  font-weight:500;
+  white-space:nowrap
+}
 .fmt-r{background:rgba(255,107,53,.15);color:#ff6b35}
 .fmt-c{background:rgba(55,138,221,.15);color:#378add}
 .fmt-f{background:rgba(99,153,34,.15);color:#639922}
-.script-box{background:rgba(255,107,53,.05);border:.5px solid rgba(255,107,53,.2);border-radius:8px;padding:.75rem;margin-top:.5rem}
-.script-label{font-size:10px;font-weight:600;color:rgba(255,107,53,.8);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.03em}
-.script-text{font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;white-space:pre-wrap}
-.sc-copy-btn{background:rgba(255,255,255,.05);border:.5px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:9px;cursor:pointer;margin-top:4px}
-.sc-copy-btn:hover{border-color:var(--brand);color:var(--brand)}
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);color:#000;padding:10px 20px;border-radius:40px;font-size:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:2000;display:none;align-items:center;gap:8px}
-#toast.show{display:flex;animation:slideUp .3s ease-out}
-@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
-.manual-box{background:rgba(255,107,53,.08);border:.5px solid rgba(255,107,53,.2);border-radius:12px;padding:1rem;margin-bottom:1rem}
-.manual-title{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
-.manual-input-wrap{display:flex;gap:8px}
-.manual-input-wrap input{flex:1;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.05);border:.5px solid var(--border);border-radius:8px;color:#fff;outline:none}
-.btn-test{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:0 15px;font-size:11px;font-weight:600;cursor:pointer}
-.ld-wrap{display:none;text-align:center;padding:2.5rem 1rem}
-.ld-ring{width:48px;height:48px;border-radius:50%;border:3px solid rgba(255,107,53,.15);border-top-color:var(--brand);animation:spin 1s linear infinite;margin:0 auto 1rem}
+.script-box{
+  background:rgba(255,107,53,.05);
+  border:.5px solid rgba(255,107,53,.2);
+  border-radius:8px;
+  padding:.75rem;
+  margin-top:.5rem
+}
+.script-label{
+  font-size:10px;
+  font-weight:600;
+  color:rgba(255,107,53,.8);
+  margin-bottom:.4rem;
+  text-transform:uppercase;
+  letter-spacing:.03em
+}
+.script-text{
+  font-size:11px;
+  color:rgba(255,255,255,.75);
+  line-height:1.7;
+  white-space:pre-wrap
+}
+.sc-copy-btn{
+  background:rgba(255,255,255,.05);
+  border:.5px solid var(--border);
+  color:var(--muted);
+  padding:3px 8px;
+  border-radius:6px;
+  font-size:9px;
+  cursor:pointer;
+  margin-top:4px
+}
+.sc-copy-btn:hover{
+  border-color:var(--brand);
+  color:var(--brand)
+}
+
+/* TOAST */
+#toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(255,255,255,.95);
+  color:#000;
+  padding:10px 20px;
+  border-radius:40px;
+  font-size:12px;
+  font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);
+  z-index:2000;
+  display:none;
+  align-items:center;
+  gap:8px
+}
+#toast.show{
+  display:flex;
+  animation:slideUp .3s ease-out
+}
+@keyframes slideUp{
+  from{transform:translate(-50%,20px);opacity:0}
+  to{transform:translate(-50%,0);opacity:1}
+}
+
+/* MANUAL TOKEN */
+.manual-box{
+  background:rgba(255,107,53,.08);
+  border:.5px solid rgba(255,107,53,.2);
+  border-radius:12px;
+  padding:1rem;
+  margin-bottom:1rem
+}
+.manual-title{
+  font-size:12px;
+  font-weight:700;
+  color:var(--brand);
+  margin-bottom:.5rem;
+  display:flex;
+  align-items:center;
+  gap:6px
+}
+.manual-input-wrap{
+  display:flex;
+  gap:8px
+}
+.manual-input-wrap input{
+  flex:1;
+  font-size:11px;
+  padding:8px 12px;
+  background:rgba(255,255,255,.05);
+  border:.5px solid var(--border);
+  border-radius:8px;
+  color:#fff;
+  outline:none
+}
+.btn-test{
+  background:var(--brand);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:0 15px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer
+}
+
+/* LOADER */
+.ld-wrap{
+  display:none;
+  text-align:center;
+  padding:2.5rem 1rem
+}
+.ld-ring{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:3px solid rgba(255,107,53,.15);
+  border-top-color:var(--brand);
+  animation:spin 1s linear infinite;
+  margin:0 auto 1rem
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-.ld-msg{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:.75rem}
-.ld-steps{display:flex;justify-content:center;gap:5px;flex-wrap:wrap}
-.lds{font-size:11px;color:var(--subtle);padding:3px 10px;border-radius:20px;border:.5px solid var(--border);transition:all .3s}
-.lds.act{color:var(--brand);background:rgba(255,107,53,.08);border-color:rgba(255,107,53,.3)}
-.lds.done{color:#639922;background:rgba(99,153,34,.08);border-color:rgba(99,153,34,.3)}
-.rtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem}
-.rtab{padding:6px 13px;font-size:12px;font-weight:500;border-radius:20px;border:.5px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:all .2s}
-.rtab.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.5);color:var(--brand)}
-.rs{display:none}.rs.on{display:block}
+.ld-msg{
+  font-size:13px;
+  color:var(--muted);
+  font-style:italic;
+  margin-bottom:.75rem
+}
+.ld-steps{
+  display:flex;
+  justify-content:center;
+  gap:5px;
+  flex-wrap:wrap
+}
+.lds{
+  font-size:11px;
+  color:var(--subtle);
+  padding:3px 10px;
+  border-radius:20px;
+  border:.5px solid var(--border);
+  transition:all .3s
+}
+.lds.act{
+  color:var(--brand);
+  background:rgba(255,107,53,.08);
+  border-color:rgba(255,107,53,.3)
+}
+.lds.done{
+  color:#639922;
+  background:rgba(99,153,34,.08);
+  border-color:rgba(99,153,34,.3)
+}
+
+/* RTABS */
+.rtabs{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-bottom:1rem
+}
+.rtab{
+  padding:6px 13px;
+  font-size:12px;
+  font-weight:500;
+  border-radius:20px;
+  border:.5px solid var(--border);
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  cursor:pointer;
+  transition:all .2s
+}
+.rtab.on{
+  background:rgba(255,107,53,.2);
+  border-color:rgba(255,107,53,.5);
+  color:var(--brand)
+}
+.rs{display:none}
+.rs.on{display:block}
+
+/* RESPONSIVO SIMPLES */
+@media (max-width:860px){
+  .app-shell{
+    grid-template-columns:1fr;
+  }
+  .sidebar{
+    flex-direction:row;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .sidebar-nav{
+    flex-direction:row;
+  }
+  .sidebar-footer{
+    margin-top:0;
+  }
+  .topbar{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .topbar-accounts{
+    max-width:100%;
+  }
+}
 </style>
 </head>
 <body>
-<div style="background:#ff6b35;color:#fff;padding:12px;text-align:center;font-weight:800;font-size:15px;z-index:99999;position:fixed;top:0;left:0;right:0;box-shadow:0 4px 15px rgba(0,0,0,0.3);font-family:'Syne',sans-serif;">🚀 VERSÃO 4.1.2 RESTAURADA - DESIGN ORIGINAL</div>
-<div style="height:45px;"></div>
-<header>
-  <div style="display:flex;align-items:center;gap:12px">
-    <div class="logo">✦ Social Planner Pro</div>
-    <div class="v-badge">v4.1 AI</div>
-  </div>
-  <div id="acc-list" style="display:flex;gap:8px;overflow-x:auto;max-width:50vw;padding:4px 0"></div>
-  <button class="btn-out" onclick="location.href='/'">Sair</button>
-</header>
-<nav class="nav-tabs">
-  <div class="nav-tab on" onclick="goPage('dashboard',this)">Dashboard</div>
-  <div class="nav-tab" onclick="goPage('intelligence',this)">Inteligência</div>
-  <div class="nav-tab" onclick="goPage('planner',this)">Planejador</div>
-</nav>
-<main>
-  <div id="dashboard" class="page on">
-    <div class="manual-box">
-      <div class="manual-title">📸 Conectar Nova Conta do Instagram</div>
-      <div class="manual-input-wrap">
-        <input type="text" id="manual-token" placeholder="Cole seu Token de Acesso da Meta aqui...">
-        <button class="btn-test" id="btn-test-token">Conectar</button>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-logo">
+        ✦ Social Planner Pro
+        <span class="sidebar-version">v4.1 AI</span>
       </div>
-      <div id="diag-msg" style="font-size:10px;color:var(--muted);margin-top:8px">Conecte sua conta para começar.</div>
     </div>
-    <div class="card">
-      <div class="card-title"><div class="cicon" style="background:rgba(255,107,53,.15);color:#ff6b35">📊</div>Visão Geral</div>
-      <div class="metrics-grid">
-        <div class="metric-card"><div class="mv" id="m-followers">-</div><div class="ml">Seguidores</div></div>
-        <div class="metric-card"><div class="mv" id="m-posts">-</div><div class="ml">Posts</div></div>
-        <div class="metric-card"><div class="mv" id="m-er">-%</div><div class="ml">Engajamento</div></div>
+    <nav class="sidebar-nav">
+      <button class="nav-item on" onclick="goPage('dashboard', this)">Dashboard</button>
+      <button class="nav-item" onclick="goPage('intelligence', this)">Inteligência</button>
+      <button class="nav-item" onclick="goPage('planner', this)">Planejador</button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-out" onclick="location.href='/'">Sair</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">Painel de Clientes</div>
+        <div class="topbar-sub">Conecte ou selecione uma conta para começar</div>
       </div>
-      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
-    </div>
-  </div>
-  <div id="intelligence" class="page">
-    <div class="card">
-      <div class="card-title"><div class="cicon" style="background:rgba(186,117,23,.15);color:#ba7517">🧠</div>Análise Estratégica AI</div>
-      <div class="fgroup"><span class="flabel">Seu Nicho</span><input type="text" id="i-niche" placeholder="Ex: Moda Feminina, Marketing Digital..."/></div>
-      <div class="fgroup"><span class="flabel">Concorrentes (opcional)</span><input type="text" id="i-comp" placeholder="@perfil1, @perfil2..."/></div>
-      <button class="gen-btn" onclick="getIntelligence()">Analisar Perfil com GPT-4o</button>
-    </div>
-    <div id="intel-result" style="display:none">
-      <div class="card"><div class="card-title">💡 Sugestões de Conteúdo</div><div id="i-suggs" style="display:flex;flex-wrap:wrap;gap:5px"></div></div>
-      <div class="card"><div class="card-title">✨ Novas Opções de BIO</div><div id="i-bios"></div></div>
-    </div>
-  </div>
-  <div id="planner" class="page">
-    <div class="card">
-      <div class="card-title"><div class="cicon" style="background:rgba(99,153,34,.15);color:#639922">🚀</div>Gerar Plano de 30 Dias</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-        <div class="fgroup"><span class="flabel">Objetivo</span><select id="p-goal"><option value="Vendas">Vendas</option><option value="Engajamento">Engajamento</option><option value="Crescimento">Crescimento</option></select></div>
-        <div class="fgroup"><span class="flabel">Tom de Voz</span><select id="p-tone"><option value="Profissional">Profissional</option><option value="Descontraído">Descontraído</option><option value="Inspirador">Inspirador</option></select></div>
-      </div>
-      <div class="fgroup"><span class="flabel">Mix de Conteúdo</span>
-        <div class="mix-row">
-          <div class="mix-item"><div class="mix-label">Reels</div><div class="mix-val" id="v-reels">12</div><div class="mix-btns"><button class="mix-btn" onclick="updMix('reels',-1)">-</button><button class="mix-btn" onclick="updMix('reels',1)">+</button></div></div>
-          <div class="mix-item"><div class="mix-label">Carrossel</div><div class="mix-val" id="v-car">10</div><div class="mix-btns"><button class="mix-btn" onclick="updMix('car',-1)">-</button><button class="mix-btn" onclick="updMix('car',1)">+</button></div></div>
-          <div class="mix-item"><div class="mix-label">Foto</div><div class="mix-val" id="v-img">8</div><div class="mix-btns"><button class="mix-btn" onclick="updMix('img',-1)">-</button><button class="mix-btn" onclick="updMix('img',1)">+</button></div></div>
+      <div class="topbar-accounts" id="acc-list"></div>
+    </header>
+
+    <main class="main-content">
+      <div id="dashboard" class="page on">
+        <div class="manual-box">
+          <div class="manual-title">📸 Conectar Nova Conta do Instagram</div>
+          <div class="manual-input-wrap">
+            <input type="text" id="manual-token" placeholder="Cole seu Token de Acesso da Meta aqui...">
+            <button class="btn-test" id="btn-test-token">Conectar</button>
+          </div>
+          <div id="diag-msg" style="font-size:10px;color:var(--muted);margin-top:8px">
+            Conecte sua conta para começar.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <div class="cicon" style="background:rgba(255,107,53,.15);color:#ff6b35">📊</div>
+            Visão Geral
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="mv" id="m-followers">-</div>
+              <div class="ml">Seguidores</div>
+            </div>
+            <div class="metric-card">
+              <div class="mv" id="m-posts">-</div>
+              <div class="ml">Posts</div>
+            </div>
+            <div class="metric-card">
+              <div class="mv" id="m-er">-%</div>
+              <div class="ml">Engajamento</div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
         </div>
       </div>
-      <button class="gen-btn" id="btn-gen" onclick="generatePlan()">Gerar Planejamento Completo</button>
-      <div class="ld-wrap" id="loader">
-        <div class="ld-ring"></div><div class="ld-msg">Analisando dados...</div>
-        <div class="ld-steps"><span class="lds act">Análise</span><span class="lds">Estratégia</span><span class="lds">Calendário</span><span class="lds">Scripts</span></div>
+
+      <div id="intelligence" class="page">
+        <div class="card">
+          <div class="card-title">
+            <div class="cicon" style="background:rgba(186,117,23,.15);color:#ba7517">🧠</div>
+            Análise Estratégica AI
+          </div>
+          <div class="fgroup">
+            <span class="flabel">Seu Nicho</span>
+            <input type="text" id="i-niche" placeholder="Ex: Moda Feminina, Marketing Digital..."/>
+          </div>
+          <div class="fgroup">
+            <span class="flabel">Concorrentes (opcional)</span>
+            <input type="text" id="i-comp" placeholder="@perfil1, @perfil2..."/>
+          </div>
+          <button class="gen-btn" onclick="getIntelligence()">Analisar Perfil com GPT-4o</button>
+        </div>
+        <div id="intel-result" style="display:none">
+          <div class="card">
+            <div class="card-title">💡 Sugestões de Conteúdo</div>
+            <div id="i-suggs" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">✨ Novas Opções de BIO</div>
+            <div id="i-bios"></div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div id="plan-result" style="display:none">
-      <div class="rtabs"><div class="rtab on" onclick="switchRtab('cal',this)">📅 Calendário</div><div class="rtab" onclick="switchRtab('feed',this)">📱 Feed</div></div>
-      <div id="rs-cal" class="rs on"><div class="card"><div id="cal-container"></div></div></div>
-      <div id="rs-feed" class="rs"><div id="rb-feed"></div></div>
-    </div>
+
+      <div id="planner" class="page">
+        <div class="card">
+          <div class="card-title">
+            <div class="cicon" style="background:rgba(99,153,34,.15);color:#639922">🚀</div>
+            Gerar Plano de 30 Dias
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="fgroup">
+              <span class="flabel">Objetivo</span>
+              <select id="p-goal">
+                <option value="Vendas">Vendas</option>
+                <option value="Engajamento">Engajamento</option>
+                <option value="Crescimento">Crescimento</option>
+              </select>
+            </div>
+            <div class="fgroup">
+              <span class="flabel">Tom de Voz</span>
+              <select id="p-tone">
+                <option value="Profissional">Profissional</option>
+                <option value="Descontraído">Descontraído</option>
+                <option value="Inspirador">Inspirador</option>
+              </select>
+            </div>
+          </div>
+          <div class="fgroup">
+            <span class="flabel">Mix de Conteúdo</span>
+            <div class="mix-row">
+              <div class="mix-item">
+                <div class="mix-label">Reels</div>
+                <div class="mix-val" id="v-reels">12</div>
+                <div class="mix-btns">
+                  <button class="mix-btn" onclick="updMix('reels',-1)">-</button>
+                  <button class="mix-btn" onclick="updMix('reels',1)">+</button>
+                </div>
+              </div>
+              <div class="mix-item">
+                <div class="mix-label">Carrossel</div>
+                <div class="mix-val" id="v-car">10</div>
+                <div class="mix-btns">
+                  <button class="mix-btn" onclick="updMix('car',-1)">-</button>
+                  <button class="mix-btn" onclick="updMix('car',1)">+</button>
+                </div>
+              </div>
+              <div class="mix-item">
+                <div class="mix-label">Foto</div>
+                <div class="mix-val" id="v-img">8</div>
+                <div class="mix-btns">
+                  <button class="mix-btn" onclick="updMix('img',-1)">-</button>
+                  <button class="mix-btn" onclick="updMix('img',1)">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="gen-btn" id="btn-gen" onclick="generatePlan()">
+            Gerar Planejamento Completo
+          </button>
+          <div class="ld-wrap" id="loader">
+            <div class="ld-ring"></div>
+            <div class="ld-msg">Analisando dados...</div>
+            <div class="ld-steps">
+              <span class="lds act">Análise</span>
+              <span class="lds">Estratégia</span>
+              <span class="lds">Calendário</span>
+              <span class="lds">Scripts</span>
+            </div>
+          </div>
+        </div>
+        <div id="plan-result" style="display:none">
+          <div class="rtabs">
+            <div class="rtab on" onclick="switchRtab('cal',this)">📅 Calendário</div>
+            <div class="rtab" onclick="switchRtab('feed',this)">📱 Feed</div>
+          </div>
+          <div id="rs-cal" class="rs on">
+            <div class="card"><div id="cal-container"></div></div>
+          </div>
+          <div id="rs-feed" class="rs">
+            <div id="rb-feed"></div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
-</main>
+</div>
+
 <div id="toast"></div>
+
 <script>
-let accounts=[],selAccount=null,mix={reels:12,car:10,img:8};
-const init=async()=>{
-  try{
-    const r=await fetch('/api/me');const d=await r.json();
-    if(!d.logged)return location.href='/';
-    accounts=d.accounts||[];renderAccounts();
-  }catch(e){console.error(e)}
+let accounts = [], selAccount = null, mix = { reels:12, car:10, img:8 };
+
+const init = async () => {
+  try {
+    const r = await fetch('/api/me');
+    const d = await r.json();
+    if (!d.logged) {
+      document.getElementById('diag-msg').textContent = 'Faça login para continuar.';
+      return;
+    }
+    accounts = d.accounts || [];
+    if (!accounts.length) {
+      document.getElementById('diag-msg').textContent =
+        'Nenhuma conta configurada ainda. Conecte usando o token.';
+    }
+    renderAccounts();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('diag-msg').textContent =
+      'Erro ao carregar contas. Verifique o servidor.';
+  }
 };
-function goPage(p,el){
-  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('on'));
+
+function goPage(p, el) {
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('on'));
   document.getElementById(p).classList.add('on');
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
-  el.classList.add('on');
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('on'));
+  if (el) el.classList.add('on');
 }
-function renderAccounts(){
-  const l=document.getElementById('acc-list');
-  l.innerHTML=accounts.map(a=>`<div class="acc-chip ${selAccount?.id===a.id?'on':''}" onclick="selectAcc('${a.id}')">@${a.username}</div>`).join('');
-  if(!selAccount && accounts.length) selectAcc(accounts[0].id);
+
+function renderAccounts() {
+  const l = document.getElementById('acc-list');
+  l.innerHTML = accounts.map(a =>
+    `<div class="acc-chip ${selAccount?.id===a.id ? 'on' : ''}" onclick="selectAcc('${a.id}')">@${a.username}</div>`
+  ).join('');
+  if (!selAccount && accounts.length) {
+    selectAcc(accounts[0].id);
+  }
 }
-function selectAcc(id){
-  selAccount=accounts.find(a=>a.id===id);renderAccounts();
-  document.getElementById('m-followers').textContent=selAccount.followers_count||0;
-  document.getElementById('m-posts').textContent=selAccount.media_count||0;
-  document.getElementById('m-er').textContent='3.2%';renderChart();
+
+function selectAcc(id) {
+  selAccount = accounts.find(a => a.id === id);
+  renderAccounts();
+  if (!selAccount) return;
+  document.getElementById('m-followers').textContent = selAccount.followers_count || 0;
+  document.getElementById('m-posts').textContent = selAccount.media_count || 0;
+  document.getElementById('m-er').textContent = '3.2%';
+  renderChart();
 }
-function updMix(k,v){mix[k]=Math.max(0,mix[k]+v);document.getElementById('v-'+k).textContent=mix[k];}
-async function getIntelligence(){
-  const btn=event.target;btn.disabled=true;
-  try{
-    const r=await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id})});
-    const d=await r.json();
-    document.getElementById('intel-result').style.display='block';
-    document.getElementById('i-suggs').innerHTML=d.suggestions.map(s=>`<div style="background:rgba(255,107,53,.1);padding:5px 10px;border-radius:20px;font-size:11px">${s}</div>`).join('');
-    document.getElementById('i-bios').innerHTML=d.bio_options.map(b=>`<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px;margin-top:5px;font-size:12px">${b}</div>`).join('');
+
+function updMix(k, v) {
+  mix[k] = Math.max(0, mix[k] + v);
+  document.getElementById('v-' + k).textContent = mix[k];
+}
+
+async function getIntelligence() {
+  if (!selAccount) {
+    toast('Selecione ou conecte uma conta primeiro');
+    return;
+  }
+  const btn = event.target;
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/suggestions', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ igId: selAccount.id })
+    });
+    const d = await r.json();
+    document.getElementById('intel-result').style.display = 'block';
+    document.getElementById('i-suggs').innerHTML =
+      (d.suggestions || []).map(s =>
+        `<div style="background:rgba(255,107,53,.1);padding:5px 10px;border-radius:20px;font-size:11px">${s}</div>`
+      ).join('');
+    document.getElementById('i-bios').innerHTML =
+      (d.bio_options || []).map(b =>
+        `<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px;margin-top:5px;font-size:12px">${b}</div>`
+      ).join('');
     toast('Análise concluída!');
-  }catch(e){toast('Erro na análise')}finally{btn.disabled=false;}
+  } catch (e) {
+    console.error(e);
+    toast('Erro na análise');
+  } finally {
+    btn.disabled = false;
+  }
 }
-async function generatePlan(){
-  const btn=document.getElementById('btn-gen'),ld=document.getElementById('loader');
-  btn.style.display='none';ld.style.display='block';
-  try{
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({igId:selAccount.id,goal:document.getElementById('p-goal').value,tone:document.getElementById('p-tone').value})});
-    const d=await r.json();renderPlan(d);
-    document.getElementById('plan-result').style.display='block';toast('Plano gerado!');
-  }catch(e){toast('Erro ao gerar plano');}finally{ld.style.display='none';btn.style.display='block';}
+
+async function generatePlan() {
+  if (!selAccount) {
+    toast('Selecione ou conecte uma conta primeiro');
+    return;
+  }
+  const btn = document.getElementById('btn-gen');
+  const ld = document.getElementById('loader');
+  btn.style.display = 'none';
+  ld.style.display = 'block';
+  try {
+    const r = await fetch('/api/generate', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        igId: selAccount.id,
+        goal: document.getElementById('p-goal').value,
+        tone: document.getElementById('p-tone').value
+      })
+    });
+    const d = await r.json();
+    renderPlan(d);
+    document.getElementById('plan-result').style.display = 'block';
+    toast('Plano gerado!');
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao gerar plano');
+  } finally {
+    ld.style.display = 'none';
+    btn.style.display = 'block';
+  }
 }
-function renderPlan(d){
-  let calHtml='';for(let i=1;i<=30;i++)calHtml+=`<div class="cal-day"><span class="dn">${i}</span><div class="dot" style="background:var(--brand)"></div></div>`;
-  document.getElementById('cal-container').innerHTML=calHtml;
-  document.getElementById('rb-feed').innerHTML=d.posts.map(p=>`<div class="card"><div class="post-title">DIA ${p.n} — ${p.title}</div><div class="fmt ${p.format==='Reels'?'fmt-r':'fmt-c'}">${p.format}</div><div class="script-box"><div class="script-label">Legenda</div><div class="script-text">${p.copy}</div></div><button class="sc-copy-btn" onclick="copyTag(this,'${p.copy.replace(/'/g,"\\'")}')">Copiar Legenda</button></div>`).join('');
+
+function renderPlan(d) {
+  let calHtml = '';
+  for (let i = 1; i <= 30; i++) {
+    calHtml += `
+      <div class="cal-day">
+        <span class="dn">${i}</span>
+        <div class="dot" style="background:var(--brand)"></div>
+      </div>`;
+  }
+  document.getElementById('cal-container').innerHTML = calHtml;
+
+  document.getElementById('rb-feed').innerHTML =
+    (d.posts || []).map(p => `
+      <div class="card">
+        <div class="post-title">DIA ${p.n} — ${p.title}</div>
+        <div class="fmt ${p.format === 'Reels' ? 'fmt-r' : 'fmt-c'}">${p.format}</div>
+        <div class="script-box">
+          <div class="script-label">Legenda</div>
+          <div class="script-text">${p.copy}</div>
+        </div>
+        <button class="sc-copy-btn" onclick="copyTag(this,'${(p.copy || '').replace(/'/g,"\\'")}')">
+          Copiar Legenda
+        </button>
+      </div>
+    `).join('');
 }
-function switchRtab(t,btn){
-  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
-  document.querySelectorAll('.rs').forEach(s=>s.classList.remove('on'));
-  btn.classList.add('on');document.getElementById('rs-'+t).classList.add('on');
+
+function switchRtab(t, btn) {
+  document.querySelectorAll('.rtab').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.rs').forEach(s => s.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('rs-' + t).classList.add('on');
 }
-function copyTag(el,h){navigator.clipboard.writeText(h);el.textContent='Copiado!';setTimeout(()=>el.textContent='Copiar Legenda',1500);toast('Copiado!');}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function renderChart(){
-  const ctx=document.getElementById('mainChart').getContext('2d');
-  if(window.myChart)window.myChart.destroy();
-  window.myChart=new Chart(ctx,{type:'line',data:{labels:['S','T','Q','Q','S','S','D'],datasets:[{data:[120,190,150,250,220,310,280],borderColor:'#ff6b35',tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{grid:{display:false}}}}});
+
+function copyTag(el, h) {
+  navigator.clipboard.writeText(h);
+  el.textContent = 'Copiado!';
+  setTimeout(() => el.textContent = 'Copiar Legenda', 1500);
+  toast('Copiado!');
 }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function renderChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (window.myChart) window.myChart.destroy();
+  window.myChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:['S','T','Q','Q','S','S','D'],
+      datasets:[{
+        data:[120,190,150,250,220,310,280],
+        borderColor:'#ff6b35',
+        tension:0.4
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        y:{ display:false },
+        x:{ grid:{ display:false } }
+      }
+    }
+  });
+}
+
+// Conectar token manual
 document.getElementById('btn-test-token').addEventListener('click', async () => {
   const token = document.getElementById('manual-token').value;
-  if (!token) return alert('Cole um token!');
+  if (!token) {
+    alert('Cole um token!');
+    return;
+  }
   try {
-    const res = await fetch('/api/test-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    const res = await fetch('/api/test-token', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ token })
+    });
     const data = await res.json();
     if (data.success) {
-      data.accounts.forEach(acc => { if (!accounts.find(a => a.id === acc.id)) accounts.push(acc); });
-      renderAccounts();document.getElementById('manual-token').value = '';toast('Conta conectada!');
-    } else { toast('Erro: ' + data.error); }
-  } catch (e) { toast('Erro de conexão'); }
+      (data.accounts || []).forEach(acc => {
+        if (!accounts.find(a => a.id === acc.id)) accounts.push(acc);
+      });
+      renderAccounts();
+      document.getElementById('manual-token').value = '';
+      toast('Conta conectada!');
+    } else {
+      toast('Erro: ' + data.error);
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Erro de conexão');
+  }
 });
+
 init();
 </script>
 </body>
