@@ -1,251 +1,269 @@
 const { runLLM } = require("./engine");
 
-// ===== HELPERS =====
-function safeArray(x){
+function safeArray(x) {
   return Array.isArray(x) ? x : [];
 }
 
-function cleanText(x){
-  if(!x) return "";
-  if(typeof x === "string") return x;
-  if(typeof x === "object") return Object.values(x).join(" ");
-  return String(x);
+function cleanText(x) {
+  if (x == null) return "";
+  if (typeof x === "string") return x.trim();
+  if (Array.isArray(x)) return x.map(cleanText).join(" ").trim();
+  if (typeof x === "object") return Object.values(x).map(cleanText).join(" ").trim();
+  return String(x).trim();
 }
 
-async function ask(clients, prompt){
+function dedupeStrings(arr = []) {
+  const seen = new Set();
+  return arr.filter((item) => {
+    const key = cleanText(item).toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function ask(clients, prompt) {
   return await runLLM({
     clients,
-    // mantemos a exigência de JSON, mas deixamos o estilo para o prompt do usuário
-    system: "Responda apenas JSON válido. Sem texto fora do JSON.",
+    system: `
+Você responde apenas JSON válido.
+Sem markdown.
+Sem bloco de código.
+Sem comentários.
+Sem texto fora do JSON.
+Escreva em português do Brasil.
+Nada de clichês.
+Nada de linguagem de coach.
+Nada de frases com cara de agência genérica.
+`.trim(),
     user: prompt
   });
 }
 
-// ===== DASHBOARD =====
-async function dashboard360({ clients, niche, username }){
+function sanitizePost(p, idx, fallbackGoal) {
+  const viral = p?.viral_score || {};
+  return {
+    theme: cleanText(p?.theme || `Post ${idx + 1}`),
+    format: cleanText(p?.format || "Reels"),
+    hook: cleanText(p?.hook),
+    script_or_slides: safeArray(p?.script_or_slides).map(cleanText).filter(Boolean),
+    caption: cleanText(p?.caption),
+    creative_direction: cleanText(p?.creative_direction),
+    goal: cleanText(p?.goal || fallbackGoal),
+    viral_score: {
+      score: Math.max(0, Math.min(10, Number(viral?.score ?? 0))),
+      reason: cleanText(viral?.reason)
+    }
+  };
+}
 
+async function dashboard360({ clients, niche, username }) {
   const prompt = `
-Você é um estrategista sênior de social media no Brasil.
-Fale como um humano, direto, sem jargões exagerados e sem parecer IA.
-Use linguagem natural, como se estivesse escrevendo para o dono do negócio.
+Você é um estrategista sênior de conteúdo e posicionamento para Instagram.
 
 Cliente: ${username}
 Nicho: ${niche}
 
-Tarefas:
+Entregue:
+1) 3 bios fortes, claras e humanas.
+2) 6 melhorias reais de perfil.
+3) 1 posicionamento de marca.
+4) 4 insights de conteúdo úteis para tomada de decisão de uma agência de performance.
 
-1) Crie exatamente 3 bios premium para Instagram.
-   - Em português brasileiro.
-   - Cada bio com no máximo 150 caracteres (incluindo espaços).
-   - Use no máximo 3 emojis por bio.
-   - Misture posicionamento + prova social + CTA curto.
-   - Evite frases clichê como “Bem-vindo ao meu perfil”, “Aqui você encontra”.
+Regras:
+- Nada de "excelência", "transformando", "sua melhor escolha", "bem-vindo".
+- Escreva como alguém que auditou um perfil real.
+- Vá direto ao ponto.
+- Nada superficial.
 
-2) Liste 6 melhorias reais para o perfil:
-   - Sempre em frases curtas e diretas.
-   - Foque em coisas acionáveis (ex.: "Padronizar capa dos destaques com ícones simples").
-
-3) Escreva 1 frase de posicionamento forte:
-   - Em primeira pessoa ou em voz da marca.
-   - Deixe claro público, promessa e diferença.
-
-Responda SOMENTE neste JSON:
-
+JSON:
 {
- "bio": [
-   "string",
-   "string",
-   "string"
- ],
- "melhorias": [
-   "string",
-   "string"
- ],
- "posicionamento": "string"
+  "bio": ["string", "string", "string"],
+  "melhorias": ["string"],
+  "posicionamento": "string",
+  "insights": ["string"]
 }
-`;
+`.trim();
 
   const d = await ask(clients, prompt);
 
   return {
-    bio: safeArray(d?.bio).map(cleanText),
-    melhorias: safeArray(d?.melhorias).map(cleanText),
-    posicionamento: cleanText(d?.posicionamento)
+    bio: dedupeStrings(safeArray(d?.bio).map(cleanText)).slice(0, 3),
+    melhorias: dedupeStrings(safeArray(d?.melhorias).map(cleanText)).slice(0, 6),
+    posicionamento: cleanText(d?.posicionamento),
+    insights: dedupeStrings(safeArray(d?.insights).map(cleanText)).slice(0, 4)
   };
 }
 
-// ===== DIAGNÓSTICO =====
-async function diagnostico({ clients, niche }){
-
+async function diagnostico({ clients, niche, username, positioning, objective }) {
   const prompt = `
-Você é um estrategista de social media que fala como humano.
-Explique os problemas e oportunidades como se estivesse conversando com o cliente,
-com exemplos concretos e sem linguagem de relatório.
-
-Contexto do perfil: Instagram de ${niche}.
-
-Tarefas:
-
-1) "problemas":
-   - Liste de 4 a 7 problemas.
-   - Cada item como uma frase curta, bem direta, exemplo:
-     "O feed está visualmente bagunçado, isso passa a sensação de amadorismo."
-   - Evite frases genéricas tipo "falta de engajamento". Sempre traga o porquê.
-
-2) "oportunidades":
-   - Liste de 4 a 7 oportunidades de crescimento.
-   - Traga ideias específicas, ex.:
-     "Transformar dúvidas frequentes da recepção em vídeos rápidos de Reels."
-
-3) "acoes_14_dias":
-   - Liste de 7 a 10 ações muito práticas para os próximos 14 dias.
-   - Cada ação começa com verbo no imperativo (Ex.: "Padronize as capas dos destaques...").
-
-Responda SOMENTE neste JSON:
-
-{
- "problemas": [
-   "string"
- ],
- "oportunidades": [
-   "string"
- ],
- "acoes_14_dias": [
-   "string"
- ]
-}
-`;
-
-  const d = await ask(clients, prompt);
-
-  return {
-    problemas: safeArray(d?.problemas).map(cleanText),
-    oportunidades: safeArray(d?.oportunidades).map(cleanText),
-    acoes_14_dias: safeArray(d?.acoes_14_dias).map(cleanText)
-  };
-}
-
-// ===== PLANO =====
-async function planoMensal({ clients, niche, username, goal }){
-
-  const prompt = `
-Você é um diretor de criação de social media no Brasil.
-Monte um plano de conteúdo humano, variado e pé-no-chão para Instagram.
+Você é estrategista de conteúdo de uma agência de performance.
+Faça um diagnóstico que ajude em tomada de decisão.
 
 Cliente: ${username}
 Nicho: ${niche}
+Posicionamento atual: ${positioning || "não informado"}
+Objetivo: ${objective}
+
+Regras:
+- Diagnóstico útil, específico e acionável.
+- Nada de generalidades.
+- Escreva como consultor experiente apresentando leitura estratégica para agência.
+- Aponte falhas de conteúdo, de conversão, de percepção de valor e de clareza comercial.
+
+JSON:
+{
+  "problemas": ["string"],
+  "oportunidades": ["string"],
+  "acoes_14_dias": ["string"],
+  "prioridade_agencia": ["string"]
+}
+`.trim();
+
+  const d = await ask(clients, prompt);
+
+  return {
+    problemas: dedupeStrings(safeArray(d?.problemas).map(cleanText)).slice(0, 7),
+    oportunidades: dedupeStrings(safeArray(d?.oportunidades).map(cleanText)).slice(0, 7),
+    acoes_14_dias: dedupeStrings(safeArray(d?.acoes_14_dias).map(cleanText)).slice(0, 10),
+    prioridade_agencia: dedupeStrings(safeArray(d?.prioridade_agencia).map(cleanText)).slice(0, 5)
+  };
+}
+
+async function planoMensal({
+  clients,
+  niche,
+  username,
+  goal,
+  secondaryGoals = [],
+  qtyReels = 8,
+  qtyCarrossel = 6,
+  qtyFoto = 2,
+  city = "Linhares",
+  tone = "humano, direto, especialista e sem clichê"
+}) {
+  const total = qtyReels + qtyCarrossel + qtyFoto;
+
+  const prompt = `
+Você é diretor criativo e estrategista de conteúdo de uma agência de performance.
+
+Cliente: ${username}
+Nicho: ${niche}
+Cidade/base: ${city}
 Objetivo principal: ${goal}
+Objetivos secundários: ${secondaryGoals.join(", ") || "nenhum"}
+Tom desejado: ${tone}
 
-Estilo:
-- Linguagem coloquial, mas profissional.
-- Nada de frases genéricas tipo "No mundo de hoje" ou "Em 2024".
-- Legendas com storytelling curto, trazendo contexto do dia a dia do negócio.
-- Sempre terminar a legenda com um CTA claro e específico (ex.: "Comenta 'SIM' se você quer ver mais bastidores assim.").
+Quantidade obrigatória:
+- Reels: ${qtyReels}
+- Carrossel: ${qtyCarrossel}
+- Foto/Post estático: ${qtyFoto}
+- Total: ${total}
 
-Crie EXATAMENTE 20 posts estratégicos com:
+Regras:
+- Nada de clichês.
+- Nada de "você já imaginou", "excelência", "qualidade", "serviços oferecidos", "dicas imperdíveis", "transforme", "história de sucesso".
+- Cada conteúdo precisa ter utilidade estratégica.
+- O conteúdo deve ajudar uma agência a tomar decisão e publicar melhor.
+- Use linguagem brasileira real, observável, concreta.
+- Traga tensão, dúvida do cliente, objeção, critério de escolha, prova de bastidor ou repertório prático.
+- Não repetir ângulo.
+- Não repetir CTA.
+- Não escrever como agência falando de si; escrever como plano pronto do cliente.
 
-- "theme": tema resumido do post (não é título de clickbait, é o assunto).
-- "format": um destes valores: "Reels", "Carrossel" ou "Foto".
-  Misture os formatos ao longo dos 20 posts.
-- "hook": frase de abertura forte, para os 2 primeiros segundos.
-- "script_or_slides":
-  - Para Reels: roteiro com 3 a 6 bullets, cada uma descrevendo o que aparece na cena.
-  - Para Carrossel: 4 a 7 bullets, cada uma representando um slide.
-  - Para Foto: 2 a 3 bullets com o que a foto deve mostrar e o contexto.
-- "caption": legenda final, escrita em tom humano:
-  - 2 a 6 frases curtas.
-  - Pode usar emojis, mas no máximo 4 por legenda.
-  - Traga detalhes concretos do nicho (situações reais que o cliente vive).
-  - Terminar sempre com um CTA claro (comentário, salvar, direct, clique no link).
+Para cada item, entregue:
+- theme
+- format
+- hook
+- script_or_slides
+- caption
+- creative_direction
+- goal
+- viral_score:
+  - score: nota de 0 a 10
+  - reason: justificativa curta e honesta
 
-- "creative_direction": instrução visual pro designer/videomaker.
-- "goal": objetivo específico daquele post (ex.: "gerar prova social", "atrair novos seguidores de Linhares").
+A nota de viralização deve considerar:
+- força do gancho
+- potencial de retenção
+- apelo emocional/prático
+- capacidade de compartilhamento
+- chance real de performar no Instagram
 
-Responda SOMENTE neste JSON:
-
+JSON:
 {
- "posts":[
-  {
-   "theme":"string",
-   "format":"Reels" | "Carrossel" | "Foto",
-   "hook":"string",
-   "script_or_slides":[ "string" ],
-   "caption":"string",
-   "creative_direction":"string",
-   "goal":"string"
-  }
- ]
+  "posts": [
+    {
+      "theme": "string",
+      "format": "Reels|Carrossel|Foto",
+      "hook": "string",
+      "script_or_slides": ["string"],
+      "caption": "string",
+      "creative_direction": "string",
+      "goal": "string",
+      "viral_score": {
+        "score": 0,
+        "reason": "string"
+      }
+    }
+  ]
 }
-`;
+`.trim();
 
   const d = await ask(clients, prompt);
+  let posts = safeArray(d?.posts).map((p, i) => sanitizePost(p, i, goal));
 
-  let posts = safeArray(d?.posts);
+  const byFormat = {
+    Reels: posts.filter((p) => p.format === "Reels"),
+    Carrossel: posts.filter((p) => p.format === "Carrossel"),
+    Foto: posts.filter((p) => p.format === "Foto")
+  };
 
-  if(posts.length === 0){
-    posts = Array.from({length:10}).map((_,i)=>({
-      theme:`Post ${i+1}`,
-      format:"Reels",
-      hook:"Gancho direto e simples para chamar atenção.",
-      script_or_slides:["Cena 1: Abertura rápida","Cena 2: Conteúdo principal","Cena 3: CTA olhando para a câmera"],
-      caption:"Legenda de fallback gerada automaticamente para não ficar vazio.",
-      creative_direction:"Vídeo simples gravado com celular na vertical.",
-      goal:goal
-    }));
+  const enough =
+    byFormat.Reels.length >= qtyReels &&
+    byFormat.Carrossel.length >= qtyCarrossel &&
+    byFormat.Foto.length >= qtyFoto;
+
+  if (!enough) {
+    posts = [
+      ...byFormat.Reels.slice(0, qtyReels),
+      ...byFormat.Carrossel.slice(0, qtyCarrossel),
+      ...byFormat.Foto.slice(0, qtyFoto)
+    ];
   }
 
-  posts = posts.map((p, idx) => ({
-    theme: cleanText(p.theme || `Post ${idx+1}`),
-    format: cleanText(p.format || "Reels"),
-    hook: cleanText(p.hook),
-    caption: cleanText(p.caption),
-    creative_direction: cleanText(p.creative_direction),
-    goal: cleanText(p.goal || goal),
-    script_or_slides: safeArray(p.script_or_slides).map(cleanText)
-  }));
-
-  return { posts };
+  return {
+    meta: {
+      requested: { qtyReels, qtyCarrossel, qtyFoto, total, goal, secondaryGoals }
+    },
+    posts: posts.slice(0, total)
+  };
 }
 
-// ===== CONCORRÊNCIA =====
-async function concorrencia({ clients, niche, city }){
-
+async function concorrencia({ clients, niche, city }) {
   const prompt = `
-Você é um estrategista analisando a concorrência de ${niche} em ${city}.
-Explique de forma humana, como se estivesse resumindo para o dono do negócio.
+Você analisa concorrência para uma agência de performance.
 
-Tarefas:
+Nicho: ${niche}
+Cidade/base: ${city}
 
-1) "concorrentes":
-   - Liste de 3 a 6 concorrentes fictícios, mas plausíveis.
-   - "nome": nome fantasia.
-   - "perfil": @perfil do Instagram.
-
-2) "plano_para_ganhar":
-   - Liste de 5 a 10 ações estratégicas bem diretas para superar a concorrência.
-   - Cada item deve parecer conselho prático que você daria em uma call:
-     exemplo: "Comece a postar 2 Reels por semana mostrando bastidores da oficina, com o mecânico explicando o problema do carro em linguagem simples."
-
-Responda SOMENTE neste JSON:
-
+JSON:
 {
- "concorrentes":[
-   { "nome":"string","perfil":"string" }
- ],
- "plano_para_ganhar":[
-   "string"
- ]
+  "concorrentes": [
+    { "nome": "string", "perfil": "string" }
+  ],
+  "plano_para_ganhar": ["string"]
 }
-`;
+`.trim();
 
   const d = await ask(clients, prompt);
 
   return {
-    concorrentes: safeArray(d?.concorrentes).map(c => ({
-      nome: cleanText(c.nome),
-      perfil: cleanText(c.perfil)
-    })),
-    plano_para_ganhar: safeArray(d?.plano_para_ganhar).map(cleanText)
+    concorrentes: safeArray(d?.concorrentes).map((c) => ({
+      nome: cleanText(c?.nome),
+      perfil: cleanText(c?.perfil)
+    })).slice(0, 6),
+    plano_para_ganhar: dedupeStrings(safeArray(d?.plano_para_ganhar).map(cleanText)).slice(0, 10)
   };
 }
 
