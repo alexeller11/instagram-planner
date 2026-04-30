@@ -4,19 +4,29 @@ function buildClients(env) {
   return {
     nvidia: {
       key: env.NVIDIA_API_KEY,
-      model: env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct"
+      model: env.NVIDIA_MODEL || "meta/llama-3.1-70b-instruct"
     },
     groq: {
       key: env.GROQ_API_KEY,
-      model: env.GROQ_MODEL || "llama-3.1-8b-instant"
+      model: env.GROQ_MODEL || "llama-3.3-70b-versatile"
     }
   };
 }
 
-function extractJSON(text) {
+function tryParseJSON(text) {
   try {
-    const match = String(text || "").match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : {};
+    const raw = String(text || "").trim();
+
+    const fenced = raw.match(/```json\s*([\s\S]*?)```/i);
+    if (fenced?.[1]) return JSON.parse(fenced[1]);
+
+    const firstBracket = raw.indexOf("{");
+    const lastBracket = raw.lastIndexOf("}");
+    if (firstBracket !== -1 && lastBracket !== -1) {
+      return JSON.parse(raw.slice(firstBracket, lastBracket + 1));
+    }
+
+    return {};
   } catch {
     return {};
   }
@@ -27,7 +37,7 @@ async function callNvidia(client, system, user) {
     "https://integrate.api.nvidia.com/v1/chat/completions",
     {
       model: client.model,
-      temperature: 0.7,
+      temperature: 0.45,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -38,10 +48,11 @@ async function callNvidia(client, system, user) {
         Authorization: `Bearer ${client.key}`,
         "Content-Type": "application/json"
       },
-      timeout: 60000
+      timeout: 90000
     }
   );
-  return res.data.choices?.[0]?.message?.content || "";
+
+  return res.data?.choices?.[0]?.message?.content || "";
 }
 
 async function callGroq(client, system, user) {
@@ -49,7 +60,7 @@ async function callGroq(client, system, user) {
     "https://api.groq.com/openai/v1/chat/completions",
     {
       model: client.model,
-      temperature: 0.7,
+      temperature: 0.45,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -60,33 +71,32 @@ async function callGroq(client, system, user) {
         Authorization: `Bearer ${client.key}`,
         "Content-Type": "application/json"
       },
-      timeout: 60000
+      timeout: 90000
     }
   );
-  return res.data.choices?.[0]?.message?.content || "";
+
+  return res.data?.choices?.[0]?.message?.content || "";
 }
 
 async function runLLM({ clients, system, user }) {
   try {
     if (clients.nvidia?.key) {
-      console.log("🟣 Tentando NVIDIA...");
       const text = await callNvidia(clients.nvidia, system, user);
-      console.log("🧠 NVIDIA OK");
-      return extractJSON(text);
+      const json = tryParseJSON(text);
+      if (Object.keys(json).length) return json;
     }
-  } catch (err) {
-    console.log("⚠️ NVIDIA falhou:", err.response?.status || err.message);
+  } catch (e) {
+    console.log("NVIDIA falhou:", e.response?.status || e.message);
   }
 
   try {
     if (clients.groq?.key) {
-      console.log("🟢 Tentando GROQ...");
       const text = await callGroq(clients.groq, system, user);
-      console.log("🧠 GROQ OK");
-      return extractJSON(text);
+      const json = tryParseJSON(text);
+      if (Object.keys(json).length) return json;
     }
-  } catch (err) {
-    console.log("❌ GROQ falhou:", err.response?.status || err.message);
+  } catch (e) {
+    console.log("GROQ falhou:", e.response?.status || e.message);
   }
 
   return {};
