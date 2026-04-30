@@ -1,6 +1,8 @@
 const { runLLM } = require("./engine");
 
-function safeArray(x){ return Array.isArray(x)?x:[]; }
+function safeArray(x){
+  return Array.isArray(x) ? x : [];
+}
 
 async function ask(clients, prompt){
   return await runLLM({
@@ -21,8 +23,6 @@ Crie:
 - 3 bios premium
 - 6 melhorias reais
 - 1 posicionamento forte
-
-Sem conteúdo genérico.
 
 JSON:
 {
@@ -70,20 +70,14 @@ JSON:
 }
 
 // ================= PLANO =================
-async function planoMensal({ clients, niche, username, goal, mix }){
+async function planoMensal({ clients, niche, username, goal }){
 
   const prompt = `
-Você é estrategista premium.
-
 Cliente: ${username}
 Nicho: ${niche}
 Objetivo: ${goal}
 
-Crie 30 posts.
-
-Regras:
-- NÃO usar "você sabia"
-- NÃO ser genérico
+Crie 20 posts estratégicos.
 
 JSON:
 {
@@ -106,12 +100,12 @@ JSON:
   let posts = safeArray(d?.posts);
 
   if(posts.length === 0){
-    posts = Array.from({length:12}).map((_,i)=>({
+    posts = Array.from({length:10}).map((_,i)=>({
       theme:`Post ${i+1}`,
       format:"Reels",
       hook:"Gancho direto",
       script_or_slides:["Abertura","Conteúdo","CTA"],
-      caption:"Conteúdo de fallback",
+      caption:"Fallback",
       creative_direction:"Vídeo simples",
       goal:goal
     }));
@@ -129,8 +123,6 @@ Analise concorrência de ${niche} em ${city}
 JSON:
 {
  "concorrentes":[{"nome":"","perfil":""}],
- "o_que_fazem_bem":[],
- "onde_falham":[],
  "plano_para_ganhar":[]
 }
 `;
@@ -139,8 +131,6 @@ JSON:
 
   return {
     concorrentes: safeArray(d?.concorrentes),
-    o_que_fazem_bem: safeArray(d?.o_que_fazem_bem),
-    onde_falham: safeArray(d?.onde_falham),
     plano_para_ganhar: safeArray(d?.plano_para_ganhar)
   };
 }
