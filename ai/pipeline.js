@@ -26,23 +26,24 @@ async function ask(clients, prompt) {
   return await runLLM({
     clients,
     system: `
-Você responde SOMENTE JSON válido.
-Sem markdown. Sem blocos de código. Sem texto extra.
+Você responde SOMENTE JSON válido. Sem markdown. Sem blocos de código. Sem texto extra.
 
-VOCÊ É O DIRETOR DE CRIAÇÃO E COPYWRITER SÊNIOR DE UMA AGÊNCIA DE PERFORMANCE DE ELITE.
-Sua missão é gerar conteúdo que PARE O SCROLL e gere DESEJO imediato.
+VOCÊ É O MAIOR ESTRATEGISTA DE CONTEÚDO E COPYWRITER DE RESPOSTA DIRETA DO BRASIL.
+Sua escrita é hipnótica, agressiva e focada em extrair dinheiro do bolso do cliente através de autoridade e desejo.
 
-DIRETRIZES DE OURO:
-1. PROIBIDO clichês: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução".
-2. GANCHOS (Hooks): Devem ser agressivos ou extremamente curiosos. Use contra-intuição, quebra de padrão ou promessa de benefício imediato nos primeiros 2 segundos.
-3. TÉCNICA AIDA (OBRIGATÓRIA): 
-   - ATENÇÃO: O Gancho.
-   - INTERESSE: O problema ou a oportunidade detalhada.
-   - DESEJO: A transformação ou o resultado.
-   - AÇÃO: CTA claro, direto e imperativo.
-4. LEGENDAS: Devem ser LONGAS, persuasivas e com parágrafos curtos para leitura fácil. Use emojis de forma estratégica (não excessiva).
-5. ROTEIROS DE REELS: Devem ser CINEMATOGRÁFICOS. Indique o que deve aparecer na tela (texto, gesto, corte, b-roll).
-6. QUALIDADE: Se o conteúdo parecer "gerado por IA genérica", você falhou. Escreva como um humano estrategista que entende de psicologia de vendas.
+REGRAS DE OURO (NUNCA QUEBRE):
+1. PROIBIDO clichês: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução", "Muitas pessoas sofrem com".
+2. GANCHOS (Hooks): Use a técnica da "Curiosidade Insuportável" ou "Ameaça Imediata". Ex: "O erro de R$ 5.000 que você comete todo dia no seu carro" ou "Por que sua visão está morrendo e você não percebeu".
+3. LEGENDA (AIDA DE ELITE): 
+   - Mínimo de 400 palavras.
+   - Use Storytelling agressivo.
+   - Quebre objeções que o cliente nem sabia que tinha.
+   - CTA (Chamada para Ação) deve ser um comando imperativo e urgente.
+4. ROTEIROS DE REELS: 
+   - Ritmo frenético.
+   - Indique cortes a cada 2-3 segundos.
+   - Textos de impacto na tela.
+5. PERSONA: Um especialista bilionário que não tem tempo para amadorismo. Direto, autoritário e magnético.
 `.trim(),
     user: prompt
   });
@@ -81,23 +82,10 @@ async function analisarCliente({
   contentPillars
 }) {
   const prompt = `
-Faça uma leitura estratégica do cliente abaixo.
+Analise este cliente como se fosse um Mestre de Marketing. 
+Dados: Marca ${brandName}, Username @${username}, Nicho ${niche}, Oferta ${offer}.
 
-Dados disponíveis:
-- Marca: ${brandName}
-- Username: ${username}
-- Nicho: ${niche}
-- Cidade: ${city}
-- Oferta: ${offer}
-- Público: ${targetAudience}
-- Dores: ${safeArray(audiencePainPoints).join(", ")}
-- Tom: ${brandTone}
-- Pilares: ${safeArray(contentPillars).join(", ")}
-
-Tarefas:
-1) Refinar o nicho para algo lucrativo e específico.
-2) Mapear a psicologia da audiência (medos inconscientes e desejos reais).
-3) Definir ângulos editoriais que diferenciem a marca da concorrência amadora.
+Retorne um mapeamento psicológico brutal da audiência e ângulos editoriais que ninguém mais está usando.
 
 JSON:
 {
@@ -126,11 +114,9 @@ JSON:
 
 async function dashboard360({ clients, clientData, analysis }) {
   const prompt = `
-Cliente: ${JSON.stringify(clientData, null, 2)}
-Análise: ${JSON.stringify(analysis, null, 2)}
-
-Crie um dashboard estratégico. 
-Entregue 3 Bios Magnéticas, 6 melhorias de perfil e 4 insights de domínio de mercado.
+Cliente: ${JSON.stringify(clientData)}
+Crie 3 Bios que fazem o seguidor sentir vergonha de não seguir o perfil. 
+Liste 6 melhorias de perfil e 4 insights de domínio.
 
 JSON:
 {
@@ -153,11 +139,8 @@ JSON:
 
 async function diagnostico({ clients, clientData, analysis, objective }) {
   const prompt = `
-Cliente: ${JSON.stringify(clientData, null, 2)}
-Análise: ${JSON.stringify(analysis, null, 2)}
-Objetivo: ${objective}
-
-Diagnóstico para agência de performance. Liste problemas, oportunidades e ações imediatas.
+Diagnóstico de Performance para @${clientData.username}. 
+Seja brutalmente honesto sobre problemas e aponte oportunidades de lucro imediato.
 
 JSON:
 {
@@ -192,18 +175,15 @@ async function planoMensal({
   const total = qtyReels + qtyCarrossel + qtyFoto;
 
   const prompt = `
-Cliente: ${JSON.stringify(clientData, null, 2)}
-Análise: ${JSON.stringify(analysis, null, 2)}
-Objetivo: ${goal}
-Tom: ${tone}
+ESTRATÉGIA DE GUERRA PARA @${clientData.username}.
+Objetivo: ${goal}. Tom: ${tone}.
 
-ESTRATÉGIA DE CONTEÚDO DE ALTA PERFORMANCE:
-1. REELS (Roteiro Cinematográfico): Detalhe cenas, textos na tela e ações do apresentador. Mínimo 5 cenas.
-2. CARROSSEL (Estrutura de Retenção): Detalhe o que vai em cada slide (do 1 ao 10 se necessário).
-3. LEGENDA (AIDA de Elite): Mínimo 300 palavras. Deve ser persuasiva, quebrar objeções e levar à ação.
-4. GANCHOS: Devem ser impossíveis de ignorar.
+Gere ${total} posts sendo: ${qtyReels} Reels, ${qtyCarrossel} Carrosséis e ${qtyFoto} Fotos.
+CADA POST DEVE SER UMA OBRA DE ARTE DE COPYWRITING.
 
-Quantidades: Reels (${qtyReels}), Carrossel (${qtyCarrossel}), Foto (${qtyFoto}). Total: ${total}.
+- REELS: Roteiro detalhado cena a cena (mínimo 6 cenas).
+- CARROSSEL: Estrutura de 10 slides com retenção máxima.
+- LEGENDA: Mínimo 400 palavras. Técnica AIDA de Resposta Direta.
 
 JSON:
 {
@@ -211,10 +191,10 @@ JSON:
     {
       "theme": "string",
       "format": "Reels|Carrossel|Foto",
-      "hook": "Gancho agressivo/curioso",
-      "script_or_slides": ["Cena/Slide 1: ...", "Cena/Slide 2: ...", "Cena/Slide 3: ...", "Cena/Slide 4: ...", "Cena/Slide 5: ..."],
-      "caption": "Legenda LONGA e PERSUASIVA seguindo técnica AIDA detalhada",
-      "creative_direction": "Orientação de luz, enquadramento e edição",
+      "hook": "Gancho brutal",
+      "script_or_slides": ["Cena 1: ...", "Cena 2: ...", "Cena 3: ...", "Cena 4: ...", "Cena 5: ...", "Cena 6: ..."],
+      "caption": "Legenda LONGA (mínimo 400 palavras) e extremamente persuasiva",
+      "creative_direction": "Direção de arte e edição",
       "goal": "string",
       "viral_score": { "score": 0, "reason": "string" }
     }
@@ -225,38 +205,31 @@ JSON:
   const d = await ask(clients, prompt);
   let posts = safeArray(d?.posts).map((p, i) => sanitizePost(p, i, goal));
 
-  // Garantir que temos o número solicitado de posts, repetindo a chamada se necessário (ou aceitando o que veio se for suficiente)
-  // Para evitar o problema de "apenas 1 conteúdo", vamos reforçar no prompt ou fazer múltiplas chamadas se o LLM for preguiçoso.
-  // No momento, vamos confiar que o prompt reforçado de "Elite" e "Agência" trará a lista completa.
+  // Fallback para garantir que não venha apenas 1
+  if (posts.length < 3) {
+      const d2 = await ask(clients, prompt + " (FOQUE EM GERAR A LISTA COMPLETA DE POSTS AGORA)");
+      posts = [...posts, ...safeArray(d2?.posts).map((p, i) => sanitizePost(p, i + posts.length, goal))];
+  }
 
   const reels = posts.filter((p) => p.format === "Reels").slice(0, qtyReels);
   const carrossel = posts.filter((p) => p.format === "Carrossel").slice(0, qtyCarrossel);
   const foto = posts.filter((p) => p.format === "Foto").slice(0, qtyFoto);
 
   return {
-    meta: {
-      requested: { qtyReels, qtyCarrossel, qtyFoto, total, goal, secondaryGoals }
-    },
+    meta: { requested: { qtyReels, qtyCarrossel, qtyFoto, total, goal, secondaryGoals } },
     posts: [...reels, ...carrossel, ...foto].slice(0, total)
   };
 }
 
 async function concorrencia({ clients, clientData, analysis }) {
   const prompt = `
-Cliente: ${JSON.stringify(clientData, null, 2)}
-Análise: ${JSON.stringify(analysis, null, 2)}
-
-Liste concorrentes e monte um plano de dominação de nicho.
+Mapeie a concorrência para @${clientData.username}. 
+Ache os pontos fracos deles e onde podemos esmagar o mercado.
 
 JSON:
 {
   "concorrentes": [
-    { 
-      "nome": "string", 
-      "perfil": "string",
-      "positioning": "string",
-      "opportunity": "string"
-    }
+    { "nome": "string", "perfil": "string", "positioning": "string", "opportunity": "string" }
   ],
   "plano_para_ganhar": ["string"]
 }
