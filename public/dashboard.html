@@ -234,6 +234,19 @@ body {
           <div style="height: 350px;"><canvas id="mainChart"></canvas></div>
         </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-title">Público por Gênero e Idade</div>
+            <div style="height: 250px;"><canvas id="demoChart"></canvas></div>
+          </div>
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-title">Principais Cidades</div>
+            <div id="city-list" style="display: flex; flex-direction: column; gap: 12px; margin-top: 1rem;">
+              <!-- Cidades serão inseridas aqui -->
+            </div>
+          </div>
+        </div>
+
         <div id="dash-analysis"></div>
       </div>
 
@@ -307,6 +320,7 @@ let accounts = [];
 let selAccount = null;
 let mix = { reels: 8, car: 6, foto: 2 };
 let chart = null;
+let demoChart = null;
 
 async function init() {
   try {
@@ -362,23 +376,71 @@ async function loadDashboard() {
     document.getElementById('m-taxa').textContent = data.metrics.summary.taxa_engajamento_media + '%';
     
     renderChart(data.metrics.summary);
+    renderDemographics(data.metrics.summary.demographics);
   } catch(e) { toast('Erro ao carregar dashboard'); }
 }
 
 function renderChart(summary) {
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (chart) chart.destroy();
+  
+  // Converter alcance para número se for string (ex: "12.4K")
+  let reachVal = typeof summary.alcance === 'string' ? parseFloat(summary.alcance) * (summary.alcance.includes('K') ? 1000 : 1) : summary.alcance;
+
   chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
       datasets: [{
         label: 'Alcance Estimado',
-        data: [summary.alcance * 0.2, summary.alcance * 0.5, summary.alcance * 0.8, summary.alcance],
+        data: [reachVal * 0.2, reachVal * 0.5, reachVal * 0.8, reachVal],
         borderColor: '#8b5cf6',
         backgroundColor: 'rgba(139, 92, 246, 0.1)',
         fill: true,
         tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+      }
+    }
+  });
+}
+
+function renderDemographics(demo) {
+  // Renderizar Cidades
+  const cityDiv = document.getElementById('city-list');
+  cityDiv.innerHTML = demo.cities.map(([name, val]) => `
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.9rem; font-weight: 600;">${name}</span>
+      <div style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); margin: 0 15px; border-radius: 4px; overflow: hidden;">
+        <div style="width: ${Math.min(100, (val/demo.cities[0][1])*100)}%; height: 100%; background: var(--brand);"></div>
+      </div>
+      <span style="font-size: 0.8rem; color: var(--muted); min-width: 40px; text-align: right;">${val}</span>
+    </div>
+  `).join('');
+
+  // Renderizar Gráfico de Gênero/Idade
+  const ctx = document.getElementById('demoChart').getContext('2d');
+  if (demoChart) demoChart.destroy();
+
+  const labels = Object.keys(demo.genderAge).slice(0, 6);
+  const values = Object.values(demo.genderAge).slice(0, 6);
+
+  demoChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Distribuição',
+        data: values,
+        backgroundColor: labels.map(l => l.startsWith('F') ? 'rgba(217, 70, 239, 0.6)' : 'rgba(139, 92, 246, 0.6)'),
+        borderRadius: 8
       }]
     },
     options: {

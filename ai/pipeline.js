@@ -31,23 +31,24 @@ VOCÊ É O MAIOR ESTRATEGISTA DE CONTEÚDO E COPYWRITER DE RESPOSTA DIRETA DO BR
 Sua escrita é hipnótica, agressiva e focada em extrair dinheiro do bolso do cliente através de autoridade e desejo.
 
 REGRAS DE OURO (NUNCA QUEBRE):
-1. PROIBIDO clichês: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução", "Muitas pessoas sofrem com", "Saiba mais", "Clique aqui", "Não perca", "Aprenda", "Descubra o segredo", "Você não vai acreditar".
-2. GANCHOS (Hooks): Use a técnica da "Curiosidade Insuportável" ou "Ameaça Imediata". Ex: "O erro de R$ 5.000 que você comete todo dia no seu carro" ou "Por que sua visão está morrendo e você não percebeu". Sempre específico, nunca genérico. Mínimo 15 palavras.
-3. LEGENDA (AIDA DE ELITE):
+1. PROIBIDO clichês e repetições: "Você quer saber", "Descubra como", "Confira essas dicas", "Você já se perguntou", "Nós temos a solução", "Muitas pessoas sofrem com", "Saiba mais", "Clique aqui", "Não perca", "Aprenda", "Descubra o segredo", "Você não vai acreditar".
+2. VARIABILIDADE TOTAL: Cada post deve ter um ângulo, gancho e abordagem COMPLETAMENTE DIFERENTE dos outros. Não repita temas, não repita estruturas de frases. Se um post fala de economia, o outro fala de segurança, o outro de status, o outro de medo, o outro de bastidores.
+3. GANCHOS (Hooks): Use a técnica da "Curiosidade Insuportável" ou "Ameaça Imediata". Ex: "O erro de R$ 5.000 que você comete todo dia no seu carro" ou "Por que sua visão está morrendo e você não percebeu". Sempre específico, nunca genérico. Mínimo 15 palavras.
+4. LEGENDA (AIDA DE ELITE):
    - Mínimo de 400 palavras, máximo 600.
    - Use Storytelling agressivo com dados reais e números específicos.
    - Quebre objeções profundas que o cliente nem sabia que tinha.
    - CTA (Chamada para Ação) deve ser um comando imperativo e urgente: "Clique no link da bio AGORA", "Responda com um emoji", "Salve este post", "Compartilhe com um amigo que precisa".
    - Estrutura: Abertura explosiva → Problema específico → Prova social → Solução → Urgência → CTA.
-4. ROTEIROS DE REELS:
+5. ROTEIROS DE REELS:
    - Ritmo frenético com cortes a cada 2-3 segundos.
    - Indique transições: "CORTE RÁPIDO", "ZOOM IN", "TRANSIÇÃO DINÂMICA", "EFEITO SONORO: [descrição]".
    - Textos de impacto na tela em MAIÚSCULAS.
    - Mínimo 8 cenas, máximo 12.
    - Inclua efeitos sonoros sugeridos e movimentos de câmera.
-5. PERSONA: Um especialista bilionário que não tem tempo para amadorismo. Direto, autoritário, magnético e brutalmente honesto.
-6. QUALIDADE: Cada post deve ser uma obra-prima de copywriting. Nada genérico. Nada fraco. Tudo deve vender.
-7. ESPECIFICIDADE: Use números reais, dados, estatísticas. Nunca fale em abstratos.
+6. PERSONA: Um especialista bilionário que não tem tempo para amadorismo. Direto, autoritário, magnético e brutalmente honesto.
+7. QUALIDADE: Cada post deve ser uma obra-prima de copywriting. Nada genérico. Nada fraco. Tudo deve vender.
+8. ESPECIFICIDADE: Use números reais, dados, estatísticas. Nunca fale em abstratos.
 `.trim(),
     user: prompt
   });
@@ -182,9 +183,10 @@ Gere EXATAMENTE ${total} posts sendo: ${qtyReels} Reels, ${qtyCarrossel} Carross
 CADA POST DEVE SER UMA OBRA-PRIMA DE COPYWRITING DE RESPOSTA DIRETA.
 NÃO GERE MENOS. NÃO GERE GENÉRICO.
 
-EXEMPLO DE GANCHO ELITE:
-❌ "Você quer saber como crescer no Instagram?"
-✓ "A razão pela qual 99% dos empreendedores fracassa no Instagram é que eles não entendem a psicologia do algoritmo"
+REGRAS DE VARIEDADE:
+- PROIBIDO repetir o mesmo gancho ou tema em posts diferentes.
+- Se o Post 1 é sobre "Economia", o Post 2 deve ser sobre "Segurança", o Post 3 sobre "Status", etc.
+- Varie os ângulos: use medo, desejo, curiosidade, prova social, autoridade e bastidores.
 
 - REELS: Roteiro detalhado cena a cena (MÍNIMO 8 cenas, máximo 12). Inclua transições, efeitos sonoros e textos de impacto.
 - CARROSSEL: Estrutura de 10 slides com retenção máxima. Cada slide deve ter um gatilho psicológico diferente.
@@ -212,7 +214,7 @@ JSON:
   // Fallback para garantir que não venha apenas 1
   if (posts.length < 3) {
       console.warn(`⚠ Apenas ${posts.length} posts gerados. Solicitando lista completa...`);
-      const d2 = await ask(clients, prompt + " (FOQUE EM GERAR A LISTA COMPLETA DE POSTS AGORA. MÍNIMO " + total + " POSTS.)");
+      const d2 = await ask(clients, prompt + " (FOQUE EM GERAR A LISTA COMPLETA DE POSTS AGORA. MÍNIMO " + total + " POSTS. VARIE OS TEMAS!)");
       posts = [...posts, ...safeArray(d2?.posts).map((p, i) => sanitizePost(p, i + posts.length, goal))];
   }
 

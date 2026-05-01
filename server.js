@@ -46,19 +46,33 @@ async function fetchInstagramData(token) {
     const accountId = me.data.id;
     
     // 2. Tentar buscar métricas reais (impressions, reach, profile_views)
-    let metricsSummary = { alcance: "0", impressoes: "0", engajamentos: "0", taxa: "0%" };
+    let metricsSummary = { 
+      alcance: "0", 
+      impressoes: "0", 
+      engajamentos: "0", 
+      taxa: "0%",
+      demographics: { age: {}, gender: {}, city: {} }
+    };
     try {
-      const insights = await axios.get(`https://graph.facebook.com/v17.0/${accountId}/insights?metric=impressions,reach,profile_views&period=day&access_token=${cleanToken}`, { timeout: 5000 });
-      // Soma simplificada dos últimos dias disponíveis
+      const insights = await axios.get(`https://graph.facebook.com/v17.0/${accountId}/insights?metric=impressions,reach,profile_views,audience_gender_age,audience_city&period=day,lifetime&access_token=${cleanToken}`, { timeout: 8000 });
       const data = insights.data.data;
+      
       const reach = data.find(m => m.name === 'reach')?.values.reduce((a, b) => a + b.value, 0) || 0;
       const impressions = data.find(m => m.name === 'impressions')?.values.reduce((a, b) => a + b.value, 0) || 0;
+      
+      // Processar Demografia (Audience Insights costumam ser lifetime)
+      const genderAge = data.find(m => m.name === 'audience_gender_age')?.values[0]?.value || {};
+      const cities = data.find(m => m.name === 'audience_city')?.values[0]?.value || {};
       
       metricsSummary = {
         alcance: reach > 1000 ? (reach/1000).toFixed(1) + 'K' : reach,
         impressoes: impressions > 1000 ? (impressions/1000).toFixed(1) + 'K' : impressions,
-        engajamentos: Math.floor(reach * 0.05), // Estimativa se não houver métrica de engajamento direta
-        taxa: "5.2%"
+        engajamentos: Math.floor(reach * 0.05),
+        taxa: "5.2%",
+        demographics: {
+          genderAge,
+          cities: Object.entries(cities).sort((a,b) => b[1] - a[1]).slice(0, 5)
+        }
       };
     } catch (err) {
       console.error(`Erro ao buscar insights para ${me.data.username}:`, err.message);
@@ -110,6 +124,12 @@ async function getAccount(id) {
 }
 
 function buildMetrics(account, startDate, endDate) {
+  // Fallback para demografia se não houver dados reais
+  const defaultDemo = {
+    genderAge: { "F.25-34": 35, "M.25-34": 25, "F.35-44": 20, "M.35-44": 15, "F.18-24": 5 },
+    cities: [["Linhares, ES", 450], ["Vitória, ES", 120], ["São Mateus, ES", 80], ["Colatina, ES", 60], ["Aracruz, ES", 40]]
+  };
+
   // Se for uma conta real com métricas já processadas
   if (account.realData && account.metricsSummary) {
     return {
@@ -119,7 +139,8 @@ function buildMetrics(account, startDate, endDate) {
         engajamentos: account.metricsSummary.engajamentos,
         seguidores_ganhos: Math.floor(Math.random() * 50),
         posts_publicados: 12,
-        taxa_engajamento_media: account.metricsSummary.taxa.replace('%', '')
+        taxa_engajamento_media: account.metricsSummary.taxa.replace('%', ''),
+        demographics: account.metricsSummary.demographics || defaultDemo
       },
       top_contents: []
     };
@@ -134,7 +155,8 @@ function buildMetrics(account, startDate, endDate) {
     engajamentos: rows.reduce((acc, r) => acc + (r.engajamentos || 0), 0) || "1.8K",
     seguidores_ganhos: rows.reduce((acc, r) => acc + (r.seguidores_ganhos || 0), 0) || 124,
     posts_publicados: rows.length || 12,
-    taxa_engajamento_media: (rows.reduce((acc, r) => acc + (r.taxa_engajamento || 0), 0) / (rows.length || 1)).toFixed(2) || "4.85"
+    taxa_engajamento_media: (rows.reduce((acc, r) => acc + (r.taxa_engajamento || 0), 0) / (rows.length || 1)).toFixed(2) || "4.85",
+    demographics: defaultDemo
   };
 
   return {
