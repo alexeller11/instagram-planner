@@ -1,6 +1,8 @@
-# Ideale Instagram Planner — Agency Pro v8.5
+# 📱 Instagram Planner — Agency Pro v8.5
 
-Ferramente estratégica de planejamento de Instagram para agências, com **IA multi-modelo** (Groq + Gemini), **Spy de concorrentes via Playwright**, **calendário editorial**, **gerador de hashtags** e **dashboard de métricas reais** via Instagram Graph API.
+**Plataforma de Inteligência e Planejamento de Conteúdo para Instagram com IA Generativa**
+
+Transforme dados reais do Instagram de seus clientes em estratégias de conteúdo de alta conversão usando IA multi-modelo. O app carrega automaticamente seus clientes a partir de tokens do Instagram Graph API.
 
 ---
 
@@ -26,7 +28,7 @@ Copie `.env.example` para `.env` e preencha:
 | `NODE_ENV` | `development` ou `production` |
 | `GROQ_API_KEY` | Chave da API Groq — [console.groq.com/keys](https://console.groq.com/keys) |
 | `GEMINI_API_KEY` | Chave da API Gemini — [aistudio.google.com](https://aistudio.google.com/app/apikey) |
-| `IG_TOKENS` | Tokens de acesso longos do Instagram, separados por vírgula |
+| `IG_TOKENS` | **Tokens de acesso longos do Instagram, separados por vírgula** — Veja [README_SETUP.md](./README_SETUP.md) para instruções |
 | `SAMBANOVA_API_KEY` | Chave SambaNova Cloud (fallback) — [cloud.sambanova.ai](https://cloud.sambanova.ai) |
 | `MONGODB_URI` | String de conexão MongoDB Atlas — [cloud.mongodb.com](https://cloud.mongodb.com) |
 
