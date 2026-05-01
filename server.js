@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const axios = require("axios");
 const { buildClients } = require("./ai/engine");
 const {
   analisarCliente,
@@ -18,8 +17,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Rota principal
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
+app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
 
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
 const METRICS_FILE = path.join(__dirname, "data", "clients", "metrics", "metrics.json");
@@ -29,185 +28,107 @@ function readJson(file, fallback = null) {
     if (!fs.existsSync(file)) return fallback;
     return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch (e) {
+    console.error(`Erro ao ler ${file}:`, e.message);
     return fallback;
   }
 }
 
-/**
- * Busca dados reais do Instagram Graph API se houver tokens no ENV
- */
-async function fetchInstagramData(token) {
-  try {
-    const cleanToken = token.trim();
-    if (!cleanToken) return null;
-
-    // 1. Pegar ID do usuário e Username
-    const me = await axios.get(`https://graph.facebook.com/v17.0/me?fields=id,username,name,biography,profile_picture_url,followers_count,media_count&access_token=${cleanToken}`, { timeout: 10000 });
-    const accountId = me.data.id;
-    
-    // 2. Tentar buscar métricas reais (impressions, reach, profile_views)
-    let metricsSummary = { 
-      alcance: "0", 
-      impressoes: "0", 
-      engajamentos: "0", 
-      taxa: "0%",
-      demographics: { age: {}, gender: {}, city: {} }
-    };
-    try {
-      const insights = await axios.get(`https://graph.facebook.com/v17.0/${accountId}/insights?metric=impressions,reach,profile_views,audience_gender_age,audience_city&period=day,lifetime&access_token=${cleanToken}`, { timeout: 8000 });
-      const data = insights.data.data;
-      
-      const reach = data.find(m => m.name === 'reach')?.values.reduce((a, b) => a + b.value, 0) || 0;
-      const impressions = data.find(m => m.name === 'impressions')?.values.reduce((a, b) => a + b.value, 0) || 0;
-      
-      // Processar Demografia (Audience Insights costumam ser lifetime)
-      const genderAge = data.find(m => m.name === 'audience_gender_age')?.values[0]?.value || {};
-      const cities = data.find(m => m.name === 'audience_city')?.values[0]?.value || {};
-      
-      metricsSummary = {
-        alcance: reach > 1000 ? (reach/1000).toFixed(1) + 'K' : reach,
-        impressoes: impressions > 1000 ? (impressions/1000).toFixed(1) + 'K' : impressions,
-        engajamentos: Math.floor(reach * 0.05),
-        taxa: "5.2%",
-        demographics: {
-          genderAge,
-          cities: Object.entries(cities).sort((a,b) => b[1] - a[1]).slice(0, 5)
-        }
-      };
-    } catch (err) {
-      console.error(`Erro ao buscar insights para ${me.data.username}:`, err.message);
-    }
-    
-    return {
-      id: accountId,
-      username: me.data.username,
-      brandName: me.data.name || me.data.username,
-      biography: me.data.biography || "",
-      followers: me.data.followers_count || 0,
-      ig_token: cleanToken,
-      realData: true,
-      metricsSummary
-    };
-  } catch (e) {
-    console.error("Falha crítica no Token do Instagram:", e.response?.data || e.message);
-    return null;
-  }
+function getAccounts() {
+  const data = readJson(CLIENTS_FILE, []);
+  return Array.isArray(data) ? data : [];
 }
 
-async function getAccounts() {
-  const staticClients = readJson(CLIENTS_FILE, []);
-  
-  // Regex para separar por vírgula ou quebra de linha
-  const rawTokens = process.env.IG_TOKENS || "";
-  const tokens = rawTokens.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
-  
-  const dynamicClients = [];
-  // Executar em paralelo para ser mais rápido
-  const results = await Promise.all(tokens.map(t => fetchInstagramData(t)));
-  results.forEach(r => { if (r) dynamicClients.push(r); });
-  
-  // Mescla clientes estáticos com dinâmicos (priorizando dinâmicos pelo username)
-  const all = [...dynamicClients];
-  staticClients.forEach(sc => {
-    if (!all.find(a => a.username === sc.username)) {
-      all.push(sc);
-    }
+function getAccount(id) {
+  const accounts = getAccounts();
+  return accounts.find((a) => a.id === String(id)) || accounts[0] || null;
+}
+
+function parseDateSafe(v) {
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function filterByDate(rows = [], startDate, endDate) {
+  const start = startDate ? parseDateSafe(startDate) : null;
+  const end = endDate ? parseDateSafe(endDate) : null;
+  return rows.filter((row) => {
+    const d = parseDateSafe(row.date);
+    if (!d) return false;
+    if (start && d < start) return false;
+    if (end && d > end) return false;
+    return true;
   });
-  
-  return all;
 }
 
-async function getAccount(id) {
-  const accounts = await getAccounts();
-  // Busca por ID ou Username para ser mais flexível
-  return accounts.find((a) => a.id === String(id) || a.username === String(id)) || accounts[0] || null;
+function sum(rows = [], key) {
+  return rows.reduce((acc, row) => acc + Number(row[key] || 0), 0);
 }
 
-function buildMetrics(account, startDate, endDate) {
-  // Fallback para demografia se não houver dados reais
-  const defaultDemo = {
-    genderAge: { "F.25-34": 35, "M.25-34": 25, "F.35-44": 20, "M.35-44": 15, "F.18-24": 5 },
-    cities: [["Linhares, ES", 450], ["Vitória, ES", 120], ["São Mateus, ES", 80], ["Colatina, ES", 60], ["Aracruz, ES", 40]]
-  };
+function avg(rows = [], key) {
+  if (!rows.length) return 0;
+  return Number((sum(rows, key) / rows.length).toFixed(2));
+}
 
-  // Se for uma conta real com métricas já processadas
-  if (account.realData && account.metricsSummary) {
-    return {
-      summary: {
-        alcance: account.metricsSummary.alcance,
-        impressoes: account.metricsSummary.impressoes,
-        engajamentos: account.metricsSummary.engajamentos,
-        seguidores_ganhos: Math.floor(Math.random() * 50),
-        posts_publicados: 12,
-        taxa_engajamento_media: account.metricsSummary.taxa.replace('%', ''),
-        demographics: account.metricsSummary.demographics || defaultDemo
-      },
-      top_contents: []
-    };
-  }
-
+function buildMetrics(username, startDate, endDate) {
   const store = readJson(METRICS_FILE, {}) || {};
-  const rows = Array.isArray(store[account.username]) ? store[account.username] : [];
-  
-  const summary = {
-    alcance: rows.reduce((acc, r) => acc + (r.alcance || 0), 0) || "12.4K",
-    impressoes: rows.reduce((acc, r) => acc + (r.impressoes || 0), 0) || "45.2K",
-    engajamentos: rows.reduce((acc, r) => acc + (r.engajamentos || 0), 0) || "1.8K",
-    seguidores_ganhos: rows.reduce((acc, r) => acc + (r.seguidores_ganhos || 0), 0) || 124,
-    posts_publicados: rows.length || 12,
-    taxa_engajamento_media: (rows.reduce((acc, r) => acc + (r.taxa_engajamento || 0), 0) / (rows.length || 1)).toFixed(2) || "4.85",
-    demographics: defaultDemo
-  };
-
+  const rows = Array.isArray(store[username]) ? store[username] : [];
+  const filtered = filterByDate(rows, startDate, endDate);
   return {
-    summary,
-    top_contents: rows.sort((a, b) => (b.engajamentos || 0) - (a.engajamentos || 0)).slice(0, 5)
+    range: { startDate: startDate || null, endDate: endDate || null, totalDays: filtered.length },
+    summary: {
+      alcance: sum(filtered, "alcance"),
+      impressoes: sum(filtered, "impressoes"),
+      engajamentos: sum(filtered, "engajamentos"),
+      seguidores_ganhos: sum(filtered, "seguidores_ganhos"),
+      posts_publicados: sum(filtered, "posts_publicados"),
+      taxa_engajamento_media: avg(filtered, "taxa_engajamento")
+    },
+    top_contents: [...filtered].sort((a, b) => Number(b.engajamentos || 0) - Number(a.engajamentos || 0)).slice(0, 5)
+  };
+}
+
+function normalizeClient(acc) {
+  return {
+    id: acc.id,
+    username: acc.username,
+    brandName: acc.brandName || acc.username,
+    niche: acc.niche || "",
+    targetAudience: acc.targetAudience || "",
+    audiencePainPoints: Array.isArray(acc.audiencePainPoints) ? acc.audiencePainPoints : [],
+    brandTone: acc.brandTone || "",
+    offer: acc.offer || "",
+    city: acc.city || "",
+    contentPillars: Array.isArray(acc.contentPillars) ? acc.contentPillars : []
   };
 }
 
 const aiClients = buildClients(process.env);
 
-app.get("/api/me", async (_, res) => {
-  try {
-    const accounts = await getAccounts();
-    res.json({ logged: true, accounts });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+app.get("/api/me", (_, res) => {
+  const accounts = getAccounts().map((acc) => ({
+    id: acc.id,
+    username: acc.username,
+    brandName: acc.brandName || acc.username,
+    niche: acc.niche || "",
+    city: acc.city || ""
+  }));
+  res.json({ logged: true, accounts });
 });
 
 app.post("/api/dashboard", async (req, res) => {
   try {
-    const account = await getAccount(req.body?.igId);
-    if (!account) return res.status(404).json({ error: "Cliente não encontrado" });
-
-    const analysis = await analisarCliente({ clients: aiClients, ...account });
-    const profile = await dashboard360({ clients: aiClients, clientData: account, analysis });
-    const metrics = buildMetrics(account);
-
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const clientData = normalizeClient(raw);
+    let analysis = {};
+    try {
+      analysis = await analisarCliente({ clients: aiClients, ...clientData });
+    } catch (e) {
+      analysis = { niche_analysis: clientData.niche, audience_summary: clientData.targetAudience };
+    }
+    const profile = await dashboard360({ clients: aiClients, clientData, analysis });
+    const metrics = buildMetrics(clientData.username, req.body?.startDate, req.body?.endDate);
     res.json({ analysis, profile, metrics });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post("/api/plano", async (req, res) => {
-  try {
-    const account = await getAccount(req.body?.igId);
-    if (!account) return res.status(404).json({ error: "Cliente não encontrado" });
-
-    const analysis = await analisarCliente({ clients: aiClients, ...account });
-    const data = await planoMensal({
-      clients: aiClients,
-      clientData: account,
-      analysis,
-      goal: req.body?.goal || "Performance e Conversão",
-      qtyReels: Number(req.body?.qtyReels || 8),
-      qtyCarrossel: Number(req.body?.qtyCarrossel || 6),
-      qtyFoto: Number(req.body?.qtyFoto || 2)
-    });
-
-    res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -215,25 +136,57 @@ app.post("/api/plano", async (req, res) => {
 
 app.post("/api/diagnostico", async (req, res) => {
   try {
-    const account = await getAccount(req.body?.igId);
-    const analysis = await analisarCliente({ clients: aiClients, ...account });
-    const data = await diagnostico({ clients: aiClients, clientData: account, analysis, objective: "Performance" });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({ clients: aiClients, ...clientData });
+    const data = await diagnostico({ clients: aiClients, clientData, analysis, objective: req.body?.objective || "performance" });
     res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/plano", async (req, res) => {
+  try {
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
+    const clientData = normalizeClient(raw);
+    let analysis = {};
+    try {
+      analysis = await analisarCliente({ clients: aiClients, ...clientData });
+    } catch (err) {
+      analysis = { niche_analysis: clientData.niche, audience_summary: clientData.targetAudience };
+    }
+    const data = await planoMensal({
+      clients: aiClients,
+      clientData,
+      analysis,
+      goal: req.body?.goal || "Autoridade",
+      qtyReels: Number(req.body?.qtyReels || 8),
+      qtyCarrossel: Number(req.body?.qtyCarrossel || 6),
+      qtyFoto: Number(req.body?.qtyFoto || 2)
+    });
+    if (!data.posts || data.posts.length === 0) {
+      return res.status(500).json({ error: "A IA não conseguiu gerar os posts. Verifique as chaves de API.", posts: [] });
+    }
+    res.json({ analysis, ...data });
+  } catch (e) {
+    res.status(500).json({ error: e.message, posts: [] });
   }
 });
 
 app.post("/api/concorrencia", async (req, res) => {
   try {
-    const account = await getAccount(req.body?.igId);
-    if (!account) return res.status(404).json({ error: "Cliente não encontrado" });
-    const analysis = await analisarCliente({ clients: aiClients, ...account });
-    const data = await concorrencia({ clients: aiClients, clientData: account, analysis });
+    const raw = getAccount(req.body?.igId);
+    if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+    const clientData = normalizeClient(raw);
+    const analysis = await analisarCliente({ clients: aiClients, ...clientData });
+    const data = await concorrencia({ clients: aiClients, clientData, analysis });
     res.json({ analysis, ...data });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(PORT, () => console.log("🚀 Agência Pro rodando na porta", PORT));
+app.listen(PORT, () => console.log("🚀 Server rodando na porta", PORT));
