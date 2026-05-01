@@ -7,17 +7,24 @@ const axios = require("axios");
 async function fetchInstagramAccount(token) {
   try {
     // 1. Pegar o ID do usuário do Facebook e suas páginas
+    console.log("🔍 Passo 1: Buscando páginas do Facebook vinculadas ao token...");
     const meRes = await axios.get(`https://graph.facebook.com/v19.0/me/accounts?access_token=${token}`);
     const pages = meRes.data?.data || [];
     
-    if (pages.length === 0) return null;
+    console.log(`Found ${pages.length} pages.`);
+    if (pages.length === 0) {
+      console.log("⚠️ Nenhuma página do Facebook encontrada para este token.");
+      return null;
+    }
 
     // 2. Para cada página, procurar o ID da conta do Instagram vinculada
     for (const page of pages) {
+      console.log(`🔍 Passo 2: Verificando Instagram Business Account na página: ${page.name} (${page.id})`);
       const igRes = await axios.get(`https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account&access_token=${token}`);
       const igId = igRes.data?.instagram_business_account?.id;
       
       if (igId) {
+        console.log(`✅ Instagram Business Account encontrada: ${igId}`);
         // 3. Pegar detalhes do perfil do Instagram
         const profileRes = await axios.get(`https://graph.facebook.com/v19.0/${igId}?fields=username,name,biography,profile_picture_url,followers_count&access_token=${token}`);
         const profile = profileRes.data;

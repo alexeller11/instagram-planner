@@ -51,7 +51,7 @@ Copie o novo token retornado.
 2. Clique no seu serviço **"instagram-planner-agency"**
 3. Vá para **"Environment"**
 4. Procure por **"IG_TOKENS"** e clique em **"Edit"**
-5. Cole o token (ou múltiplos tokens separados por vírgula)
+5. Cole o token (ou múltiplos tokens separados por vírgula, ponto e vírgula ou quebra de linha)
 6. Clique em **"Save"**
 7. O app será redeploy automaticamente
 
@@ -65,6 +65,12 @@ Copie o novo token retornado.
 3. Se tiver múltiplos clientes:
    ```
    IG_TOKENS=token_cliente_1,token_cliente_2,token_cliente_3
+   # Ou use quebra de linha para organizar melhor:
+   IG_TOKENS="
+   token_1,
+   token_2,
+   token_3
+   "
    ```
 
 ## 2. Verificar se os Clientes Foram Carregados

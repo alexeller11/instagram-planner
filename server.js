@@ -31,7 +31,8 @@ let dynamicClients = [];
 
 async function loadDynamicClients() {
   const tokensStr = process.env.IG_TOKENS || "";
-  const tokens = tokensStr.split(",").map(t => t.trim()).filter(Boolean);
+  // Suporta vírgula, ponto e vírgula ou quebra de linha como separador
+  const tokens = tokensStr.split(/[,\n;]+/).map(t => t.trim()).filter(Boolean);
   
   if (tokens.length === 0) {
     console.log("ℹ️ Nenhum IG_TOKENS encontrado no ambiente.");
@@ -90,7 +91,8 @@ function getAccounts() {
 
 function getAccount(id) {
   const accounts = getAccounts();
-  return accounts.find((a) => a.id === String(id)) || accounts[0] || null;
+  if (!id) return accounts[0] || null;
+  return accounts.find((a) => String(a.id) === String(id) || a.username === String(id)) || accounts[0] || null;
 }
 
 function parseDateSafe(v) {
