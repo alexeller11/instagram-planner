@@ -5,11 +5,9 @@ const axios = require('axios');
  */
 function getFacebookLoginUrl(appId, redirectUri, state) {
   const scope = [
-    'instagram_business_content_publish',
     'instagram_basic',
     'pages_read_engagement',
-    'pages_read_user_content',
-    'pages_manage_metadata'
+    'pages_read_user_content'
   ].join(',');
 
   return `https://www.facebook.com/v19.0/dialog/oauth?` +
