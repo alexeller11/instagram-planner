@@ -11,6 +11,7 @@ const {
   concorrencia
 } = require("./ai/pipeline");
 const { fetchInstagramAccount } = require("./ai/instagram");
+const { getFacebookLoginUrl, getAccessToken, getInstagramAccounts } = require("./ai/auth");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -18,51 +19,124 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
-app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
+// ============ CONFIGURAÇÃO FACEBOOK LOGIN ============
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const FACEBOOK_REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || `${BASE_URL}/auth/facebook/callback`;
+
+// Store para sessões (em produção, usar Redis ou banco de dados)
+const sessions = new Map();
+
+// ============ ROTAS DE AUTENTICAÇÃO ============
+
+app.get("/auth/facebook", (req, res) => {
+  const state = Math.random().toString(36).substring(7);
+  sessions.set(state, { createdAt: Date.now() });
+
+  const loginUrl = getFacebookLoginUrl(FACEBOOK_APP_ID, FACEBOOK_REDIRECT_URI, state);
+  res.redirect(loginUrl);
+});
+
+app.get("/auth/facebook/callback", async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`/?error=${error}`);
+  }
+
+  if (!state || !sessions.has(state)) {
+    return res.status(400).send("Estado inválido ou expirado");
+  }
+
+  sessions.delete(state);
+
+  try {
+    // Obter token de acesso
+    const accessToken = await getAccessToken(
+      code,
+      FACEBOOK_APP_ID,
+      FACEBOOK_APP_SECRET,
+      FACEBOOK_REDIRECT_URI
+    );
+
+    // Buscar contas do Instagram
+    const accounts = await getInstagramAccounts(accessToken);
+
+    if (accounts.length === 0) {
+      return res.redirect("/?error=no_accounts");
+    }
+
+    // Criar sessão
+    const sessionId = Math.random().toString(36).substring(7);
+    sessions.set(sessionId, {
+      accessToken,
+      accounts,
+      createdAt: Date.now()
+    });
+
+    // Redirecionar para o app com o sessionId
+    res.redirect(`/app?session=${sessionId}`);
+  } catch (error) {
+    console.error("Erro na autenticação:", error.message);
+    res.redirect(`/?error=auth_failed`);
+  }
+});
+
+app.get("/auth/logout", (req, res) => {
+  const { session } = req.query;
+  if (session) {
+    sessions.delete(session);
+  }
+  res.redirect("/");
+});
+
+// ============ MIDDLEWARE DE AUTENTICAÇÃO ============
+
+function requireAuth(req, res, next) {
+  const sessionId = req.query.session || req.headers.authorization?.replace("Bearer ", "");
+
+  if (!sessionId || !sessions.has(sessionId)) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+
+  const session = sessions.get(sessionId);
+
+  // Verificar se a sessão não expirou (24 horas)
+  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+    sessions.delete(sessionId);
+    return res.status(401).json({ error: "Sessão expirada" });
+  }
+
+  req.session = session;
+  req.sessionId = sessionId;
+  next();
+}
+
+// ============ ROTAS DA API ============
+
+app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard-v2.html")));
+app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard-v2.html")));
 
 app.get("/health", (_, res) => res.status(200).json({ status: "ok", timestamp: new Date().toISOString() }));
 
+// Obter contas do usuário logado
+app.get("/api/me", requireAuth, (req, res) => {
+  const accounts = req.session.accounts.map((acc) => ({
+    id: acc.id,
+    username: acc.username,
+    brandName: acc.brandName || acc.username,
+    niche: acc.niche || "",
+    city: acc.city || ""
+  }));
+
+  res.json({ logged: true, accounts });
+});
+
+// ============ FUNÇÕES AUXILIARES ============
+
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
 const METRICS_FILE = path.join(__dirname, "data", "clients", "metrics", "metrics.json");
-
-// Cache em memória para clientes carregados via Token
-let dynamicClients = [];
-
-async function loadDynamicClients() {
-  const tokensStr = process.env.IG_TOKENS || "";
-  // Suporta vírgula, ponto e vírgula ou quebra de linha como separador
-  const tokens = tokensStr.split(/[,\n;]+/).map(t => t.trim()).filter(Boolean);
-  
-  if (tokens.length === 0) {
-    console.log("ℹ️ Nenhum IG_TOKENS encontrado no ambiente.");
-    return;
-  }
-
-  console.log(`🔄 Carregando ${tokens.length} clientes via tokens do ambiente...`);
-  const loaded = [];
-  for (const token of tokens) {
-    const account = await fetchInstagramAccount(token);
-    if (account) {
-      loaded.push({
-        ...account,
-        // Campos padrão para compatibilidade com o sistema de IA
-        niche: "Nicho a definir",
-        targetAudience: "Público a definir",
-        audiencePainPoints: [],
-        brandTone: "Profissional",
-        offer: "Serviços",
-        city: "Brasil",
-        contentPillars: ["Educação", "Bastidores"]
-      });
-      console.log(`✅ Cliente carregado: @${account.username}`);
-    }
-  }
-  dynamicClients = loaded;
-}
-
-// Carrega os clientes dinâmicos na inicialização
-loadDynamicClients();
 
 function readJson(file, fallback = null) {
   try {
@@ -74,23 +148,7 @@ function readJson(file, fallback = null) {
   }
 }
 
-function getAccounts() {
-  const staticData = readJson(CLIENTS_FILE, []);
-  const accounts = Array.isArray(staticData) ? staticData : [];
-  // Mescla clientes estáticos com dinâmicos, priorizando os dinâmicos se houver conflito de ID/Username
-  const allAccounts = [...dynamicClients];
-  
-  accounts.forEach(staticAcc => {
-    if (!allAccounts.find(d => d.username === staticAcc.username || d.id === staticAcc.id)) {
-      allAccounts.push(staticAcc);
-    }
-  });
-
-  return allAccounts;
-}
-
-function getAccount(id) {
-  const accounts = getAccounts();
+function getAccount(id, accounts) {
   if (!id) return accounts[0] || null;
   return accounts.find((a) => String(a.id) === String(id) || a.username === String(id)) || accounts[0] || null;
 }
@@ -125,7 +183,7 @@ function buildMetrics(username, startDate, endDate) {
   const store = readJson(METRICS_FILE, {}) || {};
   const rows = Array.isArray(store[username]) ? store[username] : [];
   const filtered = filterByDate(rows, startDate, endDate);
-  
+
   return {
     range: { startDate: startDate || null, endDate: endDate || null, totalDays: filtered.length },
     summary: {
@@ -183,21 +241,13 @@ function validateClientData(data) {
 
 const aiClients = buildClients(process.env);
 
-app.get("/api/me", (_, res) => {
-  const accounts = getAccounts().map((acc) => ({
-    id: acc.id,
-    username: acc.username,
-    brandName: acc.brandName || acc.username,
-    niche: acc.niche || "",
-    city: acc.city || ""
-  }));
-  res.json({ logged: true, accounts });
-});
+// ============ ROTAS DE CONTEÚDO ============
 
-app.post("/api/dashboard", async (req, res) => {
+app.post("/api/dashboard", requireAuth, async (req, res) => {
   try {
-    const raw = getAccount(req.body?.igId);
+    const raw = getAccount(req.body?.igId, req.session.accounts);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
     const clientData = normalizeClient(raw);
     let analysis = {};
     try {
@@ -205,6 +255,7 @@ app.post("/api/dashboard", async (req, res) => {
     } catch (e) {
       analysis = { niche_analysis: clientData.niche, audience_summary: clientData.targetAudience };
     }
+
     const profile = await dashboard360({ clients: aiClients, clientData, analysis });
     const metrics = buildMetrics(clientData.username, req.body?.startDate, req.body?.endDate);
     res.json({ analysis, profile, metrics });
@@ -213,10 +264,11 @@ app.post("/api/dashboard", async (req, res) => {
   }
 });
 
-app.post("/api/diagnostico", async (req, res) => {
+app.post("/api/diagnostico", requireAuth, async (req, res) => {
   try {
-    const raw = getAccount(req.body?.igId);
+    const raw = getAccount(req.body?.igId, req.session.accounts);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
     const clientData = normalizeClient(raw);
     const analysis = await analisarCliente({ clients: aiClients, ...clientData });
     const data = await diagnostico({ clients: aiClients, clientData, analysis, objective: req.body?.objective || "performance" });
@@ -226,11 +278,12 @@ app.post("/api/diagnostico", async (req, res) => {
   }
 });
 
-app.post("/api/plano", async (req, res) => {
+app.post("/api/plano", requireAuth, async (req, res) => {
   try {
     validateClientData(req.body);
-    const raw = getAccount(req.body?.igId);
+    const raw = getAccount(req.body?.igId, req.session.accounts);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
+
     const clientData = normalizeClient(raw);
     let analysis = {};
     try {
@@ -238,6 +291,7 @@ app.post("/api/plano", async (req, res) => {
     } catch (err) {
       analysis = { niche_analysis: clientData.niche, audience_summary: clientData.targetAudience };
     }
+
     const data = await planoMensal({
       clients: aiClients,
       clientData,
@@ -247,19 +301,22 @@ app.post("/api/plano", async (req, res) => {
       qtyCarrossel: Number(req.body?.qtyCarrossel || 6),
       qtyFoto: Number(req.body?.qtyFoto || 2)
     });
+
     if (!data.posts || data.posts.length === 0) {
       return res.status(500).json({ error: "A IA não conseguiu gerar os posts. Verifique as chaves de API.", posts: [] });
     }
+
     res.json({ analysis, ...data });
   } catch (e) {
     res.status(400).json({ error: e.message, posts: [] });
   }
 });
 
-app.post("/api/concorrencia", async (req, res) => {
+app.post("/api/concorrencia", requireAuth, async (req, res) => {
   try {
-    const raw = getAccount(req.body?.igId);
+    const raw = getAccount(req.body?.igId, req.session.accounts);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado" });
+
     const clientData = normalizeClient(raw);
     const analysis = await analisarCliente({ clients: aiClients, ...clientData });
     const data = await concorrencia({ clients: aiClients, clientData, analysis });
