@@ -18,3 +18,5 @@ services:
         sync: false
       - key: NVIDIA_API_KEY
         sync: false
+      - key: IG_TOKENS
+        sync: false

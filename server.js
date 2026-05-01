@@ -10,6 +10,7 @@ const {
   planoMensal,
   concorrencia
 } = require("./ai/pipeline");
+const { fetchInstagramAccount } = require("./ai/instagram");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -25,6 +26,43 @@ app.get("/health", (_, res) => res.status(200).json({ status: "ok", timestamp: n
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
 const METRICS_FILE = path.join(__dirname, "data", "clients", "metrics", "metrics.json");
 
+// Cache em memória para clientes carregados via Token
+let dynamicClients = [];
+
+async function loadDynamicClients() {
+  const tokensStr = process.env.IG_TOKENS || "";
+  const tokens = tokensStr.split(",").map(t => t.trim()).filter(Boolean);
+  
+  if (tokens.length === 0) {
+    console.log("ℹ️ Nenhum IG_TOKENS encontrado no ambiente.");
+    return;
+  }
+
+  console.log(`🔄 Carregando ${tokens.length} clientes via tokens do ambiente...`);
+  const loaded = [];
+  for (const token of tokens) {
+    const account = await fetchInstagramAccount(token);
+    if (account) {
+      loaded.push({
+        ...account,
+        // Campos padrão para compatibilidade com o sistema de IA
+        niche: "Nicho a definir",
+        targetAudience: "Público a definir",
+        audiencePainPoints: [],
+        brandTone: "Profissional",
+        offer: "Serviços",
+        city: "Brasil",
+        contentPillars: ["Educação", "Bastidores"]
+      });
+      console.log(`✅ Cliente carregado: @${account.username}`);
+    }
+  }
+  dynamicClients = loaded;
+}
+
+// Carrega os clientes dinâmicos na inicialização
+loadDynamicClients();
+
 function readJson(file, fallback = null) {
   try {
     if (!fs.existsSync(file)) return fallback;
@@ -36,8 +74,18 @@ function readJson(file, fallback = null) {
 }
 
 function getAccounts() {
-  const data = readJson(CLIENTS_FILE, []);
-  return Array.isArray(data) ? data : [];
+  const staticData = readJson(CLIENTS_FILE, []);
+  const accounts = Array.isArray(staticData) ? staticData : [];
+  // Mescla clientes estáticos com dinâmicos, priorizando os dinâmicos se houver conflito de ID/Username
+  const allAccounts = [...dynamicClients];
+  
+  accounts.forEach(staticAcc => {
+    if (!allAccounts.find(d => d.username === staticAcc.username || d.id === staticAcc.id)) {
+      allAccounts.push(staticAcc);
+    }
+  });
+
+  return allAccounts;
 }
 
 function getAccount(id) {
@@ -71,7 +119,6 @@ function avg(rows = [], key) {
   return Number((sum(rows, key) / rows.length).toFixed(2));
 }
 
-// FASE 1: Adicionar estrutura de demographics mockados
 function buildMetrics(username, startDate, endDate) {
   const store = readJson(METRICS_FILE, {}) || {};
   const rows = Array.isArray(store[username]) ? store[username] : [];
@@ -86,7 +133,6 @@ function buildMetrics(username, startDate, endDate) {
       seguidores_ganhos: sum(filtered, "seguidores_ganhos"),
       posts_publicados: sum(filtered, "posts_publicados"),
       taxa_engajamento_media: avg(filtered, "taxa_engajamento"),
-      // NOVO: Dados demográficos mockados para compatibilidade com dashboard.html
       demographics: {
         genderAge: {
           "F 18-24": 1200,
@@ -123,33 +169,14 @@ function normalizeClient(acc) {
   };
 }
 
-// FASE 1: Adicionar validação de entrada
 function validateClientData(data) {
   const errors = [];
-  
-  if (!data.igId || typeof data.igId !== 'string') {
-    errors.push("igId inválido ou ausente");
-  }
-  
-  if (data.goal && typeof data.goal !== 'string') {
-    errors.push("goal deve ser string");
-  }
-  
-  if (data.qtyReels && (typeof data.qtyReels !== 'number' || data.qtyReels < 0 || data.qtyReels > 20)) {
-    errors.push("qtyReels deve estar entre 0 e 20");
-  }
-  
-  if (data.qtyCarrossel && (typeof data.qtyCarrossel !== 'number' || data.qtyCarrossel < 0 || data.qtyCarrossel > 20)) {
-    errors.push("qtyCarrossel deve estar entre 0 e 20");
-  }
-  
-  if (data.qtyFoto && (typeof data.qtyFoto !== 'number' || data.qtyFoto < 0 || data.qtyFoto > 20)) {
-    errors.push("qtyFoto deve estar entre 0 e 20");
-  }
-  
-  if (errors.length > 0) {
-    throw new Error(`Validação falhou: ${errors.join(', ')}`);
-  }
+  if (!data.igId || typeof data.igId !== 'string') errors.push("igId inválido ou ausente");
+  if (data.goal && typeof data.goal !== 'string') errors.push("goal deve ser string");
+  if (data.qtyReels && (typeof data.qtyReels !== 'number' || data.qtyReels < 0 || data.qtyReels > 20)) errors.push("qtyReels deve estar entre 0 e 20");
+  if (data.qtyCarrossel && (typeof data.qtyCarrossel !== 'number' || data.qtyCarrossel < 0 || data.qtyCarrossel > 20)) errors.push("qtyCarrossel deve estar entre 0 e 20");
+  if (data.qtyFoto && (typeof data.qtyFoto !== 'number' || data.qtyFoto < 0 || data.qtyFoto > 20)) errors.push("qtyFoto deve estar entre 0 e 20");
+  if (errors.length > 0) throw new Error(`Validação falhou: ${errors.join(', ')}`);
 }
 
 const aiClients = buildClients(process.env);
@@ -199,9 +226,7 @@ app.post("/api/diagnostico", async (req, res) => {
 
 app.post("/api/plano", async (req, res) => {
   try {
-    // FASE 1: Validar entrada
     validateClientData(req.body);
-    
     const raw = getAccount(req.body?.igId);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
     const clientData = normalizeClient(raw);
