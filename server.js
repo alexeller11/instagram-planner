@@ -69,10 +69,12 @@ function avg(rows = [], key) {
   return Number((sum(rows, key) / rows.length).toFixed(2));
 }
 
+// FASE 1: Adicionar estrutura de demographics mockados
 function buildMetrics(username, startDate, endDate) {
   const store = readJson(METRICS_FILE, {}) || {};
   const rows = Array.isArray(store[username]) ? store[username] : [];
   const filtered = filterByDate(rows, startDate, endDate);
+  
   return {
     range: { startDate: startDate || null, endDate: endDate || null, totalDays: filtered.length },
     summary: {
@@ -81,7 +83,24 @@ function buildMetrics(username, startDate, endDate) {
       engajamentos: sum(filtered, "engajamentos"),
       seguidores_ganhos: sum(filtered, "seguidores_ganhos"),
       posts_publicados: sum(filtered, "posts_publicados"),
-      taxa_engajamento_media: avg(filtered, "taxa_engajamento")
+      taxa_engajamento_media: avg(filtered, "taxa_engajamento"),
+      // NOVO: Dados demográficos mockados para compatibilidade com dashboard.html
+      demographics: {
+        genderAge: {
+          "F 18-24": 1200,
+          "F 25-34": 1850,
+          "M 18-24": 980,
+          "M 25-34": 1450,
+          "F 35-44": 650,
+          "M 35-44": 720
+        },
+        cities: [
+          ["São Paulo", 3200],
+          ["Rio de Janeiro", 1800],
+          ["Belo Horizonte", 950],
+          ["Curitiba", 650]
+        ]
+      }
     },
     top_contents: [...filtered].sort((a, b) => Number(b.engajamentos || 0) - Number(a.engajamentos || 0)).slice(0, 5)
   };
@@ -100,6 +119,35 @@ function normalizeClient(acc) {
     city: acc.city || "",
     contentPillars: Array.isArray(acc.contentPillars) ? acc.contentPillars : []
   };
+}
+
+// FASE 1: Adicionar validação de entrada
+function validateClientData(data) {
+  const errors = [];
+  
+  if (!data.igId || typeof data.igId !== 'string') {
+    errors.push("igId inválido ou ausente");
+  }
+  
+  if (data.goal && typeof data.goal !== 'string') {
+    errors.push("goal deve ser string");
+  }
+  
+  if (data.qtyReels && (typeof data.qtyReels !== 'number' || data.qtyReels < 0 || data.qtyReels > 20)) {
+    errors.push("qtyReels deve estar entre 0 e 20");
+  }
+  
+  if (data.qtyCarrossel && (typeof data.qtyCarrossel !== 'number' || data.qtyCarrossel < 0 || data.qtyCarrossel > 20)) {
+    errors.push("qtyCarrossel deve estar entre 0 e 20");
+  }
+  
+  if (data.qtyFoto && (typeof data.qtyFoto !== 'number' || data.qtyFoto < 0 || data.qtyFoto > 20)) {
+    errors.push("qtyFoto deve estar entre 0 e 20");
+  }
+  
+  if (errors.length > 0) {
+    throw new Error(`Validação falhou: ${errors.join(', ')}`);
+  }
 }
 
 const aiClients = buildClients(process.env);
@@ -149,6 +197,9 @@ app.post("/api/diagnostico", async (req, res) => {
 
 app.post("/api/plano", async (req, res) => {
   try {
+    // FASE 1: Validar entrada
+    validateClientData(req.body);
+    
     const raw = getAccount(req.body?.igId);
     if (!raw) return res.status(404).json({ error: "Nenhum cliente cadastrado", posts: [] });
     const clientData = normalizeClient(raw);
@@ -172,7 +223,7 @@ app.post("/api/plano", async (req, res) => {
     }
     res.json({ analysis, ...data });
   } catch (e) {
-    res.status(500).json({ error: e.message, posts: [] });
+    res.status(400).json({ error: e.message, posts: [] });
   }
 });
 
