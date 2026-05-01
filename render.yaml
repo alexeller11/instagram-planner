@@ -10,17 +10,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /ms-playwright
-      - key: SESSION_SECRET
-        generateValue: true
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: IG_TOKENS
+      - key: OPENAI_API_KEY
         sync: false
-      - key: SAMBANOVA_API_KEY
-        sync: false
-      - key: MONGODB_URI
+      - key: NVIDIA_API_KEY
         sync: false

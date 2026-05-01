@@ -20,6 +20,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
 app.get("/app", (_, res) => res.sendFile(path.join(__dirname, "public/dashboard.html")));
 
+app.get("/health", (_, res) => res.status(200).json({ status: "ok", timestamp: new Date().toISOString() }));
+
 const CLIENTS_FILE = path.join(__dirname, "data", "clients", "clients.json");
 const METRICS_FILE = path.join(__dirname, "data", "clients", "metrics", "metrics.json");
 

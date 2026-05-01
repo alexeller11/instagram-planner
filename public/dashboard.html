@@ -180,6 +180,7 @@ body {
   box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5);
 }
 .btn-primary:hover { transform: scale(1.02); box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 /* Loader */
 .plan-loader { display: none; text-align: center; padding: 5rem; }
@@ -253,7 +254,7 @@ body {
       <!-- ESTRATÉGIA -->
       <div id="intelligence" class="page">
         <div class="card">
-          <div class="card-title">Auditoria 360º e Diagnóstico de Performance</div>
+          <div class="card-title">Auditoria de Posicionamento</div>
           <p style="color: var(--muted); margin-bottom: 2rem;">Nossa IA analisará cada ponto do perfil para identificar falhas de posicionamento e oportunidades de escala.</p>
           <button class="btn-primary" onclick="runDiagnostic()">Iniciar Auditoria de Elite</button>
         </div>
@@ -325,11 +326,12 @@ let demoChart = null;
 async function init() {
   try {
     const r = await fetch('/api/me');
+    if (!r.ok) throw new Error('Falha ao carregar contas');
     const data = await r.json();
     accounts = data.accounts;
     renderAccs();
     if (accounts.length) selectAcc(accounts[0].id);
-  } catch(e) { toast('Erro ao conectar com o servidor'); }
+  } catch(e) { toast(e.message || 'Erro ao conectar com o servidor'); }
 }
 
 function renderAccs() {
@@ -368,6 +370,7 @@ async function loadDashboard() {
       body: JSON.stringify({ igId: selAccount.id })
     });
     const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro ao carregar dashboard');
     
     // Atualiza Métricas
     document.getElementById('m-alcance').textContent = data.metrics.summary.alcance;
@@ -377,14 +380,13 @@ async function loadDashboard() {
     
     renderChart(data.metrics.summary);
     renderDemographics(data.metrics.summary.demographics);
-  } catch(e) { toast('Erro ao carregar dashboard'); }
+  } catch(e) { toast(e.message); }
 }
 
 function renderChart(summary) {
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (chart) chart.destroy();
   
-  // Converter alcance para número se for string (ex: "12.4K")
   let reachVal = typeof summary.alcance === 'string' ? parseFloat(summary.alcance) * (summary.alcance.includes('K') ? 1000 : 1) : summary.alcance;
 
   chart = new Chart(ctx, {
@@ -413,7 +415,6 @@ function renderChart(summary) {
 }
 
 function renderDemographics(demo) {
-  // Renderizar Cidades
   const cityDiv = document.getElementById('city-list');
   cityDiv.innerHTML = demo.cities.map(([name, val]) => `
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -425,7 +426,6 @@ function renderDemographics(demo) {
     </div>
   `).join('');
 
-  // Renderizar Gráfico de Gênero/Idade
   const ctx = document.getElementById('demoChart').getContext('2d');
   if (demoChart) demoChart.destroy();
 
@@ -473,6 +473,7 @@ async function generatePlan() {
       })
     });
     const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro ao gerar plano');
     
     loader.style.display = 'none';
     result.innerHTML = `
@@ -505,7 +506,7 @@ async function generatePlan() {
       </div>
     `;
   } catch(e) { 
-    toast('Erro ao gerar plano');
+    toast(e.message);
     loader.style.display = 'none';
   }
 }
@@ -521,6 +522,8 @@ async function runDiagnostic() {
       body: JSON.stringify({ igId: selAccount.id })
     });
     const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro no diagnóstico');
+    
     document.getElementById('diag-result').innerHTML = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem">
         <div class="card" style="border-left: 6px solid var(--danger);">
@@ -533,12 +536,17 @@ async function runDiagnostic() {
         </div>
       </div>
     `;
-  } catch(e) { toast('Erro no diagnóstico'); }
+  } catch(e) { toast(e.message); }
   btn.disabled = false;
   btn.textContent = 'Iniciar Auditoria de Elite';
 }
 
 async function runCompetitors() {
+  const btn = document.querySelector('button[onclick="runCompetitors()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Mapeando...';
+  }
   try {
     const r = await fetch('/api/concorrencia', {
       method: 'POST',
@@ -546,6 +554,8 @@ async function runCompetitors() {
       body: JSON.stringify({ igId: selAccount.id })
     });
     const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro na análise de mercado');
+    
     document.getElementById('comp-result').innerHTML = `
       <div class="content-grid">
         ${data.concorrentes.map(c => `
@@ -559,7 +569,11 @@ async function runCompetitors() {
         `).join('')}
       </div>
     `;
-  } catch(e) { toast('Erro na análise de mercado'); }
+  } catch(e) { toast(e.message); }
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Mapear Oportunidades';
+  }
 }
 
 function toast(msg) {
