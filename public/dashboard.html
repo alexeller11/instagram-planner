@@ -8,12 +8,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
-  --brand: #8b5cf6; /* Violet 500 */
+  --brand: #8b5cf6;
   --brand-light: #a78bfa;
   --brand-gradient: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
-  --bg: #020617; /* Slate 950 */
-  --surface: #0f172a; /* Slate 900 */
-  --card: #1e293b; /* Slate 800 */
+  --bg: #020617;
+  --surface: #0f172a;
+  --card: #1e293b;
   --border: rgba(255, 255, 255, 0.08);
   --text: #f8fafc;
   --muted: #94a3b8;
@@ -31,13 +31,80 @@ body {
   line-height: 1.6;
 }
 
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.1), transparent);
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 3rem;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.login-subtitle {
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+  font-size: 0.95rem;
+}
+
+.btn-facebook {
+  width: 100%;
+  padding: 1.25rem;
+  background: #1877f2;
+  color: white;
+  border: none;
+  border-radius: 18px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 25px -5px rgba(24, 119, 242, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn-facebook:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 30px -5px rgba(24, 119, 242, 0.6);
+}
+
+.btn-facebook svg {
+  width: 24px;
+  height: 24px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 100vh;
 }
 
-/* Sidebar BI */
 .sidebar {
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -59,9 +126,15 @@ body {
   align-items: center;
   gap: 10px;
 }
-.sidebar-logo span { background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.sidebar-logo span {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
 .nav-group { display: flex; flex-direction: column; gap: 0.75rem; }
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -76,11 +149,12 @@ body {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
 .nav-item.on { background: var(--brand-gradient); color: white; box-shadow: 0 10px 20px -5px rgba(139, 92, 246, 0.4); }
 
-/* Main Content */
 .main { display: flex; flex-direction: column; background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.05), transparent); }
+
 .topbar {
   padding: 1.5rem 3rem;
   border-bottom: 1px solid var(--border);
@@ -97,7 +171,8 @@ body {
 .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; }
 .topbar-sub { font-size: 0.9rem; color: var(--muted); }
 
-.acc-list { display: flex; gap: 10px; }
+.acc-list { display: flex; gap: 10px; align-items: center; }
+
 .acc-chip {
   padding: 8px 20px;
   border-radius: 99px;
@@ -108,7 +183,24 @@ body {
   cursor: pointer;
   transition: all 0.3s;
 }
+
 .acc-chip.on { border-color: var(--brand); background: rgba(139, 92, 246, 0.15); color: var(--brand-light); }
+
+.btn-logout {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
 
 .main-content { padding: 3rem; max-width: 1400px; margin: 0 auto; width: 100%; }
 .page { display: none; animation: slideUp 0.5s ease-out; }
@@ -116,8 +208,8 @@ body {
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* BI Widgets */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+
 .stat-item {
   background: var(--surface);
   padding: 2rem;
@@ -126,7 +218,9 @@ body {
   position: relative;
   overflow: hidden;
 }
+
 .stat-item::after { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--brand); opacity: 0.5; }
+
 .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 2.25rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
 .stat-label { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; }
 
@@ -137,37 +231,10 @@ body {
   padding: 2.5rem;
   margin-bottom: 2rem;
 }
+
 .card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; }
 
-/* Planning & Content */
-.content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 2rem; }
-.post-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.post-card:hover { transform: translateY(-10px); border-color: var(--brand); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); }
-.post-preview { height: 200px; background: linear-gradient(45deg, #0f172a, #1e293b); display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative; }
-.post-preview::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(139, 92, 246, 0.2), transparent); }
-
-.post-body { padding: 2rem; }
-.post-tag { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; margin-bottom: 1.5rem; letter-spacing: 0.05em; }
-.tag-reels { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
-.tag-carrossel { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); }
-.tag-foto { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
-
-.post-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; }
-.section-label { font-size: 0.75rem; text-transform: uppercase; color: var(--brand-light); font-weight: 900; margin-bottom: 10px; display: block; letter-spacing: 0.1em; }
-
-.script-box { background: rgba(2, 6, 23, 0.4); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 1.5rem; font-size: 0.9rem; }
-.caption-box { background: rgba(0, 0, 0, 0.3); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; color: #e2e8f0; }
-
 .btn-primary {
-  width: 100%;
   padding: 1.25rem;
   background: var(--brand-gradient);
   color: white;
@@ -179,15 +246,11 @@ body {
   transition: all 0.3s;
   box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5);
 }
-.btn-primary:hover { transform: scale(1.02); box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-/* Loader */
-.plan-loader { display: none; text-align: center; padding: 5rem; }
-.spinner { width: 60px; height: 60px; border: 5px solid rgba(139, 92, 246, 0.1); border-top-color: var(--brand); border-radius: 50%; animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin: 0 auto 2rem; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.btn-primary:hover { transform: scale(1.02); box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6); }
 
 #toast { position: fixed; bottom: 40px; right: 40px; background: var(--surface); border: 1px solid var(--brand); padding: 16px 32px; border-radius: 20px; font-weight: 700; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: none; z-index: 1000; animation: slideIn 0.4s ease-out; }
+
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 @media (max-width: 1100px) {
@@ -200,14 +263,25 @@ body {
 </head>
 <body>
 
-<div class="app-shell">
+<div id="login-screen" class="login-container" style="display: none;">
+  <div class="login-card">
+    <div class="login-logo">✦ AgencyBI</div>
+    <h1 class="login-title">Bem-vindo</h1>
+    <p class="login-subtitle">Conecte sua conta Meta para gerenciar seus clientes do Instagram</p>
+    <button class="btn-facebook" onclick="loginWithFacebook()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      Conectar com Meta
+    </button>
+  </div>
+</div>
+
+<div id="app-screen" class="app-shell" style="display: none;">
   <aside class="sidebar">
     <div class="sidebar-logo"><span>✦</span> AgencyBI</div>
     <nav class="nav-group">
       <button class="nav-item on" onclick="showPage('dashboard', this)">📊 Performance</button>
       <button class="nav-item" onclick="showPage('intelligence', this)">🧠 Estratégia</button>
       <button class="nav-item" onclick="showPage('planner', this)">🚀 Planejador</button>
-      <button class="nav-item" onclick="showPage('competitors', this); runCompetitors();">🔍 Mercado</button>
     </nav>
   </aside>
 
@@ -218,97 +292,29 @@ body {
         <div class="topbar-sub">Inteligência de Dados em Tempo Real</div>
       </div>
       <div class="acc-list" id="acc-list"></div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
     </header>
 
     <main class="main-content">
-      <!-- DASHBOARD -->
       <div id="dashboard" class="page on">
-        <div class="stats-grid">
-          <div class="stat-item"><div class="stat-label">Alcance</div><div class="stat-value" id="m-alcance">0</div></div>
-          <div class="stat-item"><div class="stat-label">Impressões</div><div class="stat-value" id="m-impressoes">0</div></div>
-          <div class="stat-item"><div class="stat-label">Engajamento</div><div class="stat-value" id="m-engajamento">0</div></div>
-          <div class="stat-item"><div class="stat-label">Taxa de Conversão</div><div class="stat-value" id="m-taxa">0%</div></div>
-        </div>
-        
         <div class="card">
-          <div class="card-title">Tendência de Crescimento (30 dias)</div>
-          <div style="height: 350px;"><canvas id="mainChart"></canvas></div>
+          <div class="card-title">Bem-vindo ao AgencyBI</div>
+          <p style="color: var(--muted); margin-bottom: 1.5rem;">Selecione um cliente no topo para visualizar suas métricas e estratégias.</p>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-          <div class="card" style="margin-bottom: 0;">
-            <div class="card-title">Público por Gênero e Idade</div>
-            <div style="height: 250px;"><canvas id="demoChart"></canvas></div>
-          </div>
-          <div class="card" style="margin-bottom: 0;">
-            <div class="card-title">Principais Cidades</div>
-            <div id="city-list" style="display: flex; flex-direction: column; gap: 12px; margin-top: 1rem;">
-              <!-- Cidades serão inseridas aqui -->
-            </div>
-          </div>
-        </div>
-
-        <div id="dash-analysis"></div>
       </div>
 
-      <!-- ESTRATÉGIA -->
       <div id="intelligence" class="page">
         <div class="card">
           <div class="card-title">Auditoria de Posicionamento</div>
-          <p style="color: var(--muted); margin-bottom: 2rem;">Nossa IA analisará cada ponto do perfil para identificar falhas de posicionamento e oportunidades de escala.</p>
-          <button class="btn-primary" onclick="runDiagnostic()">Iniciar Auditoria de Elite</button>
+          <p style="color: var(--muted);">Funcionalidade em desenvolvimento...</p>
         </div>
-        <div id="diag-result"></div>
       </div>
 
-      <!-- PLANEJADOR -->
       <div id="planner" class="page">
         <div class="card">
-          <div class="card-title">Geração de Conteúdo de Alta Conversão</div>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
-            <div class="stat-item" style="padding: 1.5rem; text-align: center;">
-              <div class="stat-label">Reels</div>
-              <div class="stat-value" id="v-reels" style="font-size: 1.5rem;">8</div>
-              <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-                <button class="acc-chip" onclick="updMix('reels',-1)">-</button>
-                <button class="acc-chip" onclick="updMix('reels',1)">+</button>
-              </div>
-            </div>
-            <div class="stat-item" style="padding: 1.5rem; text-align: center;">
-              <div class="stat-label">Carrossel</div>
-              <div class="stat-value" id="v-car" style="font-size: 1.5rem;">6</div>
-              <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-                <button class="acc-chip" onclick="updMix('car',-1)">-</button>
-                <button class="acc-chip" onclick="updMix('car',1)">+</button>
-              </div>
-            </div>
-            <div class="stat-item" style="padding: 1.5rem; text-align: center;">
-              <div class="stat-label">Estático</div>
-              <div class="stat-value" id="v-foto" style="font-size: 1.5rem;">2</div>
-              <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-                <button class="acc-chip" onclick="updMix('foto',-1)">-</button>
-                <button class="acc-chip" onclick="updMix('foto',1)">+</button>
-              </div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="generatePlan()">Gerar Planejamento Estratégico</button>
+          <div class="card-title">Geração de Conteúdo</div>
+          <p style="color: var(--muted);">Funcionalidade em desenvolvimento...</p>
         </div>
-
-        <div id="plan-loader" class="plan-loader">
-          <div class="spinner"></div>
-          <h3 style="font-family:'Space Grotesk'">Processando Inteligência de Conteúdo...</h3>
-          <p style="color:var(--muted); margin-top:10px">Nossa IA está escrevendo legendas longas e roteiros cinematográficos.</p>
-        </div>
-        <div id="plan-result"></div>
-      </div>
-
-      <!-- MERCADO -->
-      <div id="competitors" class="page">
-        <div class="card">
-          <div class="card-title">Análise de Concorrência e Gaps de Mercado</div>
-          <button class="btn-primary" onclick="runCompetitors()">Mapear Oportunidades</button>
-        </div>
-        <div id="comp-result"></div>
       </div>
     </main>
   </div>
@@ -317,37 +323,79 @@ body {
 <div id="toast"></div>
 
 <script>
+let isLoggedIn = false;
+let userToken = null;
 let accounts = [];
 let selAccount = null;
-let mix = { reels: 8, car: 6, foto: 2 };
-let chart = null;
-let demoChart = null;
 
-async function init() {
-  try {
-    const r = await fetch('/api/me');
-    if (!r.ok) throw new Error('Falha ao carregar contas');
-    const data = await r.json();
-    accounts = data.accounts;
-    renderAccs();
-    if (accounts.length) selectAcc(accounts[0].id);
-  } catch(e) { toast(e.message || 'Erro ao conectar com o servidor'); }
+// Verificar se está logado ao carregar a página
+window.addEventListener('load', () => {
+  checkLoginStatus();
+});
+
+function checkLoginStatus() {
+  const token = localStorage.getItem('fb_token');
+  if (token) {
+    isLoggedIn = true;
+    userToken = token;
+    showAppScreen();
+    loadAccounts();
+  } else {
+    showLoginScreen();
+  }
 }
 
-function renderAccs() {
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+}
+
+function showAppScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'grid';
+}
+
+function loginWithFacebook() {
+  // Redirecionar para o endpoint de autenticação do backend
+  window.location.href = '/auth/facebook';
+}
+
+async function loadAccounts() {
+  try {
+    const res = await fetch('/api/me', {
+      headers: { 'Authorization': `Bearer ${userToken}` }
+    });
+    
+    if (!res.ok) throw new Error('Falha ao carregar contas');
+    
+    const data = await res.json();
+    accounts = data.accounts || [];
+    renderAccounts();
+    
+    if (accounts.length > 0) {
+      selectAccount(accounts[0].id);
+    }
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function renderAccounts() {
   const div = document.getElementById('acc-list');
   div.innerHTML = accounts.map(a => `
-    <button class="acc-chip ${String(selAccount?.id) === String(a.id) ? 'on' : ''}" onclick="selectAcc('${a.id}')">@${a.username}</button>
+    <button class="acc-chip ${String(selAccount?.id) === String(a.id) ? 'on' : ''}" 
+            onclick="selectAccount('${a.id}')">
+      @${a.username}
+    </button>
   `).join('');
 }
 
-async function selectAcc(id) {
-  // Busca por ID (string ou número) ou Username para maior robustez
-  selAccount = accounts.find(a => String(a.id) === String(id) || a.username === String(id));
+function selectAccount(id) {
+  selAccount = accounts.find(a => String(a.id) === String(id));
   if (!selAccount) return;
+  
   document.getElementById('perfil-name').textContent = selAccount.brandName || selAccount.username;
-  renderAccs();
-  loadDashboard();
+  renderAccounts();
 }
 
 function showPage(id, btn) {
@@ -357,225 +405,9 @@ function showPage(id, btn) {
   btn.classList.add('on');
 }
 
-function updMix(k, v) {
-  mix[k] = Math.max(0, mix[k] + v);
-  document.getElementById('v-reels').textContent = mix.reels;
-  document.getElementById('v-car').textContent = mix.car;
-  document.getElementById('v-foto').textContent = mix.foto;
-}
-
-async function loadDashboard() {
-  try {
-    const r = await fetch('/api/dashboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ igId: selAccount.id })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Erro ao carregar dashboard');
-    
-    // Atualiza Métricas
-    document.getElementById('m-alcance').textContent = data.metrics.summary.alcance;
-    document.getElementById('m-impressoes').textContent = data.metrics.summary.impressoes;
-    document.getElementById('m-engajamento').textContent = data.metrics.summary.engajamentos;
-    document.getElementById('m-taxa').textContent = data.metrics.summary.taxa_engajamento_media + '%';
-    
-    renderChart(data.metrics.summary);
-    renderDemographics(data.metrics.summary.demographics);
-  } catch(e) { toast(e.message); }
-}
-
-function renderChart(summary) {
-  const ctx = document.getElementById('mainChart').getContext('2d');
-  if (chart) chart.destroy();
-  
-  let reachVal = typeof summary.alcance === 'string' ? parseFloat(summary.alcance) * (summary.alcance.includes('K') ? 1000 : 1) : summary.alcance;
-
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
-      datasets: [{
-        label: 'Alcance Estimado',
-        data: [reachVal * 0.2, reachVal * 0.5, reachVal * 0.8, reachVal],
-        borderColor: '#8b5cf6',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-        fill: true,
-        tension: 0.4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-      }
-    }
-  });
-}
-
-function renderDemographics(demo) {
-  const cityDiv = document.getElementById('city-list');
-  cityDiv.innerHTML = demo.cities.map(([name, val]) => `
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.9rem; font-weight: 600;">${name}</span>
-      <div style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); margin: 0 15px; border-radius: 4px; overflow: hidden;">
-        <div style="width: ${Math.min(100, (val/demo.cities[0][1])*100)}%; height: 100%; background: var(--brand);"></div>
-      </div>
-      <span style="font-size: 0.8rem; color: var(--muted); min-width: 40px; text-align: right;">${val}</span>
-    </div>
-  `).join('');
-
-  const ctx = document.getElementById('demoChart').getContext('2d');
-  if (demoChart) demoChart.destroy();
-
-  const labels = Object.keys(demo.genderAge).slice(0, 6);
-  const values = Object.values(demo.genderAge).slice(0, 6);
-
-  demoChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Distribuição',
-        data: values,
-        backgroundColor: labels.map(l => l.startsWith('F') ? 'rgba(217, 70, 239, 0.6)' : 'rgba(139, 92, 246, 0.6)'),
-        borderRadius: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-      }
-    }
-  });
-}
-
-async function generatePlan() {
-  const loader = document.getElementById('plan-loader');
-  const result = document.getElementById('plan-result');
-  loader.style.display = 'block';
-  result.innerHTML = '';
-  
-  try {
-    const r = await fetch('/api/plano', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        igId: selAccount.id,
-        qtyReels: mix.reels,
-        qtyCarrossel: mix.car,
-        qtyFoto: mix.foto
-      })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Erro ao gerar plano');
-    
-    loader.style.display = 'none';
-    result.innerHTML = `
-      <div class="content-grid">
-        ${data.posts.map(p => `
-          <div class="post-card">
-            <div class="post-preview">${p.format==='Reels'?'🎬':p.format==='Carrossel'?'📚':'📸'}</div>
-            <div class="post-body">
-              <span class="post-tag tag-${p.format.toLowerCase()}">${p.format}</span>
-              <div class="post-title">${p.theme}</div>
-              
-              <span class="section-label">Gancho de Impacto</span>
-              <div class="post-desc" style="font-weight:700; color:var(--text); margin-bottom:1.5rem">${p.hook}</div>
-              
-              <span class="section-label">Roteiro Cinematográfico</span>
-              <div class="script-box">
-                ${p.script_or_slides.map(line => `<div style="margin-bottom:8px">● ${line}</div>`).join('')}
-              </div>
-
-              <span class="section-label">Legenda Persuasiva (AIDA)</span>
-              <div class="caption-box">${p.caption}</div>
-              
-              <div style="margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.75rem; color:var(--muted)">Potencial Viral: <strong>${p.viral_score.score}/10</strong></span>
-                <span style="font-size:0.7rem; color:var(--brand-light); font-weight:800; cursor:pointer">COPIAR TUDO</span>
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  } catch(e) { 
-    toast(e.message);
-    loader.style.display = 'none';
-  }
-}
-
-async function runDiagnostic() {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'Analisando...';
-  try {
-    const r = await fetch('/api/diagnostico', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ igId: selAccount.id })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Erro no diagnóstico');
-    
-    document.getElementById('diag-result').innerHTML = `
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem">
-        <div class="card" style="border-left: 6px solid var(--danger);">
-          <div class="card-title">🚫 Gargalos de Performance</div>
-          <ul style="padding-left:1.5rem; color:var(--muted)">${data.problemas.map(p => `<li style="margin-bottom:12px">${p}</li>`).join('')}</ul>
-        </div>
-        <div class="card" style="border-left: 6px solid var(--success);">
-          <div class="card-title">💎 Oportunidades de Escala</div>
-          <ul style="padding-left:1.5rem; color:var(--muted)">${data.oportunidades.map(o => `<li style="margin-bottom:12px">${o}</li>`).join('')}</ul>
-        </div>
-      </div>
-    `;
-  } catch(e) { toast(e.message); }
-  btn.disabled = false;
-  btn.textContent = 'Iniciar Auditoria de Elite';
-}
-
-async function runCompetitors() {
-  const btn = document.querySelector('button[onclick="runCompetitors()"]');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Mapeando...';
-  }
-  try {
-    const r = await fetch('/api/concorrencia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ igId: selAccount.id })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Erro na análise de mercado');
-    
-    document.getElementById('comp-result').innerHTML = `
-      <div class="content-grid">
-        ${data.concorrentes.map(c => `
-          <div class="card">
-            <h3 style="color:var(--brand-light); margin-bottom:1rem">@${c.perfil}</h3>
-            <p style="font-size:0.9rem; margin-bottom:1rem"><strong>Posicionamento:</strong> ${c.positioning}</p>
-            <div style="background:rgba(139,92,246,0.1); padding:1rem; border-radius:16px; border:1px solid rgba(139,92,246,0.2); font-size:0.85rem">
-              <strong>Estratégia de Ataque:</strong> ${c.opportunity}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  } catch(e) { toast(e.message); }
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = 'Mapear Oportunidades';
-  }
+function logout() {
+  localStorage.removeItem('fb_token');
+  window.location.href = '/auth/logout';
 }
 
 function toast(msg) {
@@ -584,8 +416,6 @@ function toast(msg) {
   t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 3000);
 }
-
-init();
 </script>
 </body>
 </html>
