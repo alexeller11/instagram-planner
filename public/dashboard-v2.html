@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agency BI — High Performance Social Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --brand: #8b5cf6;
+  --brand-light: #a78bfa;
+  --brand-gradient: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  --bg: #020617;
+  --surface: #0f172a;
+  --card: #1e293b;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.1), transparent);
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 3rem;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.login-subtitle {
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+  font-size: 0.95rem;
+}
+
+.btn-facebook {
+  width: 100%;
+  padding: 1.25rem;
+  background: #1877f2;
+  color: white;
+  border: none;
+  border-radius: 18px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 25px -5px rgba(24, 119, 242, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn-facebook:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 30px -5px rgba(24, 119, 242, 0.6);
+}
+
+.btn-facebook svg {
+  width: 24px;
+  height: 24px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-logo span {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav-group { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+.nav-item.on { background: var(--brand-gradient); color: white; box-shadow: 0 10px 20px -5px rgba(139, 92, 246, 0.4); }
+
+.main { display: flex; flex-direction: column; background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.05), transparent); }
+
+.topbar {
+  padding: 1.5rem 3rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(20px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; }
+.topbar-sub { font-size: 0.9rem; color: var(--muted); }
+
+.acc-list { display: flex; gap: 10px; align-items: center; }
+
+.acc-chip {
+  padding: 8px 20px;
+  border-radius: 99px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.acc-chip.on { border-color: var(--brand); background: rgba(139, 92, 246, 0.15); color: var(--brand-light); }
+
+.btn-logout {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.main-content { padding: 3rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+.page { display: none; animation: slideUp 0.5s ease-out; }
+.page.on { display: block; }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+
+.stat-item {
+  background: var(--surface);
+  padding: 2rem;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item::after { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--brand); opacity: 0.5; }
+
+.stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 2.25rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+.stat-label { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; }
+
+.btn-primary {
+  padding: 1.25rem;
+  background: var(--brand-gradient);
+  color: white;
+  border: none;
+  border-radius: 18px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5);
+}
+
+.btn-primary:hover { transform: scale(1.02); box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6); }
+
+#toast { position: fixed; bottom: 40px; right: 40px; background: var(--surface); border: 1px solid var(--brand); padding: 16px 32px; border-radius: 20px; font-weight: 700; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: none; z-index: 1000; animation: slideIn 0.4s ease-out; }
+
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+@media (max-width: 1100px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { height: auto; position: relative; border-right: none; padding: 1.5rem; flex-direction: row; justify-content: space-between; gap: 1rem; }
+  .nav-group { flex-direction: row; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="login-container" style="display: none;">
+  <div class="login-card">
+    <div class="login-logo">✦ AgencyBI</div>
+    <h1 class="login-title">Bem-vindo</h1>
+    <p class="login-subtitle">Conecte sua conta Meta para gerenciar seus clientes do Instagram</p>
+    <button class="btn-facebook" onclick="loginWithFacebook()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      Conectar com Meta
+    </button>
+  </div>
+</div>
+
+<div id="app-screen" class="app-shell" style="display: none;">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><span>✦</span> AgencyBI</div>
+    <nav class="nav-group">
+      <button class="nav-item on" onclick="showPage('dashboard', this)">📊 Performance</button>
+      <button class="nav-item" onclick="showPage('intelligence', this)">🧠 Estratégia</button>
+      <button class="nav-item" onclick="showPage('planner', this)">🚀 Planejador</button>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="perfil-name">Carregando...</div>
+        <div class="topbar-sub">Inteligência de Dados em Tempo Real</div>
+      </div>
+      <div class="acc-list" id="acc-list"></div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </header>
+
+    <main class="main-content">
+      <div id="dashboard" class="page on">
+        <div class="card">
+          <div class="card-title">Bem-vindo ao AgencyBI</div>
+          <p style="color: var(--muted); margin-bottom: 1.5rem;">Selecione um cliente no topo para visualizar suas métricas e estratégias.</p>
+        </div>
+      </div>
+
+      <div id="intelligence" class="page">
+        <div class="card">
+          <div class="card-title">Auditoria de Posicionamento</div>
+          <p style="color: var(--muted);">Funcionalidade em desenvolvimento...</p>
+        </div>
+      </div>
+
+      <div id="planner" class="page">
+        <div class="card">
+          <div class="card-title">Geração de Conteúdo</div>
+          <p style="color: var(--muted);">Funcionalidade em desenvolvimento...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let isLoggedIn = false;
+let userToken = null;
+let accounts = [];
+let selAccount = null;
+
+// Verificar se está logado ao carregar a página
+window.addEventListener('load', () => {
+  checkLoginStatus();
+});
+
+function checkLoginStatus() {
+  const token = localStorage.getItem('fb_token');
+  if (token) {
+    isLoggedIn = true;
+    userToken = token;
+    showAppScreen();
+    loadAccounts();
+  } else {
+    showLoginScreen();
+  }
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+}
+
+function showAppScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'grid';
+}
+
+function loginWithFacebook() {
+  // Redirecionar para o endpoint de autenticação do backend
+  window.location.href = '/auth/facebook';
+}
+
+async function loadAccounts() {
+  try {
+    const res = await fetch('/api/me', {
+      headers: { 'Authorization': `Bearer ${userToken}` }
+    });
+    
+    if (!res.ok) throw new Error('Falha ao carregar contas');
+    
+    const data = await res.json();
+    accounts = data.accounts || [];
+    renderAccounts();
+    
+    if (accounts.length > 0) {
+      selectAccount(accounts[0].id);
+    }
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function renderAccounts() {
+  const div = document.getElementById('acc-list');
+  div.innerHTML = accounts.map(a => `
+    <button class="acc-chip ${String(selAccount?.id) === String(a.id) ? 'on' : ''}" 
+            onclick="selectAccount('${a.id}')">
+      @${a.username}
+    </button>
+  `).join('');
+}
+
+function selectAccount(id) {
+  selAccount = accounts.find(a => String(a.id) === String(id));
+  if (!selAccount) return;
+  
+  document.getElementById('perfil-name').textContent = selAccount.brandName || selAccount.username;
+  renderAccounts();
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function logout() {
+  localStorage.removeItem('fb_token');
+  window.location.href = '/auth/logout';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>
